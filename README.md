@@ -18,5 +18,15 @@ cd web; npm install; npm run dev                                 # web on :5173
 ```
 (macOS/Linux: `source .venv/bin/activate`, then `pip`, `uvicorn`, `pytest` directly.)
 
+## Voice (Pipecat + Sarvam, own venv)
+```powershell
+py -3.12 -m venv voice\.venv
+.\voice\.venv\Scripts\python.exe -m pip install -r voice/requirements-dev.txt
+.\voice\.venv\Scripts\python.exe -m voice.bot -t webrtc          # open http://localhost:7860/client
+.\voice\.venv\Scripts\python.exe -m voice.smoke                  # round-trip test, no mic
+.\voice\.venv\Scripts\python.exe -m pytest voice/tests -q        # voice bridge tests
+```
+Needs `SARVAM_API_KEY` in `.env` and the agent running. Details: `voice/README.md`.
+
 Type "I'm 62, can I get a pension?" -> the agent pauses for confirmation -> say/tap Yes
 (ಹೌದು / हाँ) -> "Submitted!". Anything that isn't a clear yes or no re-asks; nothing submits.

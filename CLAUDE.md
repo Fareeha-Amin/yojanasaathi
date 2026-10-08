@@ -93,7 +93,12 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
   config.py  env settings (loads repo-root .env)
   cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl)
 rules/   one JSON file per scheme: rule, required_fields, documents, source_url, effective_date
-voice/   Pipecat pipeline + Twilio phone bot (to be added; separate process, talks only to /turn)
+voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, talks only to /turn)
+  bot.py     pipeline + bot() entry for Pipecat's dev runner (webrtc now, twilio in Phase 7)
+  bridge.py  AgentBridge: finished turn -> POST /turn with lang -> speak reply
+  lang.py    STT code -> lang, short-turn rule, reply script -> TTS language (no Pipecat import)
+  smoke.py   live round-trip without a mic (Bulbul REST -> VAD -> Saaras -> /turn)
+  tests/     bridge tests (run with the voice venv)
 web/     React (Vite) app
 tests/   pytest (deterministic parts: gate, rules engine, checklist, /turn contract)
 docs/    PROJECT_BRIEF.md
@@ -109,6 +114,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q                          # tests
 .\.venv\Scripts\python.exe -m agent.cli my-case                  # chat with /turn by text
 
+# voice (separate venv; agent must be running)
+py -3.12 -m venv voice\.venv
+.\voice\.venv\Scripts\python.exe -m pip install -r voice/requirements-dev.txt
+.\voice\.venv\Scripts\python.exe -m voice.bot -t webrtc            # http://localhost:7860/client
+.\voice\.venv\Scripts\python.exe -m voice.smoke [case] ["text"]    # live round-trip, no mic
+.\voice\.venv\Scripts\python.exe -m pytest voice/tests -q          # bridge tests
+
 # frontend
 cd web; npm install; npm run dev       # http://localhost:5173
 ```
@@ -120,24 +132,28 @@ Env vars (all loaded in `agent/config.py`):
 | Var | Used by | Notes |
 |---|---|---|
 | `CORS_ORIGINS` | agent | comma-separated web origins |
-| `AGENT_URL` | `agent.cli` | default http://127.0.0.1:8000 |
+| `AGENT_URL` | `agent.cli`, voice | default http://127.0.0.1:8000 |
+| `SARVAM_API_KEY` | voice | Saaras STT + Bulbul TTS |
+| `VOICE_CASE_ID` | voice | case when the client sends none; default `demo-case-1` (= web app) |
 | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | Phase 2 | config only; no provider package yet |
 | `MOCK_PORTAL_URL` | Phase 4 | site Playwright drives (public URL) |
 | `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
-| `SARVAM_API_KEY`, `DATABASE_URL`, `MASTER_KEY`, `TWILIO_*` | later phases | |
+| `DATABASE_URL`, `MASTER_KEY`, `TWILIO_*` | later phases | |
 
 ## Team decisions (2026-10-08)
 1. **`lang` on `/turn`:** optional `"kn" | "hi" | "en"`; old clients keep working.
 2. **LLM:** provider not chosen. Only config exists (`LLM_PROVIDER`, `LLM_MODEL`,
    `LLM_API_KEY`). Do not install a provider or `langchain-*` package until Fareeha confirms
    (before Phase 2).
-3. **Ports:** agent `8000`, our web app `5173`. The mock portal runs on Ayush's laptop and is
+3. **Ports:** agent `8000`, our web app `5173`, voice bot `7860` (added Phase 1). The mock portal runs on Ayush's laptop and is
    reached over a **public URL**: never assume localhost for it; always read
    `MOCK_PORTAL_URL` (site) and `MOCK_PORTAL_API` (API) from `.env`.
    Demo-day fallback: portal runs locally on this laptop at `http://127.0.0.1:5174` (site)
    and `http://127.0.0.1:8001/api` (API); just change the two env vars.
 4. **Git:** repo initialised on `main`; first commit "Phase 0: foundation".
 Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest` (requirements-dev).
+Voice (`voice/requirements.txt`): `pipecat-ai[sarvam,silero,webrtc,runner]==1.12.0` (Pipecat's
+own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt client), `httpx`.
 
 ## Gotchas
 - **Windows curl + Kannada/Hindi:** `curl.exe` receives arguments in the ANSI code page, so
@@ -146,6 +162,11 @@ Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest`
   `python -m agent.cli`, pytest, httpx, or the web app; use curl only with ASCII text.
 - **PowerShell piping adds a BOM** (U+FEFF) to stdin; `agent/gate.py` drops invisible
   format characters (BOM, ZWJ/ZWNJ) for this reason.
+- **Pipecat 1.x frame order:** `SystemFrame`s (UserStopped/StartedSpeaking, interruptions)
+  overtake queued data frames (transcripts). That is why `AgentBridge` sits *before* the
+  `UserTurnProcessor` (transcripts pass it first) and why `voice/tests` sleep before stop frames.
+- **Pipecat TTS without an output transport** never finishes (waits for playback), so
+  `EndFrame` hangs. `voice.smoke` synthesises its test clip with Sarvam's REST TTS instead.
 - **Windows event loops (Phases 3-4):** async psycopg needs `SelectorEventLoop`, async
   Playwright needs `ProactorEventLoop`, and `uvicorn --reload` can break Playwright
   subprocesses. Decide deliberately when adding Postgres and Playwright.
@@ -166,11 +187,29 @@ Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest`
   flow is split (`browser_login -> otp -> browser_fill`) with the Playwright session held
   outside graph state, keyed by case_id.
 
+## Implementation decisions (Phase 1, voice)
+- Pipecat 1.12 API (verified from installed source): `PipelineWorker` + `WorkerRunner`
+  (`PipelineTask`/`PipelineRunner` are deprecated), VAD is a `VADProcessor`, turn-taking is a
+  standalone `UserTurnProcessor`. No LLM in the voice pipeline; the agent is the brain.
+- Pipecat's dev runner (`pipecat.runner.run.main`) serves `/client`, `/start`, `/api/offer`; the
+  same `bot()` will take `-t twilio` in Phase 7 (`create_transport`).
+- STT: `SarvamSTTService` saaras:v4, language auto-detect, `min_speech_frames=1` (default
+  dropped a 0.4 s "ಹೌದು"). Turn end: `SpeechTimeoutUserTurnStopStrategy`, 0.8 s, not the
+  smart-turn model (not trained on Kannada, extra download).
+- `lang` sent to /turn only for kn/hi/en and only for turns of 3+ words: Saaras hears a lone
+  "हाँ" as "Yeah." (en-IN). The gate already accepts "yeah" as yes.
+- TTS language per reply from its script (`TTSUpdateSettingsFrame` before each `TTSSpeakFrame`).
+- Barge-in: VAD start interrupts TTS; a `/turn` reply that arrives after the citizen started
+  speaking again is dropped (agent state already advanced; the newer reply wins).
+- Bot -> client UI: RTVI server message `{"type": "turn", ..., "reply", "pause"}` per turn.
+- Measured (2026-10-09, live Sarvam, stub graph): end of speech -> bot audio ~1.0 s, of which
+  0.8 s is the deliberate pause window.
+
 ## Build phases (one at a time; stop after each for review)
 Each phase: short plan, build, unit tests for deterministic parts, then report what was
 built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
-1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in
+1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
