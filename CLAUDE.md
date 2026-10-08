@@ -23,6 +23,9 @@ Full background, MVP feature list, UI screens and demo script: see `docs/PROJECT
    never by the LLM. Every eligibility result carries `source_url` and `effective_date`.
 2. **Human gate in code.** The `confirm` node calls LangGraph `interrupt()`. Nothing may
    click the portal's final Submit until the graph is resumed with an explicit approval.
+   **Submission is idempotent.** Once a case has an `app_id`, nothing submits it again: any
+   later message (any channel, any language, including "yes") gets the existing ID back
+   ("Already submitted. Your application ID is ..."), and no new confirm pause is opened.
 3. **Never bypass user-only verification.** OTP / CAPTCHA => `interrupt({"type": "otp"})`,
    the citizen supplies the code. The agent never reads SMS or guesses codes.
 4. **Safe-stop.** If an expected portal element is missing, stop and hand control back
@@ -204,12 +207,29 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
 - Bot -> client UI: RTVI server message `{"type": "turn", ..., "reply", "pause"}` per turn.
 - Measured (2026-10-09, live Sarvam, stub graph): end of speech -> bot audio ~1.0 s, of which
   0.8 s is the deliberate pause window.
+- **Acceptance test VERIFIED 2026-10-09** by Fareeha with a real mic + headphones, all 6 steps:
+  greeting, Kannada line -> reply, barge-in stops audio, "ಹೌದು" submits, cross-channel case
+  sharing (voice pause, text "yes"), spoken "service not available" when the agent is down.
+
+## Idempotent submission (fixed 2026-10-09, found in the Phase 1 acceptance test)
+- Bug: after a submit, the next message restarted the graph (interview -> new confirm
+  pause), so a second "yes" ran `submit` again. Same ID only because the stub hardcodes it;
+  in Phase 4 it would have been a second portal submission.
+- Fix, two layers in `agent/graph.py`: `route_entry` sends any case with `app_id` to
+  `already_submitted` (no form, no gate); `submit` itself refuses when `app_id` exists.
+  The portal call is `_submit_to_portal()` (Phase 4 puts Playwright there; tests count calls).
+- `app_id` is the marker, not `status` (status will change in Phase 6: approved, etc.).
+- Cancelled cases ("no") can still start again; nothing was submitted.
+- Phase 2 note: the router may answer status questions on a submitted case, but must keep
+  `route_entry`'s rule that a submitted case never reaches confirm/submit again.
+- Tests: `tests/test_idempotent_submit.py` (same channel, across voice + text, every
+  language, submit-node guard).
 
 ## Build phases (one at a time; stop after each for review)
 Each phase: short plan, build, unit tests for deterministic parts, then report what was
 built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
-1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09)
+1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop

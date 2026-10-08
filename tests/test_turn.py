@@ -105,8 +105,9 @@ def test_unknown_lang_rejected(case_id):
     assert r.status_code == 422
 
 
-def test_finished_case_starts_new_turn(case_id):
+def test_cancelled_case_can_start_again(case_id):
     turn(case_id, "I'm 62")
-    turn(case_id, "yes")
+    turn(case_id, "no")
     out = turn(case_id, "hello again")
-    assert out["pause"]["type"] == "confirm"
+    assert out["pause"]["type"] == "confirm"  # nothing was submitted, so the form can be redone
+    # A submitted case does not restart: see test_idempotent_submit.py

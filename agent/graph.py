@@ -1,4 +1,5 @@
 """The case graph. Phase 0: stub interview -> confirm (human gate) -> submit.
+A submitted case (has app_id) routes straight to already_submitted: submission is idempotent.
 
 Target graph (CLAUDE.md): router -> interview -> eligibility -> document -> respond;
 proceed: planner -> browser -> confirm -> submit -> track. Replace stubs one by one.
@@ -47,9 +48,30 @@ def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]
     return Command(goto="confirm", update={"reply": "Please say yes to submit, or no to stop."})
 
 
+def _already_submitted(app_id: str) -> str:
+    return f"Already submitted. Your application ID is {app_id}."
+
+
+def route_entry(state: CaseState) -> Literal["interview", "already_submitted"]:
+    # Idempotent submission: a submitted case never goes back through the form and the
+    # gate, so a later "yes" (any channel) has nothing to approve.
+    return "already_submitted" if state.get("app_id") else "interview"
+
+
+def already_submitted(state: CaseState) -> CaseState:
+    return {"reply": _already_submitted(state["app_id"])}
+
+
+def _submit_to_portal(state: CaseState) -> str:
+    # TODO (Phase 4): click the portal's final Submit via Playwright, return the real app ID
+    return "DEMO-0001"
+
+
 def submit(state: CaseState) -> CaseState:
-    # TODO (Phase 4): click the portal's final Submit via Playwright, store the real app ID
-    app_id = "DEMO-0001"
+    # Last line of defence right before the portal: never submit a case twice.
+    if state.get("app_id"):
+        return {"reply": _already_submitted(state["app_id"])}
+    app_id = _submit_to_portal(state)
     return {"app_id": app_id, "status": "submitted", "reply": f"Submitted! Application ID {app_id}."}
 
 
@@ -58,7 +80,9 @@ def build_graph(checkpointer: BaseCheckpointSaver):
     g.add_node("interview", interview)
     g.add_node("confirm", confirm)
     g.add_node("submit", submit)
-    g.add_edge(START, "interview")
+    g.add_node("already_submitted", already_submitted)
+    g.add_conditional_edges(START, route_entry)
+    g.add_edge("already_submitted", END)
     g.add_edge("interview", "confirm")
     g.add_edge("submit", END)
     return g.compile(checkpointer=checkpointer)
