@@ -1,0 +1,15 @@
+# Pinned to versions verified in Phase 0 (Python 3.12). Bump deliberately; check APIs first.
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+langgraph==1.2.14
+langgraph-checkpoint==4.2.0
+pydantic==2.14.0
+httpx==0.28.1
+python-dotenv==1.2.4
+# added in later phases (pin when added):
+# langgraph-checkpoint-postgres, psycopg[binary]   Phase 3
+# json-logic-qubit (or alternative)                Phase 2
+# playwright                                       Phase 4
+# apscheduler                                      Phase 6
+# cryptography                                     Phase 3
+# pipecat-ai[sarvam,twilio]                        Phase 1 / 7 (voice/requirements.txt)

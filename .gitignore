@@ -1,0 +1,20 @@
+# secrets (keep the template)
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node
+node_modules/
+web/dist/
+
+# local data: encrypted vault, portal screenshots, sqlite
+*.sqlite3
+data/
+screenshots/
+*.log
