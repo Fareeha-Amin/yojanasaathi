@@ -1,0 +1,31 @@
+{
+  "scheme_id": "pm-kisan",
+  "title": "PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)",
+  "titles": {
+    "en": "PM-KISAN farmer income support",
+    "kn": "ಪಿಎಂ ಕಿಸಾನ್ ಸಮ್ಮಾನ್ ನಿಧಿ",
+    "hi": "पीएम किसान सम्मान निधि"
+  },
+  "category": "Agriculture",
+  "topic": "farmer",
+  "benefit": "Rs 6,000 per year per family, in three instalments of Rs 2,000",
+  "rule": {"and": [
+    {"==": [{"var": "owns_farmland"}, true]},
+    {"==": [{"var": "pays_income_tax"}, false]},
+    {"==": [{"var": "govt_job_or_big_pension"}, false]}
+  ]},
+  "required_fields": ["owns_farmland", "pays_income_tax", "govt_job_or_big_pension"],
+  "documents": [
+    {"doc": "aadhaar", "when": null},
+    {"doc": "bank_passbook", "when": null},
+    {"doc": "land_records", "when": null}
+  ],
+  "source_url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2021/nov/doc2021112361.pdf",
+  "source_name": {
+    "en": "the PM-KISAN official FAQ of the Agriculture Ministry",
+    "kn": "ಕೃಷಿ ಸಚಿವಾಲಯದ ಪಿಎಂ ಕಿಸಾನ್ ಅಧಿಕೃತ ಮಾಹಿತಿ",
+    "hi": "कृषि मंत्रालय के पीएम किसान आधिकारिक प्रश्नोत्तर"
+  },
+  "effective_date": "2019-06-01",
+  "verification": "VERIFIED 2026-10-09 against the official PM-KISAN FAQ (Ministry of Agriculture and Farmers Welfare, published on pib.gov.in, dated 23 Nov 2021), Q6 eligibility (all landholding farmer families, revised w.e.f. 1 Jun 2019), Q7 exclusions, Q15 documents. Family = husband, wife and minor children. PARTIAL MODEL: not asked yet are exclusion (i) institutional landholders, (ii)(a)(b) constitutional posts, ministers, MPs/MLAs/MLCs, mayors, district panchayat chairpersons, and (f) registered practising professionals; the govt-job question does not separate the MTS / Class IV / Group D exception in (c)/(d)."
+}

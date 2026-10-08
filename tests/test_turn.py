@@ -9,6 +9,10 @@ from agent.main import app, graph
 
 client = TestClient(app)
 
+# One message with everything pension-001 needs (age + income): eligible + checklist.
+EN_READY = "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?"
+KN_READY = "ನನಗೆ 62 ವರ್ಷ, ಆದಾಯ ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ. ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?"
+
 
 @pytest.fixture
 def case_id() -> str:
@@ -24,13 +28,21 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
     return body
 
 
+def to_confirm(case_id: str, ready: str = EN_READY, lang: str | None = None) -> dict:
+    """Interview -> eligible -> "proceed" -> the confirm pause."""
+    assert turn(case_id, ready, lang)["pause"] is None
+    out = turn(case_id, "proceed")
+    assert out["pause"]["type"] == "confirm"
+    return out
+
+
 def test_health():
-    assert client.get("/health").json() == {"ok": True}
+    body = client.get("/health").json()
+    assert body["ok"] is True and "llm" in body
 
 
 def test_pause_then_yes_submits(case_id):
-    first = turn(case_id, "I'm 62, can I get a pension?")
-    assert first["pause"]["type"] == "confirm"
+    first = to_confirm(case_id)
     assert "Submitted" not in first["reply"]
 
     second = turn(case_id, "ಹೌದು")
@@ -39,14 +51,14 @@ def test_pause_then_yes_submits(case_id):
 
 
 def test_no_submits_nothing(case_id):
-    turn(case_id, "I'm 62")
+    to_confirm(case_id)
     out = turn(case_id, "no")
     assert out["pause"] is None
     assert "nothing was submitted" in out["reply"]
 
 
 def test_unclear_stays_paused_then_yes(case_id):
-    turn(case_id, "I'm 62")
+    to_confirm(case_id)
     out = turn(case_id, "what documents do I need?")
     assert out["pause"]["type"] == "confirm"
     assert "Submitted" not in out["reply"]
@@ -58,17 +70,17 @@ def test_unclear_stays_paused_then_yes(case_id):
 
 @pytest.mark.parametrize("yes", ["ಹೌದು", "हाँ", "yes"])
 def test_yes_in_any_language_after_reask(case_id, yes):
-    turn(case_id, "ನನಗೆ 62 ವರ್ಷ")
+    to_confirm(case_id, KN_READY)
     turn(case_id, "what?")
     out = turn(case_id, yes)
     assert out["pause"] is None
-    assert "Submitted" in out["reply"]
+    assert "DEMO-0001" in out["reply"]
 
 
 def test_cases_are_isolated(case_id):
-    turn(case_id, "I'm 62")
+    to_confirm(case_id)
     other = turn(f"{case_id}-other", "hello")
-    assert other["pause"]["type"] == "confirm"  # fresh case starts at interview, not resumed
+    assert other["pause"] is None  # fresh case starts at the interview, not resumed
     out = turn(case_id, "yes")
     assert "Submitted" in out["reply"]
 
@@ -79,7 +91,7 @@ def case_lang(case_id: str) -> str | None:
 
 def test_lang_is_optional(case_id):
     turn(case_id, "I'm 62")
-    assert case_lang(case_id) is None
+    assert case_lang(case_id) is None  # Latin script, no lang sent: replies default to English
 
 
 def test_lang_stored_on_new_turn(case_id):
@@ -88,9 +100,9 @@ def test_lang_stored_on_new_turn(case_id):
 
 
 def test_lang_updates_while_paused(case_id):
-    turn(case_id, "ನನಗೆ 62 ವರ್ಷ", lang="kn")
+    to_confirm(case_id, KN_READY, lang="kn")
     out = turn(case_id, "हाँ", lang="hi")
-    assert "Submitted" in out["reply"]
+    assert "DEMO-0001" in out["reply"]
     assert case_lang(case_id) == "hi"
 
 
@@ -106,8 +118,8 @@ def test_unknown_lang_rejected(case_id):
 
 
 def test_cancelled_case_can_start_again(case_id):
-    turn(case_id, "I'm 62")
+    to_confirm(case_id)
     turn(case_id, "no")
-    out = turn(case_id, "hello again")
+    out = turn(case_id, "proceed")
     assert out["pause"]["type"] == "confirm"  # nothing was submitted, so the form can be redone
     # A submitted case does not restart: see test_idempotent_submit.py

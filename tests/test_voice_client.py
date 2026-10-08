@@ -27,17 +27,18 @@ def lang_of(case_id: str) -> str | None:
 
 def test_voice_turn_sends_detected_lang_and_follows_contract():
     case_id = f"voice-{uuid.uuid4().hex[:8]}"
-    [out] = run(_turns(case_id, ("ನನಗೆ ಅರವತ್ತೆರಡು ವರ್ಷ", "kn")))
+    [out] = run(_turns(case_id, ("ನನಗೆ ಅರವತ್ತೆರಡು ವರ್ಷ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ", "kn")))
     assert set(out) == {"reply", "pause"}
-    assert out["pause"]["type"] == "confirm"
+    assert out["pause"] is None and "ಆದಾಯ" in out["reply"]  # asks income, in Kannada
     assert lang_of(case_id) == "kn"
 
 
 def test_voice_resume_keeps_lang_when_not_detected():
     case_id = f"voice-{uuid.uuid4().hex[:8]}"
-    first, second = run(_turns(case_id, ("मुझे पेंशन चाहिए", "hi"), ("ಹೌದು", None)))
-    assert first["pause"]["type"] == "confirm"
-    assert second["pause"] is None and "DEMO-0001" in second["reply"]  # Kannada yes passed the gate
+    *_, paused, done = run(_turns(case_id, ("मैं 62 साल का हूँ, आमदनी एक लाख है, पेंशन चाहिए", "hi"),
+                                  ("हाँ", None), ("ಹೌದು", None)))
+    assert paused["pause"]["type"] == "confirm"
+    assert done["pause"] is None and "DEMO-0001" in done["reply"]  # Kannada yes passed the gate
     assert lang_of(case_id) == "hi"  # no lang sent -> case keeps its language
 
 

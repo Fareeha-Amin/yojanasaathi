@@ -1,7 +1,13 @@
 {
   "scheme_id": "pension-001",
   "title": "Senior Citizen Pension Scheme",
+  "titles": {
+    "en": "Senior Citizen Pension Scheme",
+    "kn": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+    "hi": "वरिष्ठ नागरिक पेंशन योजना"
+  },
   "category": "Pension",
+  "topic": "pension",
   "rule": {"and": [{">=": [{"var": "age"}, 60]}, {"<=": [{"var": "annual_income"}, 300000]}]},
   "required_fields": ["age", "annual_income"],
   "documents": [
@@ -12,5 +18,11 @@
     {"doc": "photo", "when": null}
   ],
   "source_url": "DEMO: matches mock portal seed pension-001; replace with official page for real schemes",
-  "effective_date": "2026-04-01"
+  "source_name": {
+    "en": "the demo portal's pension rule",
+    "kn": "ಡೆಮೊ ಪೋರ್ಟಲ್‌ನ ಪಿಂಚಣಿ ನಿಯಮ",
+    "hi": "डेमो पोर्टल का पेंशन नियम"
+  },
+  "effective_date": "2026-04-01",
+  "verification": "DEMO: scheme of the mock portal (github.com/ayush81233/mock), not a real government scheme."
 }

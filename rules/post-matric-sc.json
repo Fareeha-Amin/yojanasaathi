@@ -1,0 +1,31 @@
+{
+  "scheme_id": "post-matric-sc",
+  "title": "Post-Matric Scholarship for Scheduled Caste Students",
+  "titles": {
+    "en": "Post-Matric Scholarship for SC students",
+    "kn": "ಪರಿಶಿಷ್ಟ ಜಾತಿ ವಿದ್ಯಾರ್ಥಿಗಳ ಮೆಟ್ರಿಕ್ ನಂತರದ ವಿದ್ಯಾರ್ಥಿ ವೇತನ",
+    "hi": "अनुसूचित जाति के छात्रों के लिए पोस्ट मैट्रिक छात्रवृत्ति"
+  },
+  "category": "Education",
+  "topic": "scholarship",
+  "rule": {"and": [
+    {"==": [{"var": "is_student"}, true]},
+    {"==": [{"var": "category"}, "SC"]},
+    {"<=": [{"var": "annual_income"}, 250000]}
+  ]},
+  "required_fields": ["is_student", "category", "annual_income"],
+  "documents": [
+    {"doc": "photo", "when": null},
+    {"doc": "marksheet", "when": null},
+    {"doc": "caste_certificate", "when": null},
+    {"doc": "income_certificate", "when": null}
+  ],
+  "source_url": "https://megeducation.gov.in/dhte/pages/post-matric-sc-st.html",
+  "source_name": {
+    "en": "the official post-matric scholarship rules for SC students",
+    "kn": "ಪರಿಶಿಷ್ಟ ಜಾತಿ ವಿದ್ಯಾರ್ಥಿಗಳ ವಿದ್ಯಾರ್ಥಿ ವೇತನದ ಅಧಿಕೃತ ನಿಯಮ",
+    "hi": "अनुसूचित जाति छात्रवृत्ति के आधिकारिक नियम"
+  },
+  "effective_date": "2013-04-01",
+  "verification": "VERIFIED 2026-10-09 against an official government page (Govt of Meghalaya, Directorate of Higher and Technical Education) that restates the central scheme: post-matriculation / post-secondary courses, parents'/guardians' income from all sources not above Rs 2.50 lakh per annum (revised as of 1 Apr 2013), documents listed there. The central guidelines PDF (Dept of Social Justice, revised March 2021, socialjustice.gov.in/schemes/25) is a scanned image and could not be text-checked; re-check the ceiling against it before real use. is_student means studying class 11 or above."
+}

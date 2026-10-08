@@ -93,9 +93,17 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
   main.py    FastAPI: /health, /turn (per-case lock)
   graph.py   CaseState + nodes + build_graph(checkpointer)
   gate.py    deterministic yes/no/unclear parser for the confirm pause
+  numbers.py number words kn/hi/en -> int (digits, lakh/saavira/hazaar, fused Kannada)
+  facts.py   deterministic facts per message (numbers -> age/income, district, category...)
+  districts.py  district lookup -> canonical English name (31 Karnataka districts)
+  rules.py   three-valued JSON Logic evaluator + scheme loader (eligibility decided here)
+  checklist.py  document mapper (required docs minus what the citizen has)
+  replies.py + i18n/{en,kn,hi}.json   reviewed reply templates (key replies never from LLM)
+  llm.py     provider factory (.env), structured extraction, free-form answers, warm-up
   config.py  env settings (loads repo-root .env)
-  cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl)
-rules/   one JSON file per scheme: rule, required_fields, documents, source_url, effective_date
+  cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl); [case] [lang]
+rules/   one JSON file per scheme: rule, required_fields, documents, source_url, effective_date,
+         titles/source_name (kn/hi/en), topic, verification ("VERIFIED ..." or "DEMO ...")
 voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, talks only to /turn)
   bot.py     pipeline + bot() entry for Pipecat's dev runner (webrtc now, twilio in Phase 7)
   bridge.py  AgentBridge: finished turn -> POST /turn with lang -> speak reply
@@ -103,7 +111,8 @@ voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, 
   smoke.py   live round-trip without a mic (Bulbul REST -> VAD -> Saaras -> /turn)
   tests/     bridge tests (run with the voice venv)
 web/     React (Vite) app
-tests/   pytest (deterministic parts: gate, rules engine, checklist, /turn contract)
+tests/   pytest (deterministic parts: gate, numbers, facts, rules, checklist, replies, flow,
+         /turn contract); conftest.py gives every test a FakeLLM; test_llm_live.py is opt-in
 docs/    PROJECT_BRIEF.md
 ```
 
@@ -114,8 +123,9 @@ Dev machine is Windows (PowerShell). Python 3.12.
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r agent/requirements-dev.txt
 .\.venv\Scripts\python.exe -m uvicorn agent.main:app --reload   # http://127.0.0.1:8000
-.\.venv\Scripts\python.exe -m pytest -q                          # tests
-.\.venv\Scripts\python.exe -m agent.cli my-case                  # chat with /turn by text
+.\.venv\Scripts\python.exe -m pytest -q                          # tests (no LLM needed)
+.\.venv\Scripts\python.exe -m agent.cli my-case kn               # chat with /turn by text
+$env:RUN_LIVE_LLM="1"; .\.venv\Scripts\python.exe -m pytest tests/test_llm_live.py -q -s  # live Ollama
 
 # voice (separate venv; agent must be running)
 py -3.12 -m venv voice\.venv
@@ -138,23 +148,28 @@ Env vars (all loaded in `agent/config.py`):
 | `AGENT_URL` | `agent.cli`, voice | default http://127.0.0.1:8000 |
 | `SARVAM_API_KEY` | voice | Saaras STT + Bulbul TTS |
 | `VOICE_CASE_ID` | voice | case when the client sends none; default `demo-case-1` (= web app) |
-| `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | Phase 2 | config only; no provider package yet |
+| `LLM_PROVIDER`, `LLM_MODEL` | agent | `ollama` + `qwen3:8b` (local); `openai` / `anthropic` / `none` |
+| `LLM_API_KEY`, `LLM_BASE_URL` | agent | cloud providers only (`LLM_BASE_URL` = any OpenAI-compatible API) |
+| `OLLAMA_BASE_URL` | agent | default http://localhost:11434 |
+| `LLM_TIMEOUT` | agent | seconds per LLM call (default 20), then deterministic fallback |
+| `LLM_WARMUP`, `LLM_KEEPWARM` | agent | load model at startup (1); 1-token ping every N s (2 for ollama, 0 = off) |
 | `MOCK_PORTAL_URL` | Phase 4 | site Playwright drives (public URL) |
 | `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
 | `DATABASE_URL`, `MASTER_KEY`, `TWILIO_*` | later phases | |
 
 ## Team decisions (2026-10-08)
 1. **`lang` on `/turn`:** optional `"kn" | "hi" | "en"`; old clients keep working.
-2. **LLM:** provider not chosen. Only config exists (`LLM_PROVIDER`, `LLM_MODEL`,
-   `LLM_API_KEY`). Do not install a provider or `langchain-*` package until Fareeha confirms
-   (before Phase 2).
+2. **LLM:** Ollama, `qwen3:8b`, local (decided 2026-10-09 by Fareeha); `langchain-ollama==1.1.0`
+   pinned. Provider is switchable in `.env`; a cloud provider also needs its `langchain-*`
+   package installed once (not installed; ask before adding).
 3. **Ports:** agent `8000`, our web app `5173`, voice bot `7860` (added Phase 1). The mock portal runs on Ayush's laptop and is
    reached over a **public URL**: never assume localhost for it; always read
    `MOCK_PORTAL_URL` (site) and `MOCK_PORTAL_API` (API) from `.env`.
    Demo-day fallback: portal runs locally on this laptop at `http://127.0.0.1:5174` (site)
    and `http://127.0.0.1:8001/api` (API); just change the two env vars.
 4. **Git:** repo initialised on `main`; first commit "Phase 0: foundation".
-Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest` (requirements-dev).
+Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest` (requirements-dev),
+`langchain-ollama` (+ its `ollama`, `langchain-core`; Phase 2). No JSON Logic package: own evaluator.
 Voice (`voice/requirements.txt`): `pipecat-ai[sarvam,silero,webrtc,runner]==1.12.0` (Pipecat's
 own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt client), `httpx`.
 
@@ -225,12 +240,58 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
 - Tests: `tests/test_idempotent_submit.py` (same channel, across voice + text, every
   language, submit-node guard).
 
+## Implementation decisions (Phase 2, agent brain)
+- **Graph:** `route_entry` (submitted -> `already_submitted`) -> `router` -> `interview` ->
+  `eligibility` -> `document`; `respond` (free-form), `status`, `declined`; proceed:
+  `document` -> `prepare` (read-back preview; Phase 4 puts planner + browser here) ->
+  `confirm` -> `submit`. "yes" to "shall I fill the form?" only reaches `prepare`; the gate
+  still needs its own explicit yes. Idempotent-submit rule unchanged.
+- **Interview scope:** a scheme is in scope if the citizen named its `topic` (pension,
+  farmer, scholarship, women); none named = all schemes. `missing` = required_fields of
+  in-scope schemes whose rule is still UNKNOWN, ordered by `FIELD_ORDER`; one question per turn.
+- **Rules engine:** own JSON Logic evaluator with Kleene logic (missing var = UNKNOWN, not
+  false), so "age 55" decides the pension without asking income. Operators are whitelisted.
+- **Schemes:** `pension-001` DEMO (mock portal), `pm-kisan` VERIFIED (PIB FAQ 23 Nov 2021,
+  partial: some exclusions not asked), `post-matric-sc` VERIFIED (Meghalaya DHTE page restating
+  the central scheme; central PDF is a scan), `gruha-lakshmi` DEMO (Seva Sindhu is JS-only).
+  Details in each file's `verification`. Re-check before any real use.
+- **Numbers never from the LLM converting words.** Order: STT digits, then `agent/numbers.py`
+  (kn/hi/en number words), then the LLM value as a fallback, flagged (`readback`,
+  `preview.needs_readback`, amber at review). If the parser read a number the LLM placed,
+  the parser's value is kept. Measured with live Sarvam: Saaras writes ages as digits but
+  kept "ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ ರೂಪಾಯಿ" as words, so the parser is on the golden path.
+- **Attribution:** strong money (multiplier, >= 1000, ₹/rupees adjacent) > age cue (ವರ್ಷ /
+  साल / years / "I'm 62") > money word nearby (values >= 100 only). Per month -> x12, flagged.
+- **LLM calls:** one structured extraction per turn (`Extraction`, JSON schema via Ollama
+  `format`, temperature 0, few-shot kn/hi/en, fixed prefix for the prompt cache, thinking off
+  via `reasoning=False` -> `think: false`). Skipped for short answers the parsers understood.
+  Deterministic facts always win. Any LLM failure/timeout -> carry on without it;
+  `LLM_PROVIDER=none` runs the golden path with no LLM at all.
+- **Replies:** key replies are templates in `agent/i18n/{en,kn,hi}.json` (tests check same
+  keys and placeholders). **The kn and hi files NEED NATIVE-SPEAKER REVIEW** (marked in
+  `_review`); so do the kn/hi `titles` / `source_name` in `rules/*.json`. The LLM writes only
+  `respond` answers (general questions), then the pending question is asked again.
+- **Language:** `lang` from the client wins; if the case has none, the message script
+  decides (Kannada / Devanagari); Latin text keeps the case's lang (default English).
+- **Latency (measured 2026-10-09, RTX 3070 Ti laptop, Ollama 0.34):** warm extraction
+  ~1.05 s; free-form answer ~3.4 s; answer turns parsed deterministically ~0.03 s. After >= 10 s
+  idle a call took ~3.3 s (GPU wake, outside model compute). `LLM_KEEPWARM=2` brought 5 of 6
+  post-idle turns to 1.1-1.4 s; one was still 3.4 s. Model stays loaded (`keep_alive=-1`),
+  warm-up runs in a background thread at startup; `/health` reports `llm` state and `/turn`
+  skips the LLM while it is still `warming`.
+- **Contract unchanged.** Eligibility data (reasons, source_url, effective_date, checklist)
+  lives in graph state and the confirm `preview`; the web Schemes screen will need a read
+  endpoint (e.g. `GET /case/{id}`) in Phase 5, to be agreed with the team.
+- Known gaps: edits at the confirm pause ("no, my income is ...") cancel instead of
+  editing (Phase 4 review screen); eligibility replies are 3-4 sentences (reason + source +
+  checklist + question), longer than the 1-3 sentence rule.
+
 ## Build phases (one at a time; stop after each for review)
 Each phase: short plan, build, unit tests for deterministic parts, then report what was
 built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
-2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en)
+2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09; voice acceptance by Fareeha pending)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
 5. Web app: the 6 screens + landing page

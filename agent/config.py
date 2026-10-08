@@ -19,10 +19,18 @@ CORS_ORIGINS: list[str] = [
     if o.strip()
 ]
 
-# LLM (Phase 2). Provider not chosen yet; no provider package is installed.
-LLM_PROVIDER = _opt("LLM_PROVIDER")
+# LLM (Phase 2). Switch provider here, not in code (agent/llm.py: make_chat_model).
+#   ollama (default, local) | openai (or any OpenAI-compatible API via LLM_BASE_URL)
+#   | anthropic | none (deterministic parsers only; the golden path still works)
+LLM_PROVIDER = (_opt("LLM_PROVIDER") or "none").lower()
 LLM_MODEL = _opt("LLM_MODEL")
 LLM_API_KEY = _opt("LLM_API_KEY")
+LLM_BASE_URL = _opt("LLM_BASE_URL")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "20"))  # seconds per call; then fall back
+LLM_WARMUP = os.getenv("LLM_WARMUP", "1") not in ("0", "false", "no")  # load model at startup
+# Local GPU only: ping the model every N seconds so the GPU doesn't idle down (0 = off).
+LLM_KEEPWARM = float(os.getenv("LLM_KEEPWARM", "2" if LLM_PROVIDER == "ollama" else "0"))
 
 # Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
 MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives
