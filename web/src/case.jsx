@@ -404,15 +404,6 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
       setNotice("deleted");
       navigate("");
     }),
-    newCase: async () => {
-      await disconnectVoice();
-      const ns = await api.newSession();
-      sessionRef.current = ns;
-      setSession(ns);
-      setMessages([]);
-      await refresh(ns);
-      navigate("talk");
-    },
     install: async () => {
       if (!installEvent) return;
       installEvent.prompt();

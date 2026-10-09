@@ -40,8 +40,6 @@ export const STRINGS = {
     trust_yes: "Nothing is submitted without your yes",
     trust_otp: "You give the OTP; we never read your messages",
     trust_docs: "Documents are encrypted and deleted after you apply; Aadhaar is shown as the last 4 digits only",
-    helper_title: "Helping someone?",
-    helper_body: "CSC and NGO helpers can start a separate case for each citizen from the Privacy screen.",
 
     mic_connect: "Tap to talk",
     mic_connecting: "Connecting…",
@@ -147,7 +145,7 @@ export const STRINGS = {
     otp_never: "We never read your messages.",
     otp_send: "Send code",
     safe_stop_title: "I stopped, to be safe",
-    safe_stop_body: "The portal looks different from what I expect, so I won't guess. Please continue on the portal yourself, or ask a helper.",
+    safe_stop_body: "The portal looks different from what I expect, so I won't guess. Please continue on the portal yourself, or try again later.",
     finish_later: "Pause and finish later",
     screenshot: "Screenshot",
 
@@ -197,8 +195,6 @@ export const STRINGS = {
     delete_confirm: "This deletes your conversation, details, documents and application list from YojanaSaathi. It can't be undone. (The audit log keeps a record that data was deleted, with no personal details.)",
     delete_yes: "Yes, delete everything",
     deleted: "Your data was deleted. You can start again any time.",
-    new_case: "Start a new case (helper mode)",
-    new_case_body: "Use this when you help another person: their conversation stays separate.",
     case_label: "Case",
     install_app: "Install the app",
 
@@ -228,7 +224,7 @@ export const STRINGS = {
     type_instead: "ಟೈಪ್ ಮಾಡಿ",
     phone_title: "ಸ್ಮಾರ್ಟ್‌ಫೋನ್ ಇಲ್ಲವೇ? ಕರೆ ಮಾಡಿ",
     phone_number: "+91 00000 00000",
-    phone_soon: "ಫೋನ್ ಸೇವೆ ಶೀಘ್ರದಲ್ಲೇ. ಅದೇ ಸಹಾಯಕ, ಇಂಟರ್ನೆಟ್ ಬೇಕಿಲ್ಲ.",
+    phone_soon: "ಫೋನ್ ಸೇವೆ ಶೀಘ್ರದಲ್ಲೇ. ಅದೇ ಸಾಥಿ, ಇಂಟರ್ನೆಟ್ ಬೇಕಿಲ್ಲ.",
     how_title: "ಇದು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ",
     how_1: "ಧ್ವನಿಯಲ್ಲಿ ನಿಮ್ಮ ಬಗ್ಗೆ ಹೇಳಿ",
     how_2: "ನೀವು ಯಾವ ಯೋಜನೆಗಳಿಗೆ ಅರ್ಹರು ಎಂದು ನಿಯಮಗಳು ಅಧಿಕೃತ ಮೂಲದೊಂದಿಗೆ ಪರಿಶೀಲಿಸುತ್ತವೆ",
@@ -239,8 +235,6 @@ export const STRINGS = {
     trust_yes: "ನಿಮ್ಮ ಹೌದು ಇಲ್ಲದೆ ಏನನ್ನೂ ಸಲ್ಲಿಸುವುದಿಲ್ಲ",
     trust_otp: "OTP ಅನ್ನು ನೀವೇ ನೀಡುತ್ತೀರಿ; ನಾವು ನಿಮ್ಮ ಸಂದೇಶಗಳನ್ನು ಓದುವುದಿಲ್ಲ",
     trust_docs: "ದಾಖಲೆಗಳು ಎನ್‌ಕ್ರಿಪ್ಟ್ ಆಗಿರುತ್ತವೆ, ಅರ್ಜಿಯ ನಂತರ ಅಳಿಸಲಾಗುತ್ತದೆ; ಆಧಾರ್‌ನ ಕೊನೆಯ 4 ಅಂಕೆಗಳು ಮಾತ್ರ",
-    helper_title: "ಯಾರಿಗಾದರೂ ಸಹಾಯ ಮಾಡುತ್ತಿದ್ದೀರಾ?",
-    helper_body: "CSC ಮತ್ತು NGO ಸಹಾಯಕರು ಗೌಪ್ಯತೆ ಪುಟದಿಂದ ಪ್ರತಿ ನಾಗರಿಕರಿಗೆ ಪ್ರತ್ಯೇಕ ಪ್ರಕರಣ ಶುರು ಮಾಡಬಹುದು.",
 
     mic_connect: "ಮಾತನಾಡಲು ಒತ್ತಿ",
     mic_connecting: "ಸಂಪರ್ಕಿಸುತ್ತಿದೆ…",
@@ -346,7 +340,7 @@ export const STRINGS = {
     otp_never: "ನಾವು ನಿಮ್ಮ ಸಂದೇಶಗಳನ್ನು ಎಂದಿಗೂ ಓದುವುದಿಲ್ಲ.",
     otp_send: "ಕೋಡ್ ಕಳುಹಿಸಿ",
     safe_stop_title: "ಸುರಕ್ಷತೆಗಾಗಿ ನಿಲ್ಲಿಸಿದ್ದೇನೆ",
-    safe_stop_body: "ಪೋರ್ಟಲ್ ನಾನು ನಿರೀಕ್ಷಿಸಿದಂತೆ ಕಾಣುತ್ತಿಲ್ಲ, ಹಾಗಾಗಿ ನಾನು ಊಹಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೀವೇ ಮುಂದುವರಿಸಿ, ಅಥವಾ ಸಹಾಯಕರನ್ನು ಕೇಳಿ.",
+    safe_stop_body: "ಪೋರ್ಟಲ್ ನಾನು ನಿರೀಕ್ಷಿಸಿದಂತೆ ಕಾಣುತ್ತಿಲ್ಲ, ಹಾಗಾಗಿ ನಾನು ಊಹಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೀವೇ ಮುಂದುವರಿಸಿ, ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
     finish_later: "ವಿರಾಮ, ನಂತರ ಮುಗಿಸಿ",
     screenshot: "ಸ್ಕ್ರೀನ್‌ಶಾಟ್",
 
@@ -396,8 +390,6 @@ export const STRINGS = {
     delete_confirm: "ಇದು ನಿಮ್ಮ ಸಂಭಾಷಣೆ, ವಿವರಗಳು, ದಾಖಲೆಗಳು ಮತ್ತು ಅರ್ಜಿ ಪಟ್ಟಿಯನ್ನು ಯೋಜನಾಸಾಥಿಯಿಂದ ಅಳಿಸುತ್ತದೆ. ಇದನ್ನು ಹಿಂಪಡೆಯಲು ಆಗುವುದಿಲ್ಲ. (ಮಾಹಿತಿ ಅಳಿಸಲಾಗಿದೆ ಎಂಬ ದಾಖಲೆ ಮಾತ್ರ ಆಡಿಟ್ ಲಾಗ್‌ನಲ್ಲಿ ಉಳಿಯುತ್ತದೆ, ವೈಯಕ್ತಿಕ ವಿವರಗಳಿಲ್ಲದೆ.)",
     delete_yes: "ಹೌದು, ಎಲ್ಲವನ್ನೂ ಅಳಿಸಿ",
     deleted: "ನಿಮ್ಮ ಮಾಹಿತಿ ಅಳಿಸಲಾಗಿದೆ. ನೀವು ಯಾವಾಗ ಬೇಕಾದರೂ ಮತ್ತೆ ಶುರು ಮಾಡಬಹುದು.",
-    new_case: "ಹೊಸ ಪ್ರಕರಣ ಶುರು ಮಾಡಿ (ಸಹಾಯಕ ಮೋಡ್)",
-    new_case_body: "ಬೇರೆಯವರಿಗೆ ಸಹಾಯ ಮಾಡುವಾಗ ಇದನ್ನು ಬಳಸಿ: ಅವರ ಸಂಭಾಷಣೆ ಪ್ರತ್ಯೇಕವಾಗಿರುತ್ತದೆ.",
     case_label: "ಪ್ರಕರಣ",
     install_app: "ಆ್ಯಪ್ ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿ",
 
@@ -427,7 +419,7 @@ export const STRINGS = {
     type_instead: "टाइप करें",
     phone_title: "स्मार्टफ़ोन नहीं है? हमें कॉल करें",
     phone_number: "+91 00000 00000",
-    phone_soon: "फ़ोन लाइन जल्द आ रही है। वही सहायक, इंटरनेट की ज़रूरत नहीं।",
+    phone_soon: "फ़ोन लाइन जल्द आ रही है। वही साथी, इंटरनेट की ज़रूरत नहीं।",
     how_title: "यह कैसे काम करता है",
     how_1: "आवाज़ में अपने बारे में बताइए",
     how_2: "नियम आधिकारिक स्रोत के साथ जाँचते हैं कि आप किन योजनाओं के पात्र हैं",
@@ -438,8 +430,6 @@ export const STRINGS = {
     trust_yes: "आपकी हाँ के बिना कुछ भी जमा नहीं होता",
     trust_otp: "OTP आप देते हैं; हम आपके संदेश कभी नहीं पढ़ते",
     trust_docs: "दस्तावेज़ एन्क्रिप्टेड रहते हैं और आवेदन के बाद हटा दिए जाते हैं; आधार के सिर्फ़ आख़िरी 4 अंक",
-    helper_title: "किसी की मदद कर रहे हैं?",
-    helper_body: "CSC और NGO सहायक गोपनीयता पेज से हर नागरिक के लिए अलग केस शुरू कर सकते हैं।",
 
     mic_connect: "बोलने के लिए दबाएँ",
     mic_connecting: "जुड़ रहा है…",
@@ -545,7 +535,7 @@ export const STRINGS = {
     otp_never: "हम आपके संदेश कभी नहीं पढ़ते।",
     otp_send: "कोड भेजें",
     safe_stop_title: "सुरक्षा के लिए रुक गया",
-    safe_stop_body: "पोर्टल वैसा नहीं दिख रहा जैसा मैं उम्मीद करता हूँ, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। कृपया पोर्टल पर ख़ुद आगे बढ़ें, या किसी सहायक से पूछें।",
+    safe_stop_body: "पोर्टल वैसा नहीं दिख रहा जैसा मैं उम्मीद करता हूँ, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। कृपया पोर्टल पर ख़ुद आगे बढ़ें, या बाद में फिर कोशिश करें।",
     finish_later: "रोकें, बाद में पूरा करें",
     screenshot: "स्क्रीनशॉट",
 
@@ -595,8 +585,6 @@ export const STRINGS = {
     delete_confirm: "इससे आपकी बातचीत, विवरण, दस्तावेज़ और आवेदन सूची योजनासाथी से हट जाएँगे। इसे वापस नहीं लाया जा सकता। (ऑडिट लॉग में सिर्फ़ यह दर्ज रहता है कि डेटा हटाया गया, बिना व्यक्तिगत विवरण के।)",
     delete_yes: "हाँ, सब हटाएँ",
     deleted: "आपका डेटा हटा दिया गया। आप कभी भी फिर शुरू कर सकते हैं।",
-    new_case: "नया केस शुरू करें (सहायक मोड)",
-    new_case_body: "किसी और की मदद करते समय इसका इस्तेमाल करें: उनकी बातचीत अलग रहती है।",
     case_label: "केस",
     install_app: "ऐप इंस्टॉल करें",
 

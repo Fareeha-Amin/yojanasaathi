@@ -70,6 +70,11 @@ describe("Privacy", () => {
     expect(ctx.deleteMyData).toHaveBeenCalled();
   });
 
+  it("has no helper mode / new-case button (delete my data gives a fresh case)", () => {
+    renderScreen(Profile, { summary: fx("submitted") });
+    expect(document.body.textContent).not.toMatch(/helper|new case/i);
+  });
+
   it("consent switches and my data", async () => {
     const loadMyData = vi.fn().mockResolvedValue({ events: [1, 2], audit: [1, 2, 3], consent: {}, saved_profile: {}, case_memory: {}, documents: [] });
     const { ctx } = renderScreen(Profile, { summary: fx("submitted"), loadMyData });
@@ -88,6 +93,7 @@ describe("Landing", () => {
     expect(ctx.connectVoice).toHaveBeenCalled();
     expect(screen.getByText(/Phone line coming soon/)).toBeInTheDocument();
     expect(screen.getByText("Nothing is submitted until you say yes")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Helping someone|helper|CSC|NGO/i);
   });
 });
 

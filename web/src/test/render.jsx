@@ -19,7 +19,7 @@ export function renderScreen(Screen, ctx = {}) {
     navigate: vi.fn(), refresh: vi.fn(), retry: vi.fn(), setLang: vi.fn(), send: vi.fn(), edit: vi.fn(),
     speak: vi.fn(), connectVoice: vi.fn(), disconnectVoice: vi.fn(), pickScheme: vi.fn(), answerField: vi.fn(),
     confirm: vi.fn(), setConsent: vi.fn(), upload: vi.fn(), removeDocument: vi.fn(), loadMyData: vi.fn(),
-    deleteMyData: vi.fn(), newCase: vi.fn(), install: vi.fn(), dismissNotice: vi.fn(),
+    deleteMyData: vi.fn(), install: vi.fn(), dismissNotice: vi.fn(),
     ...ctx,
   };
   const utils = render(<CaseContext.Provider value={value}><Screen /></CaseContext.Provider>);

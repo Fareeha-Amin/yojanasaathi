@@ -207,7 +207,6 @@ input:focus { border-color: var(--green); }
 .trust { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .trust li { display: flex; gap: 10px; align-items: flex-start; }
 .trust svg { flex: 0 0 22px; color: var(--green); margin-top: 3px; }
-.helper-card { background: var(--marigold-tint); border-color: #f3dc98; }
 
 /* --- talk ---------------------------------------------------------------------------- */
 .talk { display: flex; flex-direction: column; gap: 4px; }

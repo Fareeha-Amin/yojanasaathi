@@ -18,7 +18,7 @@ transaction while 94% of rural homes own a phone (NSSO CAMS 2022-23). That last
 point is why the product is voice-first and also reachable by phone call.
 
 Target users: senior citizens, students, farmers, low-income households and
-first-time digital users in Karnataka; CSC operators and NGO workers as helpers.
+first-time digital users in Karnataka.
 
 Existing gap: myScheme and chatbots stop at discovery; assisted models need human
 field agents; research covers voice, RPA and form filling separately. Nobody runs
@@ -102,13 +102,13 @@ Mobile screens:
 6. My applications: Kannada push notification, status timeline, "What to do" box with
    upload + listen, "Checked 5 min ago", next eligible scheme
 Website: language toggle, Start talking + Call buttons, how it works (4 steps),
-call band, trust points, helper mode for CSC/NGO workers, "Not a government website".
+trust points, "Not a government website". (No helper mode: decided 2026-10-09.)
 
 ## Phone access
 Twilio number -> Pipecat telephony transport -> Sarvam STT/TTS -> same `/turn`.
 Caller number = case lookup, so a citizen can start on a call and finish in the app.
 No "press 1" menus; language detected from speech. Confirm by voice ("ಹೌದು").
-Documents can't be uploaded by voice: send an upload link (or visit a CSC).
+Documents can't be uploaded by voice: the citizen uploads them in the web app.
 Indian numbers need KYC and take days; use a Twilio trial number for the demo.
 SMS in India needs DLT registration: simulate it or read the app ID aloud.
 

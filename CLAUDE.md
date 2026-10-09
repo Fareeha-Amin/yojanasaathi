@@ -485,6 +485,8 @@ dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
 
 ## Implementation decisions (Phase 5, web app)
 - **Built before Phase 4** (portal URL not ready): nothing in the web app depends on the portal.
+- **No helper mode** (decided 2026-10-09, fix-up part B): no helper / CSC / NGO screens, links or
+  wording anywhere; "Delete my data" is the way to a fresh case. `src/i18n.test.js` guards it.
 - **One case per browser:** `POST /session` gives a random case `web-<32 hex>` + a JWT (HS256,
   `agent/auth.py`, stdlib only; key = HMAC(MASTER_KEY, label), so no new secret; `alg` fixed,
   `iss`/`aud`/`exp` checked). Token in localStorage, refreshed at every app start; invalid ->

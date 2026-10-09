@@ -79,11 +79,6 @@ export default function Landing() {
         </ul>
       </section>
 
-      <section className="card helper-card" aria-labelledby="helper-h">
-        <h2 id="helper-h"><Bi k="helper_title" block /></h2>
-        <p><Bi k="helper_body" block /></p>
-      </section>
-
       {canInstall && (
         <button type="button" className="btn btn-secondary" onClick={install}><Bi k="install_app" /></button>
       )}

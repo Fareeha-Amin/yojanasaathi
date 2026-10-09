@@ -17,7 +17,7 @@ function Toggle({ k, checked, onChange, disabled }) {
 }
 
 export default function Profile() {
-  const { summary, session, setConsent, loadMyData, deleteMyData, newCase, speakReplies, setSpeakReplies } = useCase();
+  const { summary, session, setConsent, loadMyData, deleteMyData, speakReplies, setSpeakReplies } = useCase();
   const [data, setData] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
@@ -101,14 +101,6 @@ export default function Profile() {
             </div>
           </div>
         )}
-      </section>
-
-      <section className="card" aria-labelledby="new-h">
-        <h2 id="new-h" className="h-sm"><Bi k="new_case" /></h2>
-        <p className="muted small"><Bi k="new_case_body" block /></p>
-        <button type="button" className="btn btn-secondary" disabled={working} onClick={() => run(newCase)}>
-          <Bi k="new_case" />
-        </button>
       </section>
     </main>
   );

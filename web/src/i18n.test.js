@@ -14,6 +14,14 @@ describe("UI strings", () => {
     }
   });
 
+  it("no helper mode: no helper / CSC / NGO wording in any language", () => {
+    for (const lang of ["kn", "hi", "en"]) {
+      for (const [k, v] of Object.entries(STRINGS[lang])) {
+        expect([lang, k, /helper|CSC|NGO|ಸಹಾಯಕ|सहायक/i.test(k + " " + v)]).toEqual([lang, k, false]);
+      }
+    }
+  });
+
   it("fills placeholders and falls back to English", () => {
     expect(tr("en", "docs_progress", { ready: 2, total: 5 })).toBe("2 of 5 ready");
     expect(tr("xx", "send")).toBe("Send");
