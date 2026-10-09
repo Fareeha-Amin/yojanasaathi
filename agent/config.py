@@ -32,6 +32,19 @@ LLM_WARMUP = os.getenv("LLM_WARMUP", "1") not in ("0", "false", "no")  # load mo
 # Local GPU only: ping the model every N seconds so the GPU doesn't idle down (0 = off).
 LLM_KEEPWARM = float(os.getenv("LLM_KEEPWARM", "2" if LLM_PROVIDER == "ollama" else "0"))
 
+# Persistence & security (Phase 3). Both are required: the agent refuses to start without
+# them (agent/db.py open_store); it never falls back to in-memory case memory.
+DATABASE_URL = _opt("DATABASE_URL")
+# Tests use their own database (created and dropped by tests/conftest.py); default:
+# DATABASE_URL with "_test" appended to the database name.
+TEST_DATABASE_URL = _opt("TEST_DATABASE_URL")
+MASTER_KEY = _opt("MASTER_KEY")  # base64 of 32 bytes; wraps each document's own key
+VAULT_DIR = Path(os.getenv("VAULT_DIR") or ROOT / "data" / "vault")  # encrypted files (gitignored)
+# Documents are deleted this many hours after the case's latest submission.
+DOC_RETENTION_HOURS = float(os.getenv("DOC_RETENTION_HOURS", "24"))
+VAULT_PURGE_SECONDS = float(os.getenv("VAULT_PURGE_SECONDS", "60"))  # how often expiry is checked
+DOC_MAX_BYTES = int(os.getenv("DOC_MAX_BYTES", str(10 * 1024 * 1024)))
+
 # Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
 MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives
 MOCK_PORTAL_API = _opt("MOCK_PORTAL_API")  # status polling API base

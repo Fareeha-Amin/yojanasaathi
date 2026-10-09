@@ -15,8 +15,9 @@ MUST_IGNORE = [
     "agent/__pycache__/main.cpython-312.pyc",
     "screenshots/step-1.png",
     "data/vault/file.bin",
+    "data/vault/0123abcd.ysv",
 ]
-MUST_TRACK = [".env.example", "agent/main.py", "rules/pension-001.json"]
+MUST_TRACK = [".env.example", "agent/main.py", "agent/schema.sql", "rules/pension-001.json"]
 
 pytestmark = pytest.mark.skipif(
     shutil.which("git") is None or not (ROOT / ".git").exists(), reason="needs a git repo"

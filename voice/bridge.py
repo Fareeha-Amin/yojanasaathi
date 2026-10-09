@@ -33,7 +33,8 @@ from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
 from pipecat.services.settings import TTSSettings
 from pipecat.transcriptions.language import Language
 
-from voice.lang import AGENT_UNREACHABLE, TurnLang, tts_language, turn_lang, turn_lang_for
+from voice.lang import (AGENT_UNREACHABLE, TurnLang, mask_for_log, tts_language, turn_lang,
+                        turn_lang_for)
 
 SendTurn = Callable[[str, str, TurnLang | None], Awaitable[dict]]
 
@@ -89,7 +90,8 @@ class AgentBridge(FrameProcessor):
     async def _answer(
         self, text: str, lang: TurnLang | None, heard: TurnLang | None, turn_no: int
     ) -> None:
-        logger.info(f"case {self._case_id} <- [{lang or '-'}, heard {heard or '?'}] {text}")
+        shown = mask_for_log(text)  # Aadhaar: last 4 digits only, in logs and on screen
+        logger.info(f"case {self._case_id} <- [{lang or '-'}, heard {heard or '?'}] {shown}")
         try:
             out = await self._send_turn(self._case_id, text, lang)
             reply, pause, ui = out["reply"], out.get("pause"), out.get("ui")
@@ -105,7 +107,7 @@ class AgentBridge(FrameProcessor):
         # For the client UI (review screen, OTP box); the web app reads it over RTVI.
         await self.push_frame(
             RTVIServerMessageFrame(
-                data={"type": "turn", "case_id": self._case_id, "text": text,
+                data={"type": "turn", "case_id": self._case_id, "text": shown,
                       "lang": lang, "reply": reply, "pause": pause, "ui": ui}
             )
         )

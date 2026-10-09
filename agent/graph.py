@@ -13,6 +13,8 @@ START -> router: deterministic facts (agent/facts.py) + one LLM extraction -> in
 Submission is idempotent PER SCHEME (`applications`): a request to submit a scheme that
 already has an application ID gets that ID back; everything else routes normally.
 Key replies come from templates (agent/replies.py), in the case's language.
+Consequential steps call audit.log_event() (case ID = the thread ID). The state is
+checkpointed in Postgres (agent/db.py), so a pause and `applications` survive restarts.
 """
 
 from dataclasses import asdict
@@ -24,6 +26,7 @@ from langgraph.types import Command, interrupt
 
 from agent import checklist as checklist_mod
 from agent import rules
+from agent.audit import log_event
 from agent.districts import normalize_district
 from agent.facts import AGE_MAX, AGE_MIN, FIELDS, NUMERIC_FIELDS, Facts, extract
 from agent.gate import parse_decision
@@ -57,6 +60,7 @@ class CaseState(TypedDict, total=False):
     readback: list[str]  # fields to flag at review (LLM-sourced or converted)
     docs_have: list[str]
     docs_missing: list[str]
+    docs_stored: list[str]  # types in the encrypted vault (set by /turn from Postgres)
     selected: str | None  # scheme_id being applied for
     offered: list[str]  # eligible, not yet applied, in the order we said them
     applications: dict[str, dict[str, Any]]  # scheme_id -> {"app_id", "status"}
@@ -252,7 +256,7 @@ def _result(scheme: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
 
 def _checklist(scheme: dict[str, Any], state: CaseState, lang: str) -> list[dict[str, str]]:
     items = checklist_mod.build(scheme, state.get("profile", {}), state.get("docs_have"),
-                                state.get("docs_missing"))
+                                state.get("docs_missing"), state.get("docs_stored"))
     return [{**i, "label": rules.doc_label(scheme, i["doc"], lang)} for i in items]
 
 
@@ -284,6 +288,24 @@ def _known(fields: list[str], profile: dict[str, Any]) -> dict[str, Any]:
     return {f: profile[f] for f in FIELD_ORDER if f in fields and f in profile}
 
 
+def _ids(results: list[dict[str, Any]] | None) -> list[str]:
+    return [r["scheme_id"] for r in results or []]
+
+
+def _audit_decision(state: CaseState, eligible: list[dict[str, Any]],
+                    ineligible: list[dict[str, Any]], profile: dict[str, Any]) -> None:
+    """Logged when the rules' decision changes. Field names, not values: the audit log
+    outlives "delete my data"."""
+    if (_ids(eligible), _ids(ineligible)) == (_ids(state.get("eligible")), _ids(state.get("ineligible"))):
+        return
+    schemes = rules.load_schemes()
+    log_event("agent", "eligibility_decided", detail={
+        "eligible": _ids(eligible), "not_eligible": _ids(ineligible),
+        "based_on": sorted(f for f in profile if f in FIELD_ORDER),
+        "rules": {sid: schemes[sid]["effective_date"] for sid in _ids(eligible) + _ids(ineligible)},
+        "decided_by": "json_logic"})
+
+
 def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
     lang = _lang(state)
     profile = state.get("profile", {})
@@ -296,6 +318,7 @@ def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
     update: CaseState = {"eligible": eligible, "ineligible": ineligible, "offered": offered,
                          "ui": _screen(state, ordered, lang)}
     schemes = rules.load_schemes()
+    _audit_decision(state, eligible, ineligible, profile)
 
     if state.get("intent") == "proceed":
         sel = state.get("selected")
@@ -403,7 +426,12 @@ def choose_reask(state: CaseState) -> CaseState:
 def already_submitted(state: CaseState) -> CaseState:
     sid = state["resubmit"]
     app = state["applications"][sid]
+    _blocked(sid, app["app_id"], "router")
     return {"reply": t("already_submitted", _lang(state), app_id=app["app_id"])}
+
+
+def _blocked(sid: str, app_id: str, where: str) -> None:
+    log_event("agent", "resubmit_blocked", scheme_id=sid, detail={"app_id": app_id, "guard": where})
 
 
 # --- proceed: prepare -> confirm (human gate) -> submit ------------------------------
@@ -415,6 +443,7 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
     sel = state["selected"]
     applications = state.get("applications") or {}
     if sel in applications:  # never prepare a second application for the same scheme
+        _blocked(sel, applications[sel]["app_id"], "prepare")
         return Command(goto=END, update={"reply": t("already_submitted", lang,
                                                     app_id=applications[sel]["app_id"])})
     scheme = rules.load_schemes()[sel]
@@ -435,6 +464,9 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
         "source_url": scheme["source_url"],
         "effective_date": scheme["effective_date"],
     }
+    # Logged here, not in confirm: an interrupted node re-runs from the top on resume.
+    log_event("agent", "confirm_requested", scheme_id=sel, detail={
+        "fields": sorted(fields), "needs_readback": unsure, "documents": [d["doc"] for d in docs]})
     return Command(goto="confirm", update={
         "preview": preview, "checklist": docs, "status": "awaiting_confirmation",
         "asking": None, "reply": " ".join(parts)})
@@ -446,6 +478,11 @@ def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]
     answer = interrupt({"type": "confirm", "preview": state.get("preview", {})})
     decision = parse_decision(str(answer))
     lang = _lang(state)
+    detail = {"decision": decision}
+    if decision != "unclear" and len(tokenize(str(answer))) <= 3:
+        detail["said"] = str(answer).strip()  # the bare "ಹೌದು" / "no": evidence, nothing personal
+    action = {"yes": "citizen_approved", "no": "citizen_declined"}.get(decision, "confirm_unclear")
+    log_event("citizen", action, scheme_id=state.get("selected"), detail=detail)
     if decision == "yes":
         return Command(goto="submit")
     if decision == "no":
@@ -465,9 +502,11 @@ def submit(state: CaseState) -> CaseState:
     sel = state["selected"]
     applications = dict(state.get("applications") or {})
     if sel in applications:
+        _blocked(sel, applications[sel]["app_id"], "submit")
         return {"reply": t("already_submitted", lang, app_id=applications[sel]["app_id"])}
     app_id = _submit_to_portal(state)
     applications[sel] = {"app_id": app_id, "status": "SUBMITTED"}
+    log_event("agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "stub (Phase 4: Playwright)"})
     remaining = [s for s in state.get("offered") or [] if s not in applications]
     parts = [t("submitted", lang, app_id=app_id)]
     if remaining:

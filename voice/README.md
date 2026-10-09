@@ -1,4 +1,4 @@
-# Voice + phone line (Aryan)
+# Voice + phone line
 
 A separate process (own venv, `voice/.venv`) that reaches the agent **only** through
 `POST /turn/{case_id}`, the same contract the web app uses.

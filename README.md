@@ -5,13 +5,17 @@ schemes, in Kannada, Hindi and English, on the web or by phone call.
 
 Project rules and decisions: `CLAUDE.md`. Background, MVP features, UI and demo: `docs/PROJECT_BRIEF.md`.
 
-## Run the skeleton (Windows PowerShell)
+## Run the agent (Windows PowerShell)
+Needs PostgreSQL (17 tested) with an empty database, e.g. `yojanasaathi`; set `DATABASE_URL`
+and `MASTER_KEY` in `.env` (see `.env.example`). The agent creates its tables at startup and
+refuses to start without Postgres. Tests create and drop their own `<db>_test` database.
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r agent/requirements-dev.txt
 copy .env.example .env
 .\.venv\Scripts\python.exe -m uvicorn agent.main:app --reload   # backend on :8000
-.\.venv\Scripts\python.exe -m pytest -q                          # tests
+.\.venv\Scripts\python.exe -m pytest -q                          # tests (need Postgres)
+.\.venv\Scripts\python.exe -m agent.privacy_check                # no full Aadhaar / documents in DB
 .\.venv\Scripts\python.exe -m agent.cli                          # text chat (kn/hi safe)
 
 cd web; npm install; npm run dev                                 # web on :5173

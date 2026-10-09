@@ -2,7 +2,9 @@
 
 import pytest
 
-from voice.lang import AGENT_UNREACHABLE, GREETING, tts_language, turn_lang, turn_lang_for
+from agent.privacy import mask_aadhaar
+from voice.lang import (AGENT_UNREACHABLE, GREETING, mask_for_log, tts_language, turn_lang,
+                        turn_lang_for)
 
 
 @pytest.mark.parametrize(
@@ -52,6 +54,12 @@ def test_turn_lang_for_ignores_short_turns(text, code, expected):
 )
 def test_tts_language(text, expected):
     assert tts_language(text) == expected
+
+
+@pytest.mark.parametrize("text", ["my aadhaar is 2345 6789 0123", "ಆಧಾರ್ ೨೩೪೫೬೭೮೯೦೧೨೩",
+                                  "234567890123", "I'm 62, call 98450 12345", "+919845012345"])
+def test_voice_log_masks_aadhaar_like_the_agent(text):
+    assert mask_for_log(text) == mask_aadhaar(text)[0]
 
 
 def test_fixed_phrases_match_their_language():

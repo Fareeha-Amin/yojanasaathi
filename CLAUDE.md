@@ -11,11 +11,11 @@ Built by Team AURA for HackerRing 26' (Open Innovation track). 36-hour MVP.
 Full background, MVP feature list, UI screens and demo script: see `docs/PROJECT_BRIEF.md`
 (read it before starting a new feature).
 
-## Team ownership
-- Fareeha: agent orchestrator (LangGraph graph, nodes, `/turn` API)
-- Aryan: voice layer (Pipecat + Sarvam) and phone line (Twilio)
-- Darshan: React web app screens
-- Ayush: mock government portal, separate repo `ayush81233/mock` (OTP + application flow)
+## Team ownership (changed 2026-10-09)
+- Fareeha: everything in this repo (agent, voice, web app, phone line). Changes to this
+  repo, including the `/turn` contract, need no "tell the team" step.
+- Ayush: only the mock government portal, separate repo `ayush81233/mock` (OTP +
+  application flow). Anything we need from the portal is a request to him.
 
 ## Non-negotiable design rules
 1. **The LLM understands and speaks; code decides and acts.** The LLM extracts profile
@@ -77,8 +77,8 @@ previous `lang`. Any other value is rejected with 422. Old clients sending only 
 sentences); `ui` is this turn's screen payload (every scheme with status, full reasons,
 source_url, effective_date, checklist with the portal's labels; or the submitted app ID and
 next schemes). Clients that read only reply/pause keep working; the voice bridge forwards
-`ui` in its RTVI `turn` message. **Team to be told (Aryan: bridge; Darshan: Schemes screen).**
-Do not change this shape without telling the whole team.
+`ui` in its RTVI `turn` message. Keep the shape backward compatible (all clients are in this
+repo; the portal never calls it).
 
 ## Agent graph (target)
 Nodes: router -> interview -> eligibility -> document -> respond;
@@ -112,8 +112,15 @@ commit 6e6e24d (2026-10-09):
 ## Repo layout
 ```
 agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
-  main.py    FastAPI: /health, /turn (per-case lock)
+  main.py    FastAPI: /health, /turn (per-case lock), /cases/{id}/consent|documents|data
   graph.py   CaseState + nodes + build_graph(checkpointer)
+  db.py      Postgres pool + PostgresSaver (case memory) + table queries; StartupError
+  schema.sql our tables (applied at every start): citizens, profiles, cases, case_events,
+             documents (metadata), audit_log (append-only trigger)
+  audit.py   log_event(): every consequential action -> audit_log (case = thread ID)
+  vault.py   AES-256-GCM document vault on disk; per-file key wrapped with MASTER_KEY
+  privacy.py Aadhaar masking (before the graph) + scrub() for audit details
+  privacy_check.py  scan DB (incl. checkpoint blobs) + vault for full Aadhaar / plaintext
   gate.py    deterministic yes/no/unclear parser for the confirm pause
   numbers.py number words kn/hi/en -> int (digits, lakh/saavira/hazaar, fused Kannada)
   facts.py   deterministic facts per message (numbers -> age/income, district, scheme choice)
@@ -136,8 +143,11 @@ voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, 
   tests/     bridge tests (run with the voice venv)
 web/     React (Vite) app
 tests/   pytest (deterministic parts: gate, numbers, facts, rules, checklist, replies, flow,
-         /turn contract, per-scheme idempotency, portal seed sync); conftest.py gives every
-         test a FakeLLM; test_llm_live.py is opt-in; fixtures/portal_seed.json = seed snapshot
+         /turn contract, per-scheme idempotency, portal seed sync, persistence + restart,
+         vault, privacy/consent/data rights); conftest.py gives every test a FakeLLM and
+         points the agent at a fresh <db>_test database; test_llm_live.py is opt-in;
+         fixtures/portal_seed.json = seed snapshot
+data/    (gitignored) data/vault/*.ysv = encrypted documents
 docs/    PROJECT_BRIEF.md
 ```
 
@@ -148,8 +158,9 @@ Dev machine is Windows (PowerShell). Python 3.12.
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r agent/requirements-dev.txt
 .\.venv\Scripts\python.exe -m uvicorn agent.main:app --reload   # http://127.0.0.1:8000
-.\.venv\Scripts\python.exe -m pytest -q                          # tests (no LLM needed)
+.\.venv\Scripts\python.exe -m pytest -q                          # tests (no LLM; need Postgres)
 .\.venv\Scripts\python.exe -m agent.cli my-case kn               # chat with /turn by text
+.\.venv\Scripts\python.exe -m agent.privacy_check                # DB + vault: no full Aadhaar / plaintext
 $env:RUN_LIVE_LLM="1"; .\.venv\Scripts\python.exe -m pytest tests/test_llm_live.py -q -s  # live Ollama
 $env:MOCK_PORTAL_REPO="C:\path\to\mock"; .\.venv\Scripts\python.exe -m pytest tests/test_portal_seed.py -q  # vs live seed
 .\.venv\Scripts\python.exe -m agent.portal_seed <mock>\backend\schemes\management\commands\seed_schemes.py  # snapshot
@@ -183,7 +194,13 @@ Env vars (all loaded in `agent/config.py`):
 | `MOCK_PORTAL_URL` | agent, Phase 4 | site Playwright drives (public URL); fills `{MOCK_PORTAL_URL}` in rules' `source_url` |
 | `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
 | `MOCK_PORTAL_REPO` | tests | optional local clone of the portal; seed-sync test also checks it |
-| `DATABASE_URL`, `MASTER_KEY`, `TWILIO_*` | later phases | |
+| `DATABASE_URL` | agent | required; startup fails clearly without it (no in-memory fallback) |
+| `TEST_DATABASE_URL` | tests | default: `DATABASE_URL` db name + `_test` (dropped + created per run) |
+| `MASTER_KEY` | agent | required; base64 of 32 bytes; wraps each document key. Lose it = documents unreadable |
+| `VAULT_DIR` | agent | encrypted files, default `data/vault` |
+| `DOC_RETENTION_HOURS`, `VAULT_PURGE_SECONDS` | agent | documents deleted N h after the case's latest submission (24); purge every 60 s |
+| `DOC_MAX_BYTES` | agent | upload limit (10 MB) |
+| `TWILIO_*` | Phase 7 | |
 
 ## Team decisions (2026-10-08)
 1. **`lang` on `/turn`:** optional `"kn" | "hi" | "en"`; old clients keep working.
@@ -198,6 +215,8 @@ Env vars (all loaded in `agent/config.py`):
 4. **Git:** repo initialised on `main`; first commit "Phase 0: foundation".
 Approved dependencies beyond the stack: `python-dotenv` (requirements), `pytest` (requirements-dev),
 `langchain-ollama` (+ its `ollama`, `langchain-core`; Phase 2). No JSON Logic package: own evaluator.
+Phase 3 (planned in the stack): `langgraph-checkpoint-postgres==3.1.2`, `psycopg[binary]==3.3.6`,
+`psycopg-pool==3.3.3`, `cryptography==50.0.2`. No `python-multipart`: uploads are raw request bodies.
 Voice (`voice/requirements.txt`): `pipecat-ai[sarvam,silero,webrtc,runner]==1.12.0` (Pipecat's
 own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt client), `httpx`.
 
@@ -217,7 +236,14 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   GPU's low-power state is what causes the ~3 s LLM latency after a pause (Phase 2 latency notes).
 - **Windows event loops (Phases 3-4):** async psycopg needs `SelectorEventLoop`, async
   Playwright needs `ProactorEventLoop`, and `uvicorn --reload` can break Playwright
-  subprocesses. Decide deliberately when adding Postgres and Playwright.
+  subprocesses. Phase 3 decision: **sync** psycopg + sync `PostgresSaver` (no event loop
+  involved), so the default Proactor loop stays free for Playwright. Never switch the
+  checkpointer to `AsyncPostgresSaver` on Windows. `--reload` vs Playwright: Phase 4.
+- **Test DB:** pytest drops and recreates `<db>_test` (only names ending `_test`; see
+  `db.recreate_database`). Close DBeaver's connection to it if a test run hangs on DROP
+  (it uses `WITH (FORCE)`, so it shouldn't).
+- **Masking regex:** any 12-digit run (4-4-4, contiguous; ASCII/Kannada/Devanagari digits)
+  is an "Aadhaar", except `+`-prefixed (`+91` phone numbers). Over-masking is intended.
 
 ## Implementation decisions (Phase 0)
 - Versions pinned in `agent/requirements.txt` (langgraph 1.2.14, fastapi 0.143.0). Check the
@@ -337,7 +363,86 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   submits -> repeated "ಹೌದು" gets the same ID) and the `agent.cli` text version. That run was
   on the single-match flow; the 4-match / per-scheme flow above needs its own run.
 
+## Implementation decisions (Phase 3, persistence & security)
+- **Case memory = `PostgresSaver`** on a sync psycopg pool (`agent/db.py`), thread ID =
+  case ID. A confirm pause and `applications` survive restarts, so per-scheme idempotency
+  holds after a restart. `/turn` invokes with `durability="sync"` (each step's checkpoint
+  is written before the next step). Verified: a hard-killed uvicorn at the confirm pause,
+  restarted, "ಹೌದು" submits once, the next "ಹೌದು" returns the same ID
+  (`tests/test_persistence.py` does it with 3 separate processes).
+- **Startup fails clearly** (`StartupError`, password redacted) if `DATABASE_URL` is
+  missing/wrong, Postgres is down, the database doesn't exist, tables can't be created, or
+  `MASTER_KEY` is missing / not 32 bytes. Never an in-memory fallback.
+- **Tables** (`agent/schema.sql`, idempotent, applied at every start): `citizens` (one per
+  case for now; `phone_hash`/`phone_last4` reserved for Phase 7), `profiles` (consent
+  flags; a CHECK makes the DB refuse profile data without `consent_profile`), `cases`
+  (readable projection updated after every turn: lang, status, selected_scheme, paused,
+  applications; the graph state stays the source of truth), `case_events` (timeline: one
+  `turn` row per turn with intent/lang/status/pause, `submitted` rows; never message
+  text), `documents` (metadata only), `audit_log`. No scheme tables: schemes stay in
+  `rules/*.json` (portal seed is the source of truth).
+- **Audit:** `agent.audit.log_event(actor, action, case_id?, scheme_id?, detail?)`; nodes
+  get the case ID from the LangGraph run (`get_config()`). Append-only by trigger (UPDATE,
+  DELETE, TRUNCATE raise). Details hold field names and IDs, never personal values,
+  because audit rows outlive "delete my data" (no FK to cases). Actions so far:
+  agent_started, case_opened, aadhaar_masked, eligibility_decided (when the decision
+  changes; field names + rule effective dates), confirm_requested (logged in `prepare`,
+  since an interrupted node re-runs on resume), citizen_approved / citizen_declined /
+  confirm_unclear (with the bare word said, if <= 3 tokens), submitted, resubmit_blocked
+  (guard: router / prepare / submit), consent_changed, profile_saved, document_stored /
+  document_read / document_deleted / document_auto_deleted, documents_expiry_set,
+  data_viewed, data_deleted. A failed audit write fails the action (no unaudited submit).
+  Production: connect as a role with INSERT-only on audit_log (the superuser can drop the
+  trigger).
+- **Aadhaar:** `/turn` replaces any Aadhaar-like number with "[Aadhaar number hidden]"
+  (no digits, so the number parsers can't read the last 4 as income) before the graph,
+  LLM, checkpoint or logs see it; the last 4 go to an `aadhaar_masked` audit row. The
+  voice bridge masks its transcript log line and the RTVI echo the same way. Documents
+  take `?aadhaar_last4=1234` only (pattern-checked; full numbers are rejected with 422).
+  Not covered: an Aadhaar read out as separate number words that STT leaves as words.
+- **Vault** (`agent/vault.py`): per-file random AES-256-GCM key, wrapped with MASTER_KEY
+  and kept in the file header (`YSV1 | nonce | wrapped key | nonce | ciphertext`), AAD =
+  magic + storage key. Postgres holds type, owner, sha256 of plaintext, storage key,
+  size, aadhaar_last4, expiry. One document per (case, type); re-upload replaces. Expiry =
+  `DOC_RETENTION_HOURS` after the case's latest submission (set in `record_turn`);
+  `purge_expired()` runs at startup and every `VAULT_PURGE_SECONDS` in a daemon thread
+  (moves to APScheduler in Phase 6) and also removes orphan files. Uploaded types show as
+  `"uploaded"` in the checklist (`/turn` passes `docs_stored`). Nothing in the vault path
+  calls the LLM.
+- **Consent:** `PUT /cases/{id}/consent {"profile"?: bool, "documents"?: bool}`. Profile
+  consent copies the case's profile into `profiles.data` and keeps it in sync each turn;
+  withdrawing empties it. Document uploads need document consent (403 otherwise);
+  withdrawing deletes the documents. Case memory (the checkpoint) is not the "saved
+  profile": it is what the open case needs, and is removed by "delete my data".
+- **Data rights:** `GET /cases/{id}/data` (case row, consent, saved profile, case memory,
+  document metadata, timeline, audit rows; logged), `DELETE /cases/{id}/data` (documents,
+  timeline, case, profile, citizen if no other case, checkpoints; audit keeps a
+  `data_deleted` row). `GET /cases/{id}/documents`, `PUT|DELETE
+  /cases/{id}/documents/...` (raw body, jpeg/png/webp/pdf, 10 MB).
+- **Not done in Phase 3 (named):** JWT. These endpoints are keyed by case ID, the same trust
+  level as `/turn`. JWT comes with the web app login (Phase 5); until then there is
+  deliberately no endpoint that returns document contents. Spoken consent question:
+  deferred, because a bare "yes" after a submission is reserved for idempotency. Consent is
+  given in the UI/API for now. Multi-process: the per-case lock is in-process (one agent
+  process); a second process would need `pg_advisory_xact_lock`.
+- **Latency:** deterministic turns via uvicorn + local Postgres 16-80 ms (was ~30 ms in
+  memory). Measure with a persistent HTTP client: a fresh `httpx.post()` per call costs
+  ~250 ms of client SSL setup on Windows.
+
 ## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); not built yet
+- **Crash window at submit (Phase 4):** with `durability="sync"` the only gap is inside
+  the submit node, between the portal's Submit click and the checkpoint write. Before the
+  real portal call, record a write-ahead marker (e.g. a `submitting` case_event /
+  `cases.applications[sid] = {"status": "SUBMITTING"}`) and, on finding one, check the
+  portal's `GET /api/applications/mine/` instead of submitting again (safe-stop if unsure).
+- **After "delete my data"** our memory of an application ID is gone (the audit row
+  keeps it). Phase 4 must check `GET /api/applications/mine/` for the scheme before
+  submitting, so a deleted-and-restarted case can't apply twice.
+- **Phone line (Phase 7):** do NOT use the caller number as the case ID (it would sit in
+  checkpoint thread IDs and in audit rows that outlive deletion). Map
+  HMAC(MASTER_KEY-derived key, number) -> `citizens.phone_hash` -> that citizen's open case.
+- **Documents to the portal (Phase 4):** `vault.read(case_id, doc_id, actor="browser_agent")`
+  decrypts to memory; upload with Playwright, drop the bytes; never write plaintext to disk.
 - **Application fields:** each rules file has the scheme's `application_fields` from the
   portal seed (name, type, required, options, label kn/hi/en). After the citizen picks a
   scheme, the agent asks ONLY the required fields still missing from the profile, one per
@@ -368,7 +473,7 @@ built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09, voice + text acceptance verified; then changed to the 4 portal schemes, multiple matches, per-scheme idempotency, short replies + `ui`)
-3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault
+3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (BUILT 2026-10-09; restart verified with real processes; voice acceptance pending)
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
 5. Web app: the 6 screens + landing page
 6. Follow-up: APScheduler polling, follow-up agent, web push, reminders

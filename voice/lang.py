@@ -10,9 +10,19 @@ TTS side: Bulbul is told the language of the text it must read, decided by the s
 the reply is written in.
 """
 
+import re
 from typing import Literal
 
 TurnLang = Literal["kn", "hi", "en"]
+
+# Same rule as agent/privacy.py (the voice venv does not import the agent): a 12-digit
+# number is treated as Aadhaar and logged as its last 4 digits only. The agent masks it
+# again before anything is stored.
+_AADHAAR = re.compile(r"(?<![\d+])(\d{4})[ \-]?(\d{4})[ \-]?(\d{4})(?!\d)")
+
+
+def mask_for_log(text: str) -> str:
+    return _AADHAAR.sub(lambda m: f"XXXX XXXX {m.group(3)}", text)
 
 _SUPPORTED: tuple[TurnLang, ...] = ("kn", "hi", "en")
 _KANNADA = range(0x0C80, 0x0D00)
