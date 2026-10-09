@@ -17,7 +17,7 @@ import pytest
 
 from agent import config, db
 from agent import llm as llm_mod
-from agent.llm import Extraction
+from tests.helpers import FakeLLM
 
 TEST_MASTER_KEY = base64.b64encode(bytes(range(32))).decode()  # tests only
 
@@ -40,25 +40,6 @@ if config.DATABASE_URL:
         db.recreate_database(config.DATABASE_URL)
     except Exception:
         pass  # Postgres down: unit tests still run; agent.main's StartupError explains the rest
-
-
-class FakeLLM:
-    state = "ready"
-
-    def __init__(self):
-        self.extractions: dict[str, Extraction] = {}  # message -> scripted extraction
-        self.answers: dict[str, str] = {}
-        self.calls: list[str] = []
-
-    def extract(self, msg, asking=None):
-        self.calls.append(msg)
-        return self.extractions.get(msg)
-
-    def answer(self, msg, lang, kb, profile):
-        return self.answers.get(msg)
-
-    def warmup(self):
-        pass
 
 
 @pytest.fixture(autouse=True)

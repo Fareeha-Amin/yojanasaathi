@@ -4,8 +4,9 @@ import json
 
 import pytest
 
+from agent import llm as llm_mod
 from agent.main import app
-from tests.helpers import CaseClient
+from tests.helpers import CaseClient, FakeLLM
 from tests.web_fixtures import FIXTURES, STAGES, build, shape
 
 client = CaseClient(app)
@@ -13,7 +14,12 @@ client = CaseClient(app)
 
 @pytest.fixture(scope="module")
 def fresh() -> dict[str, dict]:
-    return build(client)
+    # Module scope runs before the per-test FakeLLM: install one here, never the real LLM.
+    llm_mod.set_llm(FakeLLM())
+    try:
+        return build(client)
+    finally:
+        llm_mod.set_llm(None)
 
 
 def test_fixtures_match_the_summary_endpoint(fresh, request):

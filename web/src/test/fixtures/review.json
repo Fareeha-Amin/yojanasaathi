@@ -8,7 +8,7 @@
     {
       "field": "age",
       "label": "ವಯಸ್ಸು",
-      "label_en": "age",
+      "label_en": "Age",
       "value": 62,
       "text": "62",
       "text_en": "62",
@@ -18,7 +18,7 @@
     {
       "field": "annual_income",
       "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-      "label_en": "annual income",
+      "label_en": "Annual income",
       "value": 120000,
       "text": "₹1,20,000",
       "text_en": "₹1,20,000",
@@ -45,7 +45,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         },
         {
           "field": "annual_income",
@@ -54,7 +54,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
@@ -99,7 +99,9 @@
         "age 62, at least 60 needed",
         "annual income ₹1,20,000, limit ₹3,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "pension-002",
@@ -117,7 +119,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
@@ -161,7 +163,9 @@
       "reasons_en": [
         "age 62, at least 60 needed"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "health-001",
@@ -179,7 +183,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
@@ -223,7 +227,9 @@
       "reasons_en": [
         "annual income ₹1,20,000, limit ₹5,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     },
     {
       "scheme_id": "health-002",
@@ -241,7 +247,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
@@ -285,13 +291,17 @@
       "reasons_en": [
         "annual income ₹1,20,000, limit ₹4,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     }
   ],
   "checklist": {
     "scheme_ids": [
       "pension-001"
     ],
+    "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+    "title_en": "Senior Citizen Pension Scheme",
     "items": [
       {
         "doc": "identity_proof",
@@ -359,8 +369,37 @@
         ]
       }
     ],
+    "others": [
+      {
+        "doc": "medical_documents",
+        "status": "needed",
+        "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "label_en": "Medical Documents, where applicable",
+        "document": null,
+        "schemes": [
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "National Health Support Scheme"
+        ]
+      },
+      {
+        "doc": "family_details",
+        "status": "needed",
+        "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+        "label_en": "Family Details",
+        "document": null,
+        "schemes": [
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Family Healthcare Assistance"
+        ]
+      }
+    ],
     "ready": 0,
-    "total": 5
+    "total": 5,
+    "missing": 5
   },
   "documents": [],
   "consent": {
@@ -405,6 +444,7 @@
           "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು"
         }
       ],
+      "documents_missing": 5,
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
       "effective_date": "2026-10-09"
     }
@@ -413,13 +453,13 @@
     "scheme_id": "pension-001",
     "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
     "title_en": "Senior Citizen Pension Scheme",
-    "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸಲೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ.",
-    "readback_en": "Please check: age 62, annual income ₹1,20,000. Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit.",
+    "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+    "readback_en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first.",
     "fields": [
       {
         "field": "age",
         "label": "ವಯಸ್ಸು",
-        "label_en": "age",
+        "label_en": "Age",
         "value": 62,
         "text": "62",
         "text_en": "62",
@@ -429,7 +469,7 @@
       {
         "field": "annual_income",
         "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-        "label_en": "annual income",
+        "label_en": "Annual income",
         "value": 120000,
         "text": "₹1,20,000",
         "text_en": "₹1,20,000",
@@ -444,7 +484,9 @@
         "required": true,
         "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
         "label_en": "Senior Citizen Applicant Full Name",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "dob",
@@ -452,7 +494,9 @@
         "required": true,
         "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
         "label_en": "Date of Birth (Must be 60 years or older)",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "gender",
@@ -460,7 +504,9 @@
         "required": true,
         "label": "ಲಿಂಗ",
         "label_en": "Gender",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "marital_status",
@@ -468,7 +514,9 @@
         "required": true,
         "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
         "label_en": "Marital Status",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "annual_income",
@@ -476,7 +524,9 @@
         "required": true,
         "label": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
         "label_en": "Current Annual Income from All Sources (INR)",
-        "value": null
+        "value": 120000,
+        "text": "₹1,20,000",
+        "from_answers": true
       },
       {
         "name": "disbursement_mode",
@@ -484,7 +534,9 @@
         "required": true,
         "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
         "label_en": "Preferred Pension Disbursement Channel",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "bank_account_number",
@@ -492,7 +544,9 @@
         "required": true,
         "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
         "label_en": "Pension Bank / Post Office Account Number",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "bank_ifsc",
@@ -500,7 +554,9 @@
         "required": true,
         "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
         "label_en": "Branch IFSC / Postal Code",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "nominee_name",
@@ -508,7 +564,9 @@
         "required": true,
         "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
         "label_en": "Nominee / Guardian Full Name",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "address",
@@ -516,7 +574,9 @@
         "required": true,
         "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
         "label_en": "Permanent Address",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       },
       {
         "name": "declaration_consent",
@@ -524,7 +584,9 @@
         "required": true,
         "label": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
         "label_en": "I solemnly affirm that I am not drawing any other central/state government pension.",
-        "value": null
+        "value": null,
+        "text": null,
+        "from_answers": false
       }
     ],
     "screenshots": [],
@@ -565,9 +627,11 @@
         "document": null
       }
     ],
+    "documents_missing": 5,
     "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
     "effective_date": "2026-10-09",
-    "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026"
+    "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+    "effective_date_text_en": "9 October 2026"
   },
   "progress": null,
   "applications": [],
@@ -594,8 +658,8 @@
     }
   ],
   "last_reply": {
-    "text": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸಲೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ.",
-    "en": "Please check: age 62, annual income ₹1,20,000. Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit."
+    "text": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+    "en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first."
   },
   "limits": {
     "doc_retention_hours": 24.0,

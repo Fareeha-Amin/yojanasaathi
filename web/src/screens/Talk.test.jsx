@@ -13,6 +13,10 @@ describe("Talk", () => {
     // the question card (and the "where we left off" bubble on a reload)
     expect(screen.getAllByText("What is your family's total income in one year?").length).toBeGreaterThan(0);
     expect(screen.getByText(/I ask your annual income to check: Senior Citizen Pension Scheme/)).toBeInTheDocument();
+    // "Why I ask" is a heading of its own: no line holding just a colon
+    const why = document.querySelector(".why-note");
+    expect(why.querySelector(".why-title")).toHaveTextContent("Why I ask");
+    expect([...why.querySelectorAll("*")].some((el) => el.textContent.trim() === ":")).toBe(false);
   });
 
   it("shows Kannada bubbles with the English subtitle underneath, and replay", async () => {

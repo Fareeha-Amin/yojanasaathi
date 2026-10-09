@@ -8,7 +8,7 @@
     {
       "field": "age",
       "label": "ವಯಸ್ಸು",
-      "label_en": "age",
+      "label_en": "Age",
       "value": 62,
       "text": "62",
       "text_en": "62",
@@ -18,7 +18,7 @@
     {
       "field": "annual_income",
       "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-      "label_en": "annual income",
+      "label_en": "Annual income",
       "value": 120000,
       "text": "₹1,20,000",
       "text_en": "₹1,20,000",
@@ -51,7 +51,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         },
         {
           "field": "annual_income",
@@ -60,7 +60,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
@@ -105,7 +105,9 @@
         "age 62, at least 60 needed",
         "annual income ₹1,20,000, limit ₹3,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "pension-002",
@@ -123,7 +125,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
@@ -167,7 +169,9 @@
       "reasons_en": [
         "age 62, at least 60 needed"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "health-001",
@@ -185,7 +189,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
@@ -229,7 +233,9 @@
       "reasons_en": [
         "annual income ₹1,20,000, limit ₹5,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     },
     {
       "scheme_id": "health-002",
@@ -247,7 +253,7 @@
           "value": 120000,
           "result": true,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
@@ -291,7 +297,9 @@
       "reasons_en": [
         "annual income ₹1,20,000, limit ₹4,00,000"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     }
   ],
   "checklist": {
@@ -301,6 +309,8 @@
       "health-001",
       "health-002"
     ],
+    "title": null,
+    "title_en": null,
     "items": [
       {
         "doc": "identity_proof",
@@ -420,8 +430,10 @@
         ]
       }
     ],
+    "others": [],
     "ready": 0,
-    "total": 7
+    "total": 7,
+    "missing": 7
   },
   "documents": [],
   "consent": {

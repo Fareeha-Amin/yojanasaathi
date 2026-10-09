@@ -69,7 +69,7 @@ function FieldRow({ f }) {
 const DOC_BADGE = { missing: "no", needed: "warn", have: "ok", uploaded: "done" };
 
 export default function Review() {
-  const { summary, confirm, busy, lang } = useCase();
+  const { summary, confirm, busy, lang, navigate } = useCase();
   const r = summary?.review;
   if (!r) {
     return (
@@ -89,6 +89,16 @@ export default function Review() {
         <p><Bi text={r.readback} en={r.readback_en} block /></p>
         <SpeakButton text={r.readback} />
       </div>
+
+      {r.documents_missing > 0 && (
+        <div className="card docs-missing-box" role="note">
+          <Bi k={r.documents_missing === 1 ? "docs_still_needed_1" : "docs_still_needed"} vars={{ n: r.documents_missing }} block className="docs-missing-title" />
+          <Bi k="docs_still_body" block />
+          <a href="#/documents" className="btn btn-secondary btn-sm" onClick={(e) => { e.preventDefault(); navigate("documents"); }}>
+            <Bi k="upload_now" />
+          </a>
+        </div>
+      )}
 
       <section aria-labelledby="det-h">
         <h2 id="det-h" className="h-sm"><Bi k="your_details" /></h2>
@@ -129,7 +139,11 @@ export default function Review() {
           {r.form_fields.map((f) => (
             <li key={f.name} className={f.name === "declaration_consent" ? "declaration" : ""}>
               <Bi text={f.label} en={f.label_en} block />
-              <span className="pending" aria-label="not filled yet">—</span>
+              {f.from_answers ? (
+                <span className="prefilled"><strong>{f.text}</strong> <span className="muted small"><Bi k="from_answers" /></span></span>
+              ) : (
+                <span className="pending" aria-label="not filled yet">—</span>
+              )}
             </li>
           ))}
         </ul>
@@ -141,9 +155,9 @@ export default function Review() {
       </section>
 
       <p className="source">
-        {url ? <a href={url} target="_blank" rel="noreferrer"><Bi k="source" /></a> : <Bi k="source" />}
+        {url ? <a href={url} target="_blank" rel="noopener noreferrer"><Bi k="source" /></a> : <Bi k="source" />}
         {" · "}
-        <Bi text={tr(lang, "effective", { date: r.effective_date_text })} en={tr("en", "effective", { date: r.effective_date })} />
+        <Bi text={tr(lang, "effective", { date: r.effective_date_text })} en={tr("en", "effective", { date: r.effective_date_text_en })} />
       </p>
     </main>
   );

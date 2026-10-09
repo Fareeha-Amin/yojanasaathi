@@ -39,9 +39,9 @@ test("text path: interview -> schemes -> review -> yes -> applications -> delete
   await expect(main.getByText("Nothing is submitted without your yes.")).toBeVisible();
 
   // 4. Edit the income on the review screen: a new read-back, still nothing submitted
-  const income = page.locator("li.field-row", { hasText: "annual income" });
-  await income.getByRole("button", { name: /Edit annual income/ }).click();
-  await income.getByLabel("annual income").fill("150000");
+  const income = page.locator("li.field-row", { hasText: "Annual income" });
+  await income.getByRole("button", { name: /Edit Annual income/ }).click();
+  await income.getByLabel("Annual income").fill("150000");
   await income.getByRole("button", { name: /Save/ }).click();
   await expect(main.getByText(/Please check: age 62, annual income ₹1,50,000/)).toBeVisible();
   await expect(page).toHaveURL(/#\/review$/);

@@ -13,7 +13,7 @@ describe("Documents", () => {
   it("asks for consent before any upload", async () => {
     const { ctx } = renderScreen(Documents, { summary: fx("eligible") });
     expect(screen.getByText("Store my documents safely?")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Take photo or upload/)).toBeNull(); // no file input yet
+    expect(screen.queryByLabelText(/Take photo|Choose file/)).toBeNull(); // no file input yet
     await userEvent.click(screen.getByRole("button", { name: /Yes, store them encrypted/ }));
     expect(ctx.setConsent).toHaveBeenCalledWith({ documents: true });
   });
@@ -36,7 +36,7 @@ describe("Documents", () => {
     await userEvent.type(item.getByLabelText(/last 4 digits/), "2345678901234");
     expect(item.getByLabelText(/last 4 digits/)).toHaveValue("2345"); // never more than 4
     const file = new File(["jpeg"], "id.jpg", { type: "image/jpeg" });
-    await userEvent.upload(item.getByLabelText(/Take photo or upload: Identity Proof/), file);
+    await userEvent.upload(item.getByLabelText(/Choose file: Identity Proof/), file);
     expect(ctx.upload).toHaveBeenCalledWith("identity_proof", file, "2345");
   });
 
@@ -45,7 +45,7 @@ describe("Documents", () => {
     summary.limits.doc_max_bytes = 3;
     const { ctx } = renderScreen(Documents, { summary });
     const item = within(screen.getByText("Age Proof").closest("li"));
-    await userEvent.upload(item.getByLabelText(/Take photo or upload: Age Proof/), new File(["toolarge"], "a.png", { type: "image/png" }));
+    await userEvent.upload(item.getByLabelText(/· Take photo: Age Proof/), new File(["toolarge"], "a.png", { type: "image/png" }));
     expect(ctx.upload).not.toHaveBeenCalled();
     expect(item.getByRole("alert")).toHaveTextContent("too big");
   });
@@ -66,5 +66,33 @@ describe("Documents", () => {
     const { ctx } = renderScreen(Documents, { summary: withConsent(fx("eligible")) });
     await userEvent.click(screen.getByRole("button", { name: /Delete all my documents now/ }));
     expect(ctx.setConsent).toHaveBeenCalledWith({ documents: false });
+  });
+});
+
+describe("Documents: chosen scheme, file buttons, English lines", () => {
+  it("Take photo opens the camera; Choose file allows a PDF or a gallery photo", () => {
+    renderScreen(Documents, { summary: withConsent(fx("eligible")) });
+    const item = within(screen.getByText("Identity Proof").closest("li"));
+    const cam = item.getByLabelText(/· Take photo: Identity Proof/);
+    const file = item.getByLabelText(/Choose file: Identity Proof/);
+    expect(cam).toHaveAttribute("capture", "environment");
+    expect(file).not.toHaveAttribute("capture");
+    expect(file.getAttribute("accept")).toContain("application/pdf");
+  });
+
+  it("the English 'For:' line names the schemes in English", () => {
+    renderScreen(Documents, { summary: withConsent(fx("eligible")) });
+    const item = within(screen.getByText("Age Proof").closest("li"));
+    expect(item.getByText(/^ಇದಕ್ಕೆ: ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ/)).toBeInTheDocument();
+    expect(item.getByText(/^For: Senior Citizen Pension Scheme/)).toBeInTheDocument();
+  });
+
+  it("after choosing a scheme: 'For <scheme>', its list, missing count, others collapsed", () => {
+    renderScreen(Documents, { summary: withConsent(fx("review")) });
+    expect(screen.getByText("For Senior Citizen Pension Scheme")).toBeInTheDocument();
+    expect(screen.getByText("5 missing")).toBeInTheDocument();
+    const others = screen.getByText(/Documents for your other schemes \(2\)/).closest("details");
+    expect(others).not.toHaveAttribute("open");
+    expect(within(others).getByText("Family Details")).toBeInTheDocument();
   });
 });

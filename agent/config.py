@@ -55,3 +55,21 @@ TTS_CACHE_SIZE = int(os.getenv("TTS_CACHE_SIZE", "128"))
 # Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
 MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives
 MOCK_PORTAL_API = _opt("MOCK_PORTAL_API")  # status polling API base
+
+
+def portal_url_warnings() -> list[str]:
+    """What is wrong with MOCK_PORTAL_URL / MOCK_PORTAL_API (logged at agent start). The
+    values are never echoed: a key pasted into the wrong variable must not reach the logs."""
+    import re
+
+    out = []
+    for name in ("MOCK_PORTAL_URL", "MOCK_PORTAL_API"):
+        v = globals()[name]
+        if not v:
+            out.append(f"{name} is not set: scheme source links and the portal won't work (.env)")
+        elif "<" in v or ">" in v:
+            out.append(f"{name} still holds a placeholder (<...>): set the portal's public URL in .env")
+        elif not re.fullmatch(r"https?://[^\s<>{}\"']+", v):
+            out.append(f"{name} is not an http(s) URL: expected e.g. https://portal.example.org"
+                       + ("/api" if name.endswith("API") else ""))
+    return out

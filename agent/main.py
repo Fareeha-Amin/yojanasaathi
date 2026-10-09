@@ -72,6 +72,8 @@ def _purge_loop(stop: threading.Event) -> None:
 async def lifespan(_: FastAPI):
     store.log_event("system", "agent_started", detail={"case_memory": "postgres",
                                                        "database": db.redact(config.DATABASE_URL)})
+    for warning in config.portal_url_warnings():
+        _log.warning("config: %s", warning)
     vault.purge_expired()
     stop = threading.Event()
     threading.Thread(target=_purge_loop, args=(stop,), name="vault-purge", daemon=True).start()

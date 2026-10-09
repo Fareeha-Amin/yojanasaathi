@@ -41,6 +41,8 @@ from agent.replies import day, facts_phrase, join, label, readback, reason, reas
 # Order in which the interview asks. Must cover every required_field in rules/.
 FIELD_ORDER = ["age", "annual_income"]
 TOP_SPOKEN = 2  # matches named aloud; the full list goes to the screen
+WHY_MAX_TITLES = 2  # "Why I ask" names this many schemes, then "and N more"
+MISSING_DOCS = ("needed", "missing")  # checklist statuses that count as not yet provided
 
 
 class CaseState(TypedDict, total=False):
@@ -118,6 +120,8 @@ def why_asking(state: CaseState, lang: str) -> str | None:
               if rules.status(s, profile) == "unknown" and field in rules.missing_fields(s, profile)]
     if not titles:
         return None
+    if len(titles) > WHY_MAX_TITLES:  # name 2, then "and N more"
+        titles = [*titles[:WHY_MAX_TITLES], t("n_more", lang, n=len(titles) - WHY_MAX_TITLES)]
     return t("why_ask", lang, field=label(field, lang), titles=join(titles, lang))
 
 
@@ -488,12 +492,14 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
     fields = {f: profile[f] for f in scheme["required_fields"] if f in profile}
     unsure = [f for f in fields if f in state.get("readback", [])]
     docs = _checklist(scheme, state, lang)
+    n_missing = sum(d["status"] in MISSING_DOCS for d in docs)
     preview = {
         "scheme_id": sel,
         "title": rules.title(scheme, lang),
         "fields": fields,
         "needs_readback": unsure,
         "documents": docs,
+        "documents_missing": n_missing,
         "source_url": scheme["source_url"],
         "effective_date": scheme["effective_date"],
     }
@@ -502,15 +508,24 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
         "fields": sorted(fields), "needs_readback": unsure, "documents": [d["doc"] for d in docs]})
     return Command(goto="confirm", update={
         "preview": preview, "checklist": docs, "status": "awaiting_confirmation",
-        "asking": None, **_say(lang, lambda l: read_back(scheme, fields, unsure, l))})
+        "asking": None, **_say(lang, lambda l: read_back(scheme, fields, unsure, l, n_missing))})
 
 
-def read_back(scheme: dict[str, Any], fields: dict[str, Any], unsure: list[str], lang: str) -> str:
-    """The spoken read-back before the confirm pause (also the review screen's read-aloud)."""
+def read_back(scheme: dict[str, Any], fields: dict[str, Any], unsure: list[str], lang: str,
+              missing_docs: int = 0) -> str:
+    """The spoken read-back before the confirm pause (also the review screen's read-aloud).
+    Missing documents are said before the yes is asked for ("Submit anyway, or upload
+    first?"); submitting is not blocked here (Phase 4 decides what the portal needs)."""
     parts = [t("readback", lang, fields=readback(fields, lang))]
     if unsure:
         parts.append(t("readback_unsure", lang, fields=readback({f: fields[f] for f in unsure}, lang)))
-    parts.append(t("confirm_ask", lang, title=rules.title(scheme, lang)))
+    title = rules.title(scheme, lang)
+    if missing_docs == 1:
+        parts.append(t("docs_missing_ask_1", lang, title=title))
+    elif missing_docs > 1:
+        parts.append(t("docs_missing_ask", lang, n=missing_docs, title=title))
+    else:
+        parts.append(t("confirm_ask", lang, title=title))
     return " ".join(parts)
 
 

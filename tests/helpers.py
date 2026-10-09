@@ -4,6 +4,31 @@ import re
 
 from fastapi.testclient import TestClient
 
+from agent.llm import Extraction
+
+
+class FakeLLM:
+    """Deterministic parsers only, unless a test scripts what the "LLM" returns. Every test
+    gets one (conftest.fake_llm); module-scoped fixtures must install their own."""
+
+    state = "ready"
+
+    def __init__(self):
+        self.extractions: dict[str, Extraction] = {}  # message -> scripted extraction
+        self.answers: dict[str, str] = {}
+        self.calls: list[str] = []
+
+    def extract(self, msg, asking=None):
+        self.calls.append(msg)
+        return self.extractions.get(msg)
+
+    def answer(self, msg, lang, kb, profile):
+        return self.answers.get(msg)
+
+    def warmup(self):
+        pass
+
+
 _CASE_PATH = re.compile(r"^/cases/([^/?]+)")
 
 

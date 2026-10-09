@@ -6,12 +6,13 @@ import { LANGS, LANG_NAMES, LANG_SHORT, tr } from "./i18n.js";
 
 /**
  * Kannada / Hindi first, English underneath (design rule). Either a UI string key `k`
- * (+ `vars`), or text from the agent: `text` in the case language + `en`.
+ * (+ `vars`; `envars` when a value differs in English, e.g. a scheme title), or text from
+ * the agent: `text` in the case language + `en`.
  */
-export function Bi({ k, vars, text, en, className = "", block = false }) {
+export function Bi({ k, vars, envars, text, en, className = "", block = false }) {
   const { lang } = useCase();
   const local = k ? tr(lang, k, vars) : text;
-  const english = k ? tr("en", k, vars) : en;
+  const english = k ? tr("en", k, envars ?? vars) : en;
   // Always a <span> (valid inside <p>, <button>, <label>); `block` only changes display.
   return (
     <span className={`bi ${block ? "bi-block" : ""} ${className}`}>

@@ -8,7 +8,7 @@
     {
       "field": "age",
       "label": "ವಯಸ್ಸು",
-      "label_en": "age",
+      "label_en": "Age",
       "value": 62,
       "text": "62",
       "text_en": "62",
@@ -36,7 +36,7 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "clauses": [
@@ -47,7 +47,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         },
         {
           "field": "annual_income",
@@ -56,7 +56,7 @@
           "value": null,
           "result": null,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
@@ -100,7 +100,9 @@
       "reasons_en": [
         "age 62, at least 60 needed"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "pension-002",
@@ -118,7 +120,7 @@
           "value": 62,
           "result": true,
           "label": "ವಯಸ್ಸು",
-          "label_en": "age"
+          "label_en": "Age"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
@@ -162,7 +164,9 @@
       "reasons_en": [
         "age 62, at least 60 needed"
       ],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
     },
     {
       "scheme_id": "health-001",
@@ -173,7 +177,7 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "clauses": [
@@ -184,7 +188,7 @@
           "value": null,
           "result": null,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
@@ -226,7 +230,9 @@
       "app_id": null,
       "title_en": "National Health Support Scheme",
       "reasons_en": [],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     },
     {
       "scheme_id": "health-002",
@@ -237,7 +243,7 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "clauses": [
@@ -248,7 +254,7 @@
           "value": null,
           "result": null,
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "annual income"
+          "label_en": "Annual income"
         }
       ],
       "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
@@ -290,13 +296,17 @@
       "app_id": null,
       "title_en": "Family Healthcare Assistance",
       "reasons_en": [],
-      "effective_date_text_en": "9 October 2026"
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
     }
   ],
   "checklist": {
     "scheme_ids": [
       "pension-002"
     ],
+    "title": null,
+    "title_en": null,
     "items": [
       {
         "doc": "identity_proof",
@@ -364,8 +374,10 @@
         ]
       }
     ],
+    "others": [],
     "ready": 0,
-    "total": 5
+    "total": 5,
+    "missing": 5
   },
   "documents": [],
   "consent": {

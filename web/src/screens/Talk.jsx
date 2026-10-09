@@ -78,9 +78,10 @@ export default function Talk() {
           <h2 id="q-h" className="h-sm"><Bi k="current_question" /></h2>
           <p className="question"><Bi text={asking.question} en={asking.question_en} block /></p>
           {asking.why && (
-            <p className="why-note">
-              <strong><Bi k="why_title" />:</strong> <Bi text={asking.why} en={asking.why_en} block />
-            </p>
+            <div className="why-note">
+              <h3 className="why-title"><Bi k="why_title" /></h3>
+              <p><Bi text={asking.why} en={asking.why_en} block /></p>
+            </div>
           )}
         </section>
       )}

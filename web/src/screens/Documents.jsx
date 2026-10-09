@@ -7,12 +7,37 @@ const TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const BADGE = { missing: "no", needed: "warn", have: "ok", uploaded: "done" };
 const AADHAAR_DOCS = new Set(["identity_proof"]);
 
+/** "Take photo" opens the camera (capture); "Choose file" opens the gallery / files (PDF too). */
+function FileButtons({ item, onFile, replacing }) {
+  const t = useT();
+  const camId = `cam-${item.doc}`;
+  const fileId = `file-${item.doc}`;
+  return (
+    <div className="doc-actions">
+      <label htmlFor={camId} className={`btn ${replacing ? "btn-ghost" : "btn-primary"} file-btn`}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+        <Bi k="take_photo" />
+      </label>
+      <input id={camId} type="file" className="sr-only" accept="image/*" capture="environment" onChange={onFile}
+        aria-label={`${t("take_photo")} · ${tr("en", "take_photo")}: ${item.label_en}`} />
+      <label htmlFor={fileId} className="btn btn-ghost file-btn">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 12v6M9 15l3-3 3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <Bi k="choose_file" />
+      </label>
+      <input id={fileId} type="file" className="sr-only" accept="image/*,application/pdf" onChange={onFile}
+        aria-label={`${t("choose_file")} · ${tr("en", "choose_file")}: ${item.label_en}`} />
+    </div>
+  );
+}
+
 function DocItem({ item, maxBytes }) {
   const { upload, removeDocument } = useCase();
-  const t = useT();
   const [last4, setLast4] = useState("");
   const [state, setState] = useState(null); // null | "uploading" | error key
-  const inputId = `file-${item.doc}`;
   const doc = item.document;
 
   const onFile = async (e) => {
@@ -37,7 +62,9 @@ function DocItem({ item, maxBytes }) {
         <StatusBadge kind={BADGE[item.status] || "warn"}><Bi k={`doc_${item.status}`} /></StatusBadge>
       </div>
       {item.schemes?.length > 0 && (
-        <p className="muted small"><Bi k="docs_for" vars={{ titles: item.schemes.join(", ") }} /></p>
+        <p className="muted small">
+          <Bi k="docs_for" vars={{ titles: item.schemes.join(", ") }} envars={{ titles: (item.schemes_en || item.schemes).join(", ") }} />
+        </p>
       )}
       {doc && (
         <p className="doc-meta">
@@ -53,26 +80,28 @@ function DocItem({ item, maxBytes }) {
           <p className="muted small"><Bi k="aadhaar_hint" /></p>
         </div>
       )}
-      <div className="doc-actions">
-        <label htmlFor={inputId} className={`btn ${doc ? "btn-ghost" : "btn-primary"} file-btn`}>
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-            <path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-          </svg>
-          <Bi k={doc ? "replace" : "take_photo"} />
-        </label>
-        <input id={inputId} type="file" className="sr-only" accept="image/*,application/pdf" capture="environment"
-          onChange={onFile} aria-label={`${t(doc ? "replace" : "take_photo")} · ${tr("en", doc ? "replace" : "take_photo")}: ${item.label_en}`} />
-        {doc && (
-          <button type="button" className="btn btn-danger-ghost" onClick={() => removeDocument(doc.id)}>
-            <Bi k="delete" />
-          </button>
-        )}
-      </div>
+      <FileButtons item={item} onFile={onFile} replacing={!!doc} />
+      {doc && (
+        <button type="button" className="btn btn-danger-ghost" onClick={() => removeDocument(doc.id)}>
+          <Bi k="delete" />
+        </button>
+      )}
       {state && (
         <p className={state === "uploading" ? "muted" : "error"} role={state === "uploading" ? "status" : "alert"}>
           <Bi k={state} vars={{ mb: Math.round(maxBytes / 1048576) }} />
         </p>
       )}
+    </li>
+  );
+}
+
+function LockedItem({ item }) {
+  return (
+    <li className={`card doc doc-${item.status}`}>
+      <div className="doc-head">
+        <h2 className="h-sm"><Bi text={item.label} en={item.label_en} block /></h2>
+        <StatusBadge kind={BADGE[item.status] || "warn"}><Bi k={`doc_${item.status}`} /></StatusBadge>
+      </div>
     </li>
   );
 }
@@ -85,6 +114,8 @@ export default function Documents() {
   const maxBytes = summary?.limits?.doc_max_bytes ?? 10 * 1024 * 1024;
   const consented = !!summary?.consent?.documents;
   const items = checklist?.items || [];
+  const others = checklist?.others || [];
+  const Item = consented ? DocItem : LockedItem;
 
   const consent = async (documents) => {
     setSaving(true);
@@ -98,13 +129,21 @@ export default function Documents() {
   return (
     <main className="screen">
       <h1><Bi k="documents_title" block /></h1>
+      {checklist?.title && (
+        <p className="lead">
+          <Bi k="docs_for_scheme" vars={{ title: checklist.title }} envars={{ title: checklist.title_en }} block />
+        </p>
+      )}
       {items.length === 0 ? (
         <Empty k="docs_empty" />
       ) : (
         <>
           <div className="progress" aria-label={`${checklist.ready} / ${checklist.total}`}>
+            <div className="progress-row">
+              <Bi k="docs_progress" vars={{ ready: checklist.ready, total: checklist.total }} />
+              {checklist.missing > 0 && <span className="missing-count"><Bi k="docs_missing_n" vars={{ n: checklist.missing }} /></span>}
+            </div>
             <div className="progress-bar"><span style={{ width: `${(100 * checklist.ready) / Math.max(1, checklist.total)}%` }} /></div>
-            <Bi k="docs_progress" vars={{ ready: checklist.ready, total: checklist.total }} />
           </div>
           <p className="note-lock">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -114,7 +153,7 @@ export default function Documents() {
             <Bi k="docs_note" vars={{ hours }} />
           </p>
 
-          {!consented ? (
+          {!consented && (
             <section className="card consent-card" aria-labelledby="dc-h">
               <h2 id="dc-h"><Bi k="docs_consent_title" block /></h2>
               <p><Bi k="docs_consent_body" vars={{ hours }} block /></p>
@@ -122,20 +161,20 @@ export default function Documents() {
                 <Bi k="docs_consent_yes" />
               </button>
             </section>
-          ) : null}
+          )}
 
           <ul className={`doc-list ${consented ? "" : "doc-list-locked"}`} aria-disabled={!consented}>
-            {items.map((item) => (
-              consented ? <DocItem key={item.doc} item={item} maxBytes={maxBytes} /> : (
-                <li key={item.doc} className={`card doc doc-${item.status}`}>
-                  <div className="doc-head">
-                    <h2 className="h-sm"><Bi text={item.label} en={item.label_en} block /></h2>
-                    <StatusBadge kind={BADGE[item.status] || "warn"}><Bi k={`doc_${item.status}`} /></StatusBadge>
-                  </div>
-                </li>
-              )
-            ))}
+            {items.map((item) => <Item key={item.doc} item={item} maxBytes={maxBytes} />)}
           </ul>
+
+          {others.length > 0 && (
+            <details className="card other-docs">
+              <summary><Bi k="other_docs" vars={{ n: others.length }} /></summary>
+              <ul className="doc-list">
+                {others.map((item) => <Item key={item.doc} item={item} maxBytes={maxBytes} />)}
+              </ul>
+            </details>
+          )}
 
           {consented && (
             <button type="button" className="btn btn-danger-ghost" disabled={saving} onClick={() => consent(false)}>

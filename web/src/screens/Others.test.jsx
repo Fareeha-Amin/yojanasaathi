@@ -12,7 +12,7 @@ describe("My applications", () => {
     const summary = fx("submitted");
     const { ctx } = renderScreen(Applications, { summary });
     expect(screen.getByText("DEMO-0001", { selector: "p.app-id code" })).toBeInTheDocument();
-    expect(screen.getByText("submitted")).toBeInTheDocument();
+    expect(screen.getByText("Submitted", { selector: ".badge .bi-en" })).toBeInTheDocument();
     const timeline = document.querySelector(".timeline");
     expect(timeline).toHaveTextContent("Eligibility checked");
     expect(timeline).toHaveTextContent("You said yes");
@@ -114,5 +114,16 @@ describe("Profile: speak replies", () => {
     const { ctx } = renderScreen(Profile, { summary: fx("submitted"), speakReplies: true, setSpeakReplies: vi.fn() });
     await userEvent.click(screen.getByRole("switch", { name: /Speak replies aloud/ }));
     expect(ctx.setSpeakReplies).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("My applications: what to do", () => {
+  it("lists the documents still missing, with Upload now", async () => {
+    const { ctx } = renderScreen(Applications, { summary: fx("submitted") });
+    const todo = document.querySelector(".todo");
+    expect(todo).toHaveTextContent("Upload these documents:");
+    expect(todo).toHaveTextContent("Identity Proof");
+    await userEvent.click(within(todo).getByRole("link", { name: /Upload now/ }));
+    expect(ctx.navigate).toHaveBeenCalledWith("documents");
   });
 });

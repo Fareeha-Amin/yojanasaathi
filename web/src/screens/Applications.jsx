@@ -9,7 +9,7 @@ import { dateTime } from "../format.js";
 const STATUS_BADGE = { APPROVED: "ok", REJECTED: "no", CORRECTION_REQUIRED: "warn" };
 
 export default function Applications() {
-  const { summary, lang, pickScheme, busy } = useCase();
+  const { summary, lang, pickScheme, busy, navigate } = useCase();
   const apps = summary?.applications || [];
   const next = summary?.next || [];
   const reviewing = summary?.pause?.type === "confirm";
@@ -44,7 +44,19 @@ export default function Applications() {
           </p>
           <div className="todo">
             <strong><Bi k="what_to_do" /></strong>
-            <Bi k="nothing_to_do" block />
+            {a.missing_documents?.length ? (
+              <>
+                <Bi k="todo_upload" block />
+                <ul className="todo-docs">
+                  {a.missing_documents.map((d) => <li key={d.doc}><Bi text={d.label} en={d.label_en} /></li>)}
+                </ul>
+                <a href="#/documents" className="btn btn-primary btn-sm" onClick={(e) => { e.preventDefault(); navigate("documents"); }}>
+                  <Bi k="upload_now" />
+                </a>
+              </>
+            ) : (
+              <Bi k="nothing_to_do" block />
+            )}
           </div>
         </article>
       ))}

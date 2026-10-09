@@ -64,7 +64,7 @@ def test_interview_why_i_ask(case_id):
     out = summary(case_id)
     assert out["lang"] == "kn"
     assert out["profile"][0] | {"source": None} == {
-        "field": "age", "label": "ವಯಸ್ಸು", "label_en": "age", "value": 62, "text": "62", "text_en": "62",
+        "field": "age", "label": "ವಯಸ್ಸು", "label_en": "Age", "value": 62, "text": "62", "text_en": "62",
         "source": None, "unsure": False}
     ask = out["asking"]
     assert ask["kind"] == "field" and ask["field"] == "annual_income"
@@ -116,7 +116,7 @@ def test_question_left_names_the_field(case_id):
     assert s["pension-002"]["status"] == "eligible"
     assert s["pension-001"]["status"] == "unknown"
     assert s["pension-001"]["missing_fields"] == [
-        {"field": "annual_income", "label": "annual income", "label_en": "annual income"}]
+        {"field": "annual_income", "label": "Annual income", "label_en": "Annual income"}]  # display labels
 
 
 def test_review_from_the_confirm_pause(case_id):
@@ -127,9 +127,16 @@ def test_review_from_the_confirm_pause(case_id):
     assert r["scheme_id"] == "pension-001" and r["title"] == KN_PENSION
     assert [(f["field"], f["text"], f["editable"]) for f in r["fields"]] == [
         ("age", "62", True), ("annual_income", "₹1,20,000", True)]
-    assert "₹1,20,000" in r["readback_en"] and "Shall I submit" in r["readback_en"]
+    assert "₹1,20,000" in r["readback_en"]
+    # documents are missing: said before the yes is asked for (not blocked)
+    assert "5 documents for Senior Citizen Pension Scheme are still missing" in r["readback_en"]
+    assert r["documents_missing"] == 5
     # the portal's own form fields, values filled in Phase 4
-    assert len(r["form_fields"]) == 11 and all(f["value"] is None for f in r["form_fields"])
+    assert len(r["form_fields"]) == 11
+    # already answered -> pre-filled "from your answers"; the rest waits for Phase 4's pre-fill
+    known = {f["name"]: f for f in r["form_fields"] if f["from_answers"]}
+    assert list(known) == ["annual_income"] and known["annual_income"]["text"] == "₹1,20,000"
+    assert all(f["value"] is None for f in r["form_fields"] if f["name"] != "annual_income")
     assert r["form_fields"][-1]["name"] == "declaration_consent"
     assert len(r["documents"]) == 5
 
@@ -140,7 +147,7 @@ def test_applications_timeline_and_next(case_id):
     out = summary(case_id)
     [app_] = out["applications"]
     assert app_["app_id"] == "DEMO-0001" and app_["status"] == "SUBMITTED"
-    assert app_["status_text_en"] == "submitted"
+    assert app_["status_text_en"] == "Submitted"  # badge, title case
     kinds = [e["kind"] for e in app_["timeline"]]
     assert kinds == ["eligibility_decided", "confirm_requested", "citizen_approved", "submitted"]
     assert app_["timeline"][-1]["app_id"] == "DEMO-0001"
@@ -181,7 +188,7 @@ def test_subtitle_is_english_for_kannada_and_none_for_english(case_id):
 def test_subtitle_follows_resume(case_id):
     turn(case_id, KN_READY, "kn")
     paused = turn(case_id, KN_PENSION)
-    assert "Shall I submit your application for Senior Citizen Pension Scheme?" in paused["subtitle"]
+    assert "Senior Citizen Pension Scheme are still missing: say yes to submit anyway" in paused["subtitle"]
     done = turn(case_id, "ಹೌದು")
     assert done["subtitle"].startswith("Submitted! Your application ID is DEMO-0001.")
 
@@ -259,3 +266,76 @@ def test_same_value_is_not_an_edit(case_id):
     to_confirm(case_id)
     out = turn(case_id, "yes, I'm 62")
     assert out["pause"] is None and "DEMO-0001" in out["reply"]
+
+
+# --- Phase 5 fix-up, part C ------------------------------------------------------------
+
+
+def upload(case_id: str, *doc_types: str) -> None:
+    client.put(f"/cases/{case_id}/consent", json={"documents": True})
+    for d in doc_types:
+        r = client.put(f"/cases/{case_id}/documents/{d}", content=b"%PDF-1.4 x",
+                       headers={"Content-Type": "application/pdf"})
+        assert r.status_code == 200
+
+
+def test_why_i_ask_names_two_schemes_then_n_more(case_id):
+    turn(case_id, "I'm 62")  # no topic: income decides 3 schemes
+    why = summary(case_id)["asking"]["why_en"]
+    assert why == ("I ask your annual income to check: Senior Citizen Pension Scheme, "
+                   "National Health Support Scheme and 1 more.")
+
+
+def test_readback_names_missing_documents_and_counts_uploads(case_id):
+    to_confirm(case_id)
+    upload(case_id, "identity_proof", "age_proof", "residence_proof", "income_certificate")
+    r = summary(case_id)["review"]
+    assert r["documents_missing"] == 1
+    assert "1 document for Senior Citizen Pension Scheme is still missing: say yes to submit anyway" in r["readback_en"]
+    upload(case_id, "bank_account_details")
+    r = summary(case_id)["review"]
+    assert r["documents_missing"] == 0
+    assert r["readback_en"].endswith("Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit.")
+
+
+def test_missing_documents_do_not_block_submit(case_id):
+    to_confirm(case_id)
+    assert "DEMO-0001" in turn(case_id, "yes")["reply"]  # Phase 4 decides what the portal needs
+
+
+def test_documents_for_the_chosen_scheme_others_collapsed(case_id):
+    to_confirm(case_id)
+    c = summary(case_id)["checklist"]
+    assert c["title_en"] == "Senior Citizen Pension Scheme" and c["scheme_ids"] == ["pension-001"]
+    assert [i["doc"] for i in c["items"]] == [
+        "identity_proof", "age_proof", "residence_proof", "income_certificate", "bank_account_details"]
+    assert {i["doc"] for i in c["others"]} == {"medical_documents", "family_details"}
+    assert (c["total"], c["missing"], c["ready"]) == (5, 5, 0)
+
+
+def test_no_scheme_chosen_lists_all_qualifying_documents(case_id):
+    turn(case_id, EN_READY)
+    c = summary(case_id)["checklist"]
+    assert c["title"] is None and c["others"] == [] and c["total"] == 7
+
+
+def test_application_what_to_do_lists_missing_documents(case_id):
+    to_confirm(case_id)
+    upload(case_id, "identity_proof")
+    turn(case_id, "yes")
+    [a] = summary(case_id)["applications"]
+    assert [d["label_en"] for d in a["missing_documents"]] == [
+        "Age Proof", "Residence Proof", "Income Certificate", "Bank Account Details"]
+
+
+def test_category_tag_from_the_rules(case_id):
+    turn(case_id, KN_READY, "kn")
+    s = {x["scheme_id"]: x for x in summary(case_id)["schemes"]}
+    assert (s["pension-001"]["category_en"], s["pension-001"]["category"]) == ("Pension", "ಪಿಂಚಣಿ")
+    assert s["health-002"]["category_en"] == "Health"
+
+
+def test_review_effective_date_in_words(case_id):
+    to_confirm(case_id)
+    r = summary(case_id, "kn")["review"]
+    assert r["effective_date_text_en"] == "9 October 2026"

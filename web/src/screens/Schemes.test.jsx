@@ -32,21 +32,31 @@ describe("Schemes for you", () => {
     const pension = within(card("Senior Citizen Pension Scheme"));
     expect(pension.getByText("1 question left")).toBeInTheDocument();
     expect(pension.getByText("not told yet")).toBeInTheDocument();
-    await userEvent.type(pension.getByLabelText(/annual income/), "120000");
+    await userEvent.type(pension.getByLabelText(/Annual income/), "120000");
     await userEvent.click(pension.getByRole("button", { name: /ಉತ್ತರಿಸಿ/ }));
     expect(ctx.answerField).toHaveBeenCalledWith("annual_income", 120000, "ವಾರ್ಷಿಕ ಆದಾಯ: 120000");
   });
 
-  it("not eligible: see why", () => {
+  it("not eligible: one collapsed row that expands to the WHY tables", async () => {
     const summary = fx("eligible");
-    const s = summary.schemes[0];
-    s.status = "not_eligible";
-    s.clauses[1] = { ...s.clauses[1], value: 450000, result: false };
+    for (const s of summary.schemes.slice(0, 2)) {
+      s.status = "not_eligible";
+      s.clauses[0] = { ...s.clauses[0], value: 45, result: false };
+    }
     renderScreen(Schemes, { summary });
-    const pension = within(card("Senior Citizen Pension Scheme"));
-    expect(pension.getByText("Don't qualify, see why")).toBeInTheDocument();
-    expect(pension.getByText("₹4,50,000")).toBeInTheDocument();
-    expect(pension.queryByRole("button", { name: /Apply for this/ })).toBeNull();
+    const row = screen.getByText("2 schemes you don't qualify for · see why");
+    const group = row.closest("details");
+    expect(group).not.toHaveAttribute("open");
+    expect(screen.queryByText("Senior Citizen Pension Scheme").closest("article")).toBeNull(); // not a card
+    await userEvent.click(row);
+    expect(group).toHaveAttribute("open");
+    expect(within(group).getByText("Senior Citizen Pension Scheme")).toBeInTheDocument();
+    expect(within(group).getAllByText("45")).toHaveLength(2);
+  });
+
+  it("the English line of an inline question uses the English field name", () => {
+    renderScreen(Schemes, { summary: fx("interview") });
+    expect(screen.getAllByText("Annual income?").length).toBeGreaterThan(0);
   });
 
   it("while a review is open, other applications wait", () => {

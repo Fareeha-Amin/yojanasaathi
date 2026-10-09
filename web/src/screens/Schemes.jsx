@@ -49,7 +49,7 @@ function InlineAnswer({ field }) {
       const n = parseInt(value, 10);
       if (Number.isFinite(n)) answerField(field.field, n, `${field.label}: ${n}`);
     }}>
-      <label htmlFor={id}><Bi k="question_for" vars={{ field: field.label }} /></label>
+      <label htmlFor={id}><Bi k="question_for" vars={{ field: field.label }} envars={{ field: field.label_en }} /></label>
       <div className="row">
         <input id={id} inputMode="numeric" pattern="[0-9]*" value={value} onChange={(e) => setValue(e.target.value.replace(/\D/g, ""))}
           aria-label={`${field.label} · ${field.label_en}`} placeholder={field.field === "annual_income" ? "120000" : "62"} />
@@ -97,7 +97,7 @@ function SchemeCard({ s, pause }) {
       {s.status === "unknown" && !s.app_id && s.missing_fields?.[0] && <InlineAnswer field={s.missing_fields[0]} />}
 
       <p className="source">
-        {url ? <a href={url} target="_blank" rel="noreferrer"><Bi k="source" /></a> : <Bi k="source" />}
+        {url ? <a href={url} target="_blank" rel="noopener noreferrer"><Bi k="source" /></a> : <Bi k="source" />}
         {" · "}
         <Bi text={tr(lang, "effective", { date: s.effective_date_text })}
           en={tr("en", "effective", { date: s.effective_date_text_en })} />
@@ -131,6 +131,7 @@ export default function Schemes() {
   const { summary } = useCase();
   const schemes = summary?.schemes || [];
   const eligible = schemes.filter((s) => s.status === "eligible").length;
+  const notEligible = schemes.filter((s) => s.status === "not_eligible" && !s.app_id);
   const anyKnown = summary?.profile?.length > 0;
   return (
     <main className="screen">
@@ -140,7 +141,21 @@ export default function Schemes() {
       ) : (
         <p className="lead"><Bi k="schemes_count" vars={{ n: eligible, total: schemes.length }} block /></p>
       )}
-      {anyKnown && schemes.map((s) => <SchemeCard key={s.scheme_id} s={s} pause={summary.pause} />)}
+      {anyKnown && schemes.filter((s) => s.status !== "not_eligible" || s.app_id)
+        .map((s) => <SchemeCard key={s.scheme_id} s={s} pause={summary.pause} />)}
+      {anyKnown && notEligible.length > 0 && (
+        <details className="card not-eligible-group">
+          <summary>
+            <Bi k={notEligible.length === 1 ? "not_eligible_group_1" : "not_eligible_group"} vars={{ n: notEligible.length }} />
+          </summary>
+          {notEligible.map((s) => (
+            <div key={s.scheme_id} className="ne-scheme">
+              <h3><Bi text={s.title} en={s.title_en} block /></h3>
+              <WhyBox scheme={s} />
+            </div>
+          ))}
+        </details>
+      )}
     </main>
   );
 }

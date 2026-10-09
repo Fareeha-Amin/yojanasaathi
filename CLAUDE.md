@@ -513,6 +513,21 @@ dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
   parser's), audit `fields_edited` (field names only), back through `eligibility` -> a NEW
   read-back + confirm pause, or "not eligible" and no pause. **An edit never submits**, even
   "yes, my income is 2 lakh"; the same value again is not an edit ("yes, I'm 62" submits).
+- **Missing documents (fix-up part C):** the confirm read-back says how many documents of the
+  chosen scheme are still missing (`docs_missing_ask`: "5 documents for X are still missing:
+  say yes to submit anyway, or upload them first.", still 1-3 sentences) instead of the plain
+  confirm question; the Review screen shows "N documents still needed" + Upload now; My
+  applications' "What to do" lists them. Submitting is NOT blocked: Phase 4 decides what the
+  portal requires. The count is recomputed from the vault on every summary.
+- **Screen labels:** display labels `field_*` ("Annual income") and status badges `badge_*`
+  ("Submitted") in agent/i18n; the lowercase `label_*` / `status_*` stay for spoken sentences.
+  "Why I ask" names at most 2 schemes, then "and N more". Documents: the chosen scheme's list
+  ("For <scheme>") with the other schemes' extra documents collapsed. The portal form on Review
+  pre-fills fields the citizen already answered (annual_income, "from your answers").
+  "Take photo" (camera) and "Choose file" (gallery / PDF) are separate inputs.
+- **Portal URL check at startup:** the agent logs a warning when MOCK_PORTAL_URL or
+  MOCK_PORTAL_API is unset, still a `<placeholder>`, or not an http(s) URL; it never echoes the
+  value (a key pasted into the wrong variable must not reach the logs).
 - **Typed text language:** Kannada / Devanagari script decides (and switches the UI); Latin
   text uses the UI language. The language switch = the language replies come in.
 - **Read aloud / replay (fixed in the Phase 5 fix-up):** through the bot (`speak`) when voice is
