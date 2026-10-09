@@ -226,11 +226,12 @@ def get_data(case_id: str) -> dict:
 @app.delete("/cases/{case_id}/data")
 def delete_data(case_id: str) -> dict:
     """Delete my data: documents (files + metadata), saved profile, case, timeline and the
-    case memory. The audit log keeps its rows (append-only; no personal values in it)."""
+    case memory. The audit log keeps its rows (append-only; no personal values in it).
+    Idempotent: a case with no data gets 200 {"deleted": false} (the demo reset never errors)."""
     with _case_locks[case_id]:
         if store.case_data(case_id) is None:
-            raise HTTPException(404, "no data for this case")
+            return {"deleted": False}
         docs = vault.delete_case(case_id)
         counts = {"documents": docs, **store.delete_case_data(case_id), "case_memory": 1}
         audit.log_event("citizen", "data_deleted", case_id=case_id, detail=counts)
-    return {"deleted": counts}
+    return {"deleted": True, "counts": counts}

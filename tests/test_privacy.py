@@ -160,7 +160,15 @@ def test_view_my_data(case_id):
 
 def test_unknown_case_has_no_data():
     assert client.get("/cases/nobody-here/data").status_code == 404
-    assert client.delete("/cases/nobody-here/data").status_code == 404
+
+
+def test_delete_is_idempotent(case_id):
+    r = client.delete("/cases/nobody-here/data")
+    assert r.status_code == 200 and r.json() == {"deleted": False}
+    turn(case_id, READY)
+    assert client.delete(f"/cases/{case_id}/data").json()["deleted"] is True
+    r = client.delete(f"/cases/{case_id}/data")  # the demo reset, run twice
+    assert r.status_code == 200 and r.json() == {"deleted": False}
 
 
 def test_delete_my_data(case_id):
@@ -171,7 +179,7 @@ def test_delete_my_data(case_id):
                headers={"Content-Type": "application/pdf"})
     (doc,) = store.documents(case_id)
 
-    out = client.delete(f"/cases/{case_id}/data").json()["deleted"]
+    out = client.delete(f"/cases/{case_id}/data").json()["counts"]
     assert out["documents"] == 1 and out["cases"] == 1 and out["profiles"] == 1 and out["citizens"] == 1
     assert client.get(f"/cases/{case_id}/data").status_code == 404
     assert state(case_id) == {}  # case memory (checkpoints) gone too

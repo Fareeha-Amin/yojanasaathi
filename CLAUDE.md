@@ -417,7 +417,9 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
 - **Data rights:** `GET /cases/{id}/data` (case row, consent, saved profile, case memory,
   document metadata, timeline, audit rows; logged), `DELETE /cases/{id}/data` (documents,
   timeline, case, profile, citizen if no other case, checkpoints; audit keeps a
-  `data_deleted` row). `GET /cases/{id}/documents`, `PUT|DELETE
+  `data_deleted` row). Delete is idempotent: `{"deleted": true, "counts": {...}}`, or
+  200 `{"deleted": false}` when the case has no data (demo reset never errors).
+  Demo reset: `Invoke-RestMethod -Method Delete http://127.0.0.1:8000/cases/demo-case-1/data`. `GET /cases/{id}/documents`, `PUT|DELETE
   /cases/{id}/documents/...` (raw body, jpeg/png/webp/pdf, 10 MB).
 - **Not done in Phase 3 (named):** JWT. These endpoints are keyed by case ID, the same trust
   level as `/turn`. JWT comes with the web app login (Phase 5); until then there is
@@ -425,6 +427,11 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   deferred, because a bare "yes" after a submission is reserved for idempotency. Consent is
   given in the UI/API for now. Multi-process: the per-case lock is in-process (one agent
   process); a second process would need `pg_advisory_xact_lock`.
+- **Acceptance VERIFIED 2026-10-09** by Fareeha (voice): pension conversation to the
+  confirm pause, agent stopped and restarted, "ಹೌದು" submitted after the restart, a second
+  "ಹೌದು" returned the existing ID (`resubmit_blocked` logged); DBeaver showed the case, its
+  events and the audit trail with `agent_started` between `confirm_requested` and
+  `citizen_approved`; `agent.privacy_check` clean.
 - **Latency:** deterministic turns via uvicorn + local Postgres 16-80 ms (was ~30 ms in
   memory). Measure with a persistent HTTP client: a fresh `httpx.post()` per call costs
   ~250 ms of client SSL setup on Windows.
@@ -473,7 +480,7 @@ built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09, voice + text acceptance verified; then changed to the 4 portal schemes, multiple matches, per-scheme idempotency, short replies + `ui`)
-3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (BUILT 2026-10-09; restart verified with real processes; voice acceptance pending)
+3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (DONE 2026-10-09, voice acceptance verified)
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
 5. Web app: the 6 screens + landing page
 6. Follow-up: APScheduler polling, follow-up agent, web push, reminders
