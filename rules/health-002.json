@@ -1,0 +1,210 @@
+{
+  "scheme_id": "health-002",
+  "title": "Family Healthcare Assistance",
+  "titles": {
+    "en": "Family Healthcare Assistance",
+    "kn": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+    "hi": "पारिवारिक स्वास्थ्य सहायता योजना"
+  },
+  "category": "Health",
+  "topic": "health",
+  "priority": 4,
+  "aliases": [
+    "family health",
+    "family healthcare",
+    "ಕುಟುಂಬ ಆರೋಗ್ಯ",
+    "पारिवारिक स्वास्थ्य",
+    "परिवार स्वास्थ्य"
+  ],
+  "portal_rules": {
+    "max_income": 400000
+  },
+  "rule": {
+    "<=": [
+      {
+        "var": "annual_income"
+      },
+      400000
+    ]
+  },
+  "required_fields": [
+    "annual_income"
+  ],
+  "documents": [
+    {
+      "doc": "identity_proof",
+      "when": null,
+      "label": {
+        "en": "Identity Proof",
+        "kn": "ಗುರುತಿನ ಪುರಾವೆ",
+        "hi": "पहचान प्रमाण"
+      }
+    },
+    {
+      "doc": "residence_proof",
+      "when": null,
+      "label": {
+        "en": "Residence Proof",
+        "kn": "ನಿವಾಸ ಪುರಾವೆ",
+        "hi": "निवास प्रमाण"
+      }
+    },
+    {
+      "doc": "income_certificate",
+      "when": null,
+      "label": {
+        "en": "Income Certificate",
+        "kn": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "hi": "आय प्रमाण पत्र"
+      }
+    },
+    {
+      "doc": "family_details",
+      "when": null,
+      "label": {
+        "en": "Family Details",
+        "kn": "ಕುಟುಂಬದ ವಿವರಗಳು",
+        "hi": "पारिवारिक विवरण"
+      }
+    },
+    {
+      "doc": "bank_account_details",
+      "when": null,
+      "label": {
+        "en": "Bank Account Details",
+        "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "hi": "बैंक खाता विवरण"
+      }
+    }
+  ],
+  "application_fields": [
+    {
+      "name": "applicant_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Head of Household / Applicant Name",
+        "kn": "ಕುಟುಂಬದ ಮುಖ್ಯಸ್ಥ / ಅರ್ಜಿದಾರರ ಹೆಸರು",
+        "hi": "परिवार के मुखिया / आवेदक का नाम"
+      }
+    },
+    {
+      "name": "dob",
+      "type": "date",
+      "required": true,
+      "label": {
+        "en": "Date of Birth",
+        "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+        "hi": "जन्म तिथि"
+      }
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "label": {
+        "en": "Gender",
+        "kn": "ಲಿಂಗ",
+        "hi": "लिंग"
+      }
+    },
+    {
+      "name": "family_members_count",
+      "type": "number",
+      "required": true,
+      "label": {
+        "en": "Number of Dependent Family Members",
+        "kn": "ಅವಲಂಬಿತ ಕುಟುಂಬ ಸದಸ್ಯರ ಸಂಖ್ಯೆ",
+        "hi": "आश्रित परिवार के सदस्यों की संख्या"
+      }
+    },
+    {
+      "name": "ration_card_category",
+      "type": "select",
+      "required": true,
+      "options": [
+        "BPL (Below Poverty Line)",
+        "AAY (Antyodaya Anna)",
+        "APL (State Ration Card)"
+      ],
+      "label": {
+        "en": "Ration / Food Security Card Category",
+        "kn": "ಪಡಿತರ ಚೀಟಿ ವರ್ಗ",
+        "hi": "राशन कार्ड श्रेणी"
+      }
+    },
+    {
+      "name": "annual_income",
+      "type": "number",
+      "required": true,
+      "label": {
+        "en": "Annual Household Income (INR)",
+        "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+        "hi": "वार्षिक पारिवारिक आय (रु.)"
+      }
+    },
+    {
+      "name": "coverage_preference",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "In-Patient Hospitalization",
+        "Outpatient Chronic Disease Care",
+        "Diagnostic Support"
+      ],
+      "label": {
+        "en": "Assistance Type Needed",
+        "kn": "ಅಗತ್ಯವಿರುವ ನೆರವಿನ ವಿಧ",
+        "hi": "आवश्यक सहायता प्रकार"
+      }
+    },
+    {
+      "name": "bank_account_number",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Primary Bank Account Number",
+        "kn": "ಪ್ರಾಥಮಿಕ ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+        "hi": "प्राथमिक बैंक खाता संख्या"
+      }
+    },
+    {
+      "name": "bank_ifsc",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Bank IFSC Code",
+        "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+        "hi": "बैंक आईएफएससी कोड"
+      }
+    },
+    {
+      "name": "address",
+      "type": "textarea",
+      "required": true,
+      "label": {
+        "en": "Family Residence Address",
+        "kn": "ಕುಟುಂಬದ ವಾಸಸ್ಥಳ ವಿಳಾಸ",
+        "hi": "पारिवारिक निवास का पता"
+      }
+    },
+    {
+      "name": "declaration_consent",
+      "type": "checkbox",
+      "required": true,
+      "label": {
+        "en": "I declare that the family members listed are dependent residents of the household.",
+        "kn": "ಪಟ್ಟಿಯಲ್ಲಿರುವ ಕುಟುಂಬದ ಸದಸ್ಯರು ಮನೆಯ ಅವಲಂಬಿತ ನಿವಾಸಿಗಳಾಗಿದ್ದಾರೆ ಎಂದು ನಾನು ಘೋಷಿಸುತ್ತೇನೆ.",
+        "hi": "मैं घोषणा करता/करती हूँ कि सूचीबद्ध सदस्य परिवार के आश्रित निवासी हैं।"
+      }
+    }
+  ],
+  "source_url": "{MOCK_PORTAL_URL}/schemes/health-002",
+  "effective_date": "2026-10-09",
+  "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."
+}

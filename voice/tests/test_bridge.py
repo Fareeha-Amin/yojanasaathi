@@ -24,16 +24,16 @@ KN_REPLY = "ನಿಮ್ಮ ಅರ್ಜಿ ಸಿದ್ಧವಾಗಿದೆ. �
 
 class FakeAgent:
     def __init__(self, reply: str = KN_REPLY, pause: dict | None = None,
-                 delay: float = 0.0, fail: bool = False) -> None:
+                 delay: float = 0.0, fail: bool = False, ui: dict | None = None) -> None:
         self.calls: list[tuple[str, str, str | None]] = []
-        self.reply, self.pause, self.delay, self.fail = reply, pause, delay, fail
+        self.reply, self.pause, self.delay, self.fail, self.ui = reply, pause, delay, fail, ui
 
     async def turn(self, case_id: str, text: str, lang: str | None) -> dict:
         self.calls.append((case_id, text, lang))
         await asyncio.sleep(self.delay)
         if self.fail:
             raise ConnectionError("agent down")
-        return {"reply": self.reply, "pause": self.pause}
+        return {"reply": self.reply, "pause": self.pause, "ui": self.ui}
 
 
 def said(frames) -> list[tuple[str, str]]:
@@ -65,7 +65,7 @@ def run(agent: FakeAgent, *frames):
 
 
 def test_one_turn_one_call_with_detected_lang_and_spoken_reply():
-    agent = FakeAgent(pause={"type": "confirm", "preview": {}})
+    agent = FakeAgent(pause={"type": "confirm", "preview": {}}, ui={"type": "eligibility", "schemes": []})
     down = run(
         agent,
         UserStartedSpeakingFrame(),
@@ -77,6 +77,7 @@ def test_one_turn_one_call_with_detected_lang_and_spoken_reply():
     assert said(down) == [(Language.KN_IN, KN_REPLY)]
     [msg] = [f for f in down if isinstance(f, RTVIServerMessageFrame)]
     assert msg.data["pause"] == {"type": "confirm", "preview": {}} and msg.data["lang"] == "kn"
+    assert msg.data["ui"] == {"type": "eligibility", "schemes": []}  # screen payload passed through
 
 
 def test_unsupported_or_missing_language_is_not_sent():

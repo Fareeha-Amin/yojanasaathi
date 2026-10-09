@@ -38,15 +38,12 @@ class Extraction(BaseModel):
     annual_income: int | None = Field(None, description="family income per year in rupees")
     gender: Literal["female", "male"] | None = None
     district: str | None = Field(None, description="district name in English")
-    category: Literal["SC", "ST", "OBC", "General"] | None = None
-    is_student: bool | None = Field(None, description="studying in class 11 or above now")
-    owns_farmland: bool | None = Field(None, description="farm land in their own name")
-    pays_income_tax: bool | None = Field(None, description="they or their spouse pay income tax")
-    govt_job_or_big_pension: bool | None = Field(
-        None, description="they or their spouse have a government job or a pension of Rs 10,000/month or more")
-    is_family_head: bool | None = Field(None, description="head of the family on the ration card")
-    topic: Literal["pension", "farmer", "scholarship", "women"] | None = Field(
+    topic: Literal["pension", "health"] | None = Field(
         None, description="kind of scheme they ask about")
+    scheme: Literal["pension-001", "pension-002", "health-001", "health-002"] | None = Field(
+        None, description="the one scheme the citizen picks, if they name it: pension-001 Senior "
+        "Citizen Pension Scheme, pension-002 Social Security Pension Assistance, health-001 "
+        "National Health Support Scheme, health-002 Family Healthcare Assistance")
 
 
 SYSTEM_EXTRACT = """You extract facts from a citizen's message for an Indian welfare-scheme assistant.
@@ -54,8 +51,8 @@ Messages are in Kannada, Hindi, English or a mix. Return only facts the citizen 
 in THIS message; use null for everything else. Never guess and never decide eligibility.
 Numbers are integers: 1 lakh = ಲಕ್ಷ = लाख = 100000; thousand = ಸಾವಿರ = हज़ार = 1000.
 annual_income is the family's income per year (a monthly income times 12).
-district is the district name in English. A yes/no field is true or false only if the
-citizen answered it. If "Asked:" is given, a short reply answers that question.
+district is the district name in English. scheme is set only if the citizen picks one
+scheme by name. If "Asked:" is given, a short reply answers that question.
 intent: info (gives facts or asks if eligible), question (asks something else, such as what a
 scheme is or why a detail is needed), proceed (wants to apply, fill the form or continue),
 status (asks about an application's status), other."""
@@ -63,15 +60,9 @@ status (asks about an application's status), other."""
 ASKED = {
     "age": "How old are you?",
     "annual_income": "What is your family's total income in one year?",
-    "gender": "Are you a woman or a man?",
-    "category": "Which category: SC, ST, OBC or general?",
-    "district": "Which district do you live in?",
-    "is_student": "Are you studying in class 11 or above?",
-    "owns_farmland": "Is there farm land in your own name?",
-    "pays_income_tax": "Do you or your spouse pay income tax?",
-    "govt_job_or_big_pension": "Do you or your spouse have a government job or a pension of Rs 10,000 a month or more?",
-    "is_family_head": "Are you the head of the family on your ration card?",
-    "proceed": "Shall I start filling the application form?",
+    "proceed": "Shall I start the application?",
+    "others": "Shall I check other schemes too?",
+    "choose": "Which scheme shall I apply for?",
 }
 
 
@@ -91,15 +82,15 @@ FEW_SHOT: list[tuple[str, str]] = [
      _ex(intent="info", age=62, topic="pension")),
     (_user("ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ ರೂಪಾಯಿ", "annual_income"),
      _ex(intent="info", annual_income=120000)),
-    (_user("मैं किसान हूँ, मेरे नाम पर दो एकड़ ज़मीन है। कोई योजना है?"),
-     _ex(intent="info", owns_farmland=True, topic="farmer")),
-    (_user("नहीं, हम टैक्स नहीं भरते", "pays_income_tax"),
-     _ex(intent="info", pays_income_tax=False)),
-    (_user("ನಾನು ತುಮಕೂರಿನ ಮಹಿಳೆ, ಮನೆಯ ಯಜಮಾನಿ ನಾನೇ"),
-     _ex(intent="info", gender="female", district="Tumakuru", is_family_head=True)),
+    (_user("मुझे अस्पताल के इलाज के लिए मदद चाहिए, घर की आमदनी दो लाख है"),
+     _ex(intent="info", annual_income=200000, topic="health")),
+    (_user("ನಾನು ತುಮಕೂರಿನ ಮಹಿಳೆ"),
+     _ex(intent="info", gender="female", district="Tumakuru")),
+    (_user("सामाजिक सुरक्षा वाली पेंशन के लिए आवेदन कर दीजिए", "choose"),
+     _ex(intent="proceed", scheme="pension-002", topic="pension")),
     (_user("Why do you need my income?", "annual_income"),
      _ex(intent="question")),
-    (_user("हाँ, फ़ॉर्म भर दीजिए", "proceed"),
+    (_user("ಹೌದು, ಅರ್ಜಿ ಶುರು ಮಾಡಿ", "proceed"),
      _ex(intent="proceed")),
     (_user("ನನ್ನ ಅರ್ಜಿ ಏನಾಯಿತು?"),
      _ex(intent="status")),

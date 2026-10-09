@@ -92,10 +92,10 @@ class AgentBridge(FrameProcessor):
         logger.info(f"case {self._case_id} <- [{lang or '-'}, heard {heard or '?'}] {text}")
         try:
             out = await self._send_turn(self._case_id, text, lang)
-            reply, pause = out["reply"], out.get("pause")
+            reply, pause, ui = out["reply"], out.get("pause"), out.get("ui")
         except Exception as e:
             logger.error(f"/turn failed for case {self._case_id}: {e!r}")
-            reply, pause = AGENT_UNREACHABLE[lang or self._last_lang or heard or "kn"], None
+            reply, pause, ui = AGENT_UNREACHABLE[lang or self._last_lang or heard or "kn"], None, None
 
         if turn_no != self._turn_no:
             logger.info(f"case {self._case_id}: dropped reply, citizen spoke again: {reply!r}")
@@ -106,7 +106,7 @@ class AgentBridge(FrameProcessor):
         await self.push_frame(
             RTVIServerMessageFrame(
                 data={"type": "turn", "case_id": self._case_id, "text": text,
-                      "lang": lang, "reply": reply, "pause": pause}
+                      "lang": lang, "reply": reply, "pause": pause, "ui": ui}
             )
         )
         if reply:

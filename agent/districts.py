@@ -1,9 +1,9 @@
 """District names -> one English canonical name (the 31 districts of Karnataka).
 
 The profile always stores the canonical English name, whatever language or old spelling
-the citizen used ("ತುಮಕೂರಿನಲ್ಲಿ", "तुमकुर", "Tumkur" -> "Tumakuru"). Rules compare against
-these names (rules/gruha-lakshmi.json). A city that is not itself a district maps to its
-district (Hubballi -> Dharwad, Mangaluru -> Dakshina Kannada).
+the citizen used ("ತುಮಕೂರಿನಲ್ಲಿ", "तुमकुर", "Tumkur" -> "Tumakuru"); it feeds the portal's
+address field in Phase 4. A city that is not itself a district maps to its district
+(Hubballi -> Dharwad, Mangaluru -> Dakshina Kannada).
 """
 
 from agent.numbers import tokenize

@@ -4,7 +4,6 @@ import pytest
 
 from agent import rules
 from agent.checklist import build
-from agent.districts import KARNATAKA_DISTRICTS
 from agent.rules import UNKNOWN, clauses, evaluate
 
 PENSION = {"and": [{">=": [{"var": "age"}, 60]}, {"<=": [{"var": "annual_income"}, 300000]}]}
@@ -56,24 +55,13 @@ def test_clauses_explain_the_decision():
     assert clauses(PENSION, {"age": 62})[1].result is None
 
 
-# --- scheme files -----------------------------------------------------------------------
+# --- scheme files (the 4 mock-portal schemes; seed sync is tests/test_portal_seed.py) ------
 
 SCHEMES = rules.load_schemes()
 
 
-def test_three_to_five_schemes_with_required_metadata():
-    assert 3 <= len(SCHEMES) <= 5
-    assert "pension-001" in SCHEMES
-    for s in SCHEMES.values():
-        for key in ("rule", "required_fields", "documents", "source_url", "effective_date",
-                    "verification", "topic", "titles", "source_name"):
-            assert s.get(key), (s["scheme_id"], key)
-        assert set(s["titles"]) == set(s["source_name"]) == {"en", "kn", "hi"}
-        # verified rules cite an official URL; unverified ones say DEMO
-        if not s["verification"].startswith("VERIFIED"):
-            assert s["verification"].startswith("DEMO") and "DEMO" in s["source_url"]
-        else:
-            assert s["source_url"].startswith("https://")
+def test_four_portal_schemes_in_priority_order():
+    assert list(SCHEMES) == ["pension-001", "pension-002", "health-001", "health-002"]
 
 
 def test_required_fields_are_exactly_the_rule_variables():
@@ -81,70 +69,47 @@ def test_required_fields_are_exactly_the_rule_variables():
         assert {c.field for c in clauses(s["rule"], {})} == set(s["required_fields"]), s["scheme_id"]
 
 
-def test_different_rule_shapes():
-    ops = {s["scheme_id"]: {c.op for c in clauses(s["rule"], {})} for s in SCHEMES.values()}
-    assert ops["pension-001"] == {">=", "<="}
-    assert ops["pm-kisan"] == {"=="}
-    assert ops["post-matric-sc"] == {"==", "<="}
-    assert ops["gruha-lakshmi"] == {"==", "in"}
+def test_golden_path_citizen_qualifies_for_all_four():
+    profile = {"age": 62, "annual_income": 120000}
+    assert {sid: rules.status(s, profile) for sid, s in SCHEMES.items()} == dict.fromkeys(SCHEMES, "eligible")
 
 
-def test_pension_001_is_the_spec():
-    s = SCHEMES["pension-001"]
-    assert rules.status(s, {"age": 62, "annual_income": 120000}) == "eligible"
-    assert rules.status(s, {"age": 62, "annual_income": 400000}) == "not_eligible"
-    assert rules.status(s, {"age": 62}) == "unknown"
-    assert rules.missing_fields(s, {"age": 62}) == ["annual_income"]
-
-
-@pytest.mark.parametrize("profile, status", [
-    ({"owns_farmland": True, "pays_income_tax": False, "govt_job_or_big_pension": False}, "eligible"),
-    ({"owns_farmland": False}, "not_eligible"),  # tenant farmer: land must be in own name
-    ({"owns_farmland": True, "pays_income_tax": True}, "not_eligible"),
-    ({"owns_farmland": True, "pays_income_tax": False}, "unknown"),
+@pytest.mark.parametrize("sid, profile, status", [
+    ("pension-001", {"age": 62, "annual_income": 300000}, "eligible"),
+    ("pension-001", {"age": 62, "annual_income": 300001}, "not_eligible"),
+    ("pension-001", {"age": 59}, "not_eligible"),
+    ("pension-001", {"age": 62}, "unknown"),
+    ("pension-002", {"age": 60}, "eligible"),
+    ("pension-002", {"age": 59, "annual_income": 10}, "not_eligible"),
+    ("health-001", {"annual_income": 500000}, "eligible"),
+    ("health-001", {"annual_income": 500001}, "not_eligible"),
+    ("health-001", {"age": 30}, "unknown"),
+    ("health-002", {"annual_income": 400000}, "eligible"),
+    ("health-002", {"annual_income": 450000}, "not_eligible"),
 ])
-def test_pm_kisan(profile, status):
-    assert rules.status(SCHEMES["pm-kisan"], profile) == status
+def test_portal_thresholds(sid, profile, status):
+    assert rules.status(SCHEMES[sid], profile) == status
 
 
-@pytest.mark.parametrize("profile, status", [
-    ({"is_student": True, "category": "SC", "annual_income": 250000}, "eligible"),
-    ({"is_student": True, "category": "SC", "annual_income": 250001}, "not_eligible"),
-    ({"is_student": True, "category": "OBC", "annual_income": 100000}, "not_eligible"),
-    ({"is_student": False}, "not_eligible"),
-])
-def test_post_matric_sc(profile, status):
-    assert rules.status(SCHEMES["post-matric-sc"], profile) == status
-
-
-@pytest.mark.parametrize("profile, status", [
-    ({"gender": "female", "is_family_head": True, "district": "Tumakuru", "pays_income_tax": False}, "eligible"),
-    ({"gender": "female", "is_family_head": True, "district": "Chennai", "pays_income_tax": False}, "not_eligible"),
-    ({"gender": "male"}, "not_eligible"),
-    ({"gender": "female", "district": "Mysuru"}, "unknown"),
-])
-def test_gruha_lakshmi(profile, status):
-    assert rules.status(SCHEMES["gruha-lakshmi"], profile) == status
-
-
-def test_gruha_lakshmi_district_list_matches_lookup_table():
-    rule_list = next(c.limit for c in clauses(SCHEMES["gruha-lakshmi"]["rule"], {}) if c.op == "in")
-    assert sorted(rule_list) == KARNATAKA_DISTRICTS
+def test_document_labels_in_three_languages():
+    assert rules.doc_label(SCHEMES["pension-001"], "age_proof", "kn") == "ವಯಸ್ಸಿನ ಪುರಾವೆ"
+    assert rules.doc_label(SCHEMES["pension-002"], "age_proof", "en") == "Age Proof, where applicable"
+    assert rules.doc_label(SCHEMES["health-001"], "medical_documents", "hi") == "चिकित्सा दस्तावेज (जहां लागू हो)"
 
 
 # --- document checklist -------------------------------------------------------------------
 
 
 def test_checklist_marks_have_missing_needed():
-    items = build(SCHEMES["pension-001"], {}, have=["aadhaar", "photo"], missing=["income_certificate"])
+    items = build(SCHEMES["pension-001"], {}, have=["identity_proof"], missing=["income_certificate"])
     assert {i["doc"]: i["status"] for i in items} == {
-        "aadhaar": "have", "income_certificate": "missing", "residence_proof": "needed",
-        "bank_passbook": "needed", "photo": "have"}
+        "identity_proof": "have", "age_proof": "needed", "residence_proof": "needed",
+        "income_certificate": "missing", "bank_account_details": "needed"}
 
 
 def test_checklist_when_condition():
-    scheme = {"documents": [{"doc": "aadhaar", "when": None},
-                            {"doc": "caste_certificate", "when": {"in": [{"var": "category"}, ["SC", "ST"]]}}]}
-    assert [i["doc"] for i in build(scheme, {"category": "General"})] == ["aadhaar"]
-    assert [i["doc"] for i in build(scheme, {"category": "SC"})] == ["aadhaar", "caste_certificate"]
-    assert [i["doc"] for i in build(scheme, {})] == ["aadhaar", "caste_certificate"]  # unknown: keep
+    scheme = {"documents": [{"doc": "identity_proof", "when": None},
+                            {"doc": "medical_documents", "when": {"==": [{"var": "needs_treatment"}, True]}}]}
+    assert [i["doc"] for i in build(scheme, {"needs_treatment": False})] == ["identity_proof"]
+    assert [i["doc"] for i in build(scheme, {"needs_treatment": True})] == ["identity_proof", "medical_documents"]
+    assert [i["doc"] for i in build(scheme, {})] == ["identity_proof", "medical_documents"]  # unknown: keep

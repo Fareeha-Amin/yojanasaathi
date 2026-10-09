@@ -28,7 +28,8 @@ def live():
 @pytest.mark.parametrize("msg, asking, expect", [
     ("ನನಗೆ 62 ವರ್ಷ. ನನಗೆ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?", None, {"age": 62, "topic": "pension"}),
     ("मैं 62 साल की हूँ, क्या मुझे पेंशन मिल सकती है?", None, {"age": 62, "topic": "pension"}),
-    ("I'm a farmer with land in my name", None, {"owns_farmland": True}),
+    ("I need help paying for my hospital treatment", None, {"topic": "health"}),
+    ("सामाजिक सुरक्षा वाली पेंशन चाहिए", "choose", {"scheme": "pension-002"}),
     ("I live in Tumkur", None, {"district": "Tumakuru"}),
     ("why do you need my income?", "annual_income", {"intent": "question"}),
 ])
@@ -62,4 +63,4 @@ def test_kannada_golden_path_with_live_llm(live, fake_llm):
     t2 = time.perf_counter()
     print(f"\nturn1 {t1 - t0:.2f}s: {r1['reply']}\nturn2 {t2 - t1:.2f}s: {r2['reply']}")
     assert r1["reply"] == t("ask_annual_income", "kn")
-    assert "ನೀವು ಅರ್ಹರು" in r2["reply"] and "₹1,20,000" in r2["reply"]
+    assert "4 ಯೋಜನೆಗಳಿಗೆ ಅರ್ಹರು" in r2["reply"] and "₹1,20,000" in r2["reply"]

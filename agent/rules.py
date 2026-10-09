@@ -20,6 +20,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
+from agent import config
+
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 
 
@@ -162,15 +164,16 @@ def clauses(rule: Any, data: dict[str, Any]) -> list[Clause]:
 
 # --- schemes ----------------------------------------------------------------------------
 
-REQUIRED_KEYS = ("scheme_id", "title", "rule", "required_fields", "documents", "source_url",
-                 "effective_date")
+REQUIRED_KEYS = ("scheme_id", "title", "titles", "topic", "priority", "rule", "required_fields",
+                 "documents", "application_fields", "source_url", "effective_date", "verification")
 
 Status = Literal["eligible", "not_eligible", "unknown"]
 
 
 @lru_cache(maxsize=1)
 def load_schemes(rules_dir: Path = RULES_DIR) -> dict[str, dict[str, Any]]:
-    """All rules/*.json, validated, keyed by scheme_id (file order = name order)."""
+    """All rules/*.json, validated, keyed by scheme_id, in `priority` order.
+    "{MOCK_PORTAL_URL}" in source_url is filled from .env (left as is if unset)."""
     schemes: dict[str, dict[str, Any]] = {}
     for path in sorted(rules_dir.glob("*.json")):
         scheme = json.loads(path.read_text(encoding="utf-8"))
@@ -181,8 +184,11 @@ def load_schemes(rules_dir: Path = RULES_DIR) -> dict[str, dict[str, Any]]:
         for d in scheme["documents"]:
             if d.get("when") is not None:
                 validate(d["when"])
+        if config.MOCK_PORTAL_URL:
+            scheme["source_url"] = scheme["source_url"].replace(
+                "{MOCK_PORTAL_URL}", config.MOCK_PORTAL_URL.rstrip("/"))
         schemes[scheme["scheme_id"]] = scheme
-    return schemes
+    return dict(sorted(schemes.items(), key=lambda kv: kv[1]["priority"]))
 
 
 def status(scheme: dict[str, Any], profile: dict[str, Any]) -> Status:
@@ -200,6 +206,9 @@ def title(scheme: dict[str, Any], lang: str) -> str:
     return scheme.get("titles", {}).get(lang) or scheme["title"]
 
 
-def source_name(scheme: dict[str, Any], lang: str) -> str:
-    names = scheme.get("source_name") or {}
-    return names.get(lang) or names.get("en") or scheme["source_url"]
+def doc_label(scheme: dict[str, Any], doc_id: str, lang: str) -> str:
+    """The portal's own wording for a document, in kn / hi / en."""
+    for d in scheme["documents"]:
+        if d["doc"] == doc_id:
+            return d["label"].get(lang) or d["label"]["en"]
+    return doc_id.replace("_", " ")

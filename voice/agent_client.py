@@ -20,13 +20,13 @@ class AgentClient:
         self._http = httpx.AsyncClient(base_url=base_url, timeout=timeout, transport=transport)
 
     async def turn(self, case_id: str, text: str, lang: TurnLang | None) -> dict:
-        """Send one citizen turn; returns {"reply": str, "pause": dict | None}.
+        """Send one citizen turn; returns {"reply": str, "pause": dict | None, "ui": dict | None}.
         "lang" is omitted when unknown, so the case keeps its previous language."""
         body: dict = {"text": text} if lang is None else {"text": text, "lang": lang}
         r = await self._http.post(f"/turn/{quote(case_id, safe='')}", json=body)
         r.raise_for_status()
         out = r.json()
-        return {"reply": out["reply"], "pause": out.get("pause")}
+        return {"reply": out["reply"], "pause": out.get("pause"), "ui": out.get("ui")}
 
     async def aclose(self) -> None:
         await self._http.aclose()

@@ -1,0 +1,194 @@
+{
+  "scheme_id": "pension-002",
+  "title": "Social Security Pension Assistance",
+  "titles": {
+    "en": "Social Security Pension Assistance",
+    "kn": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+    "hi": "सामाजिक सुरक्षा पेंशन सहायता योजना"
+  },
+  "category": "Pension",
+  "topic": "pension",
+  "priority": 2,
+  "aliases": [
+    "social security",
+    "ಸಾಮಾಜಿಕ ಭದ್ರತ",
+    "सामाजिक सुरक्षा"
+  ],
+  "portal_rules": {
+    "min_age": 60
+  },
+  "rule": {
+    ">=": [
+      {
+        "var": "age"
+      },
+      60
+    ]
+  },
+  "required_fields": [
+    "age"
+  ],
+  "documents": [
+    {
+      "doc": "identity_proof",
+      "when": null,
+      "label": {
+        "en": "Identity Proof",
+        "kn": "ಗುರುತಿನ ಪುರಾವೆ",
+        "hi": "पहचान प्रमाण"
+      }
+    },
+    {
+      "doc": "residence_proof",
+      "when": null,
+      "label": {
+        "en": "Residence Proof",
+        "kn": "ನಿವಾಸ ಪುರಾವೆ",
+        "hi": "निवास प्रमाण"
+      }
+    },
+    {
+      "doc": "income_certificate",
+      "when": null,
+      "label": {
+        "en": "Income Certificate",
+        "kn": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "hi": "आय प्रमाण पत्र"
+      }
+    },
+    {
+      "doc": "bank_account_details",
+      "when": null,
+      "label": {
+        "en": "Bank Account Details",
+        "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "hi": "बैंक खाता विवरण"
+      }
+    },
+    {
+      "doc": "age_proof",
+      "when": null,
+      "label": {
+        "en": "Age Proof, where applicable",
+        "kn": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "hi": "आयु प्रमाण (जहां लागू हो)"
+      }
+    }
+  ],
+  "application_fields": [
+    {
+      "name": "full_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Beneficiary Full Name",
+        "kn": "ಫಲಾನುಭವಿಯ ಪೂರ್ಣ ಹೆಸರು",
+        "hi": "लाभार्थी का पूरा नाम"
+      }
+    },
+    {
+      "name": "dob",
+      "type": "date",
+      "required": true,
+      "label": {
+        "en": "Date of Birth",
+        "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+        "hi": "जन्म तिथि"
+      }
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "label": {
+        "en": "Gender",
+        "kn": "ಲಿಂಗ",
+        "hi": "लिंग"
+      }
+    },
+    {
+      "name": "assistance_category",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Old Age Assistance",
+        "Disability Welfare Assistance",
+        "Destitute / Widow Assistance",
+        "Special Care Support"
+      ],
+      "label": {
+        "en": "Social Security Category",
+        "kn": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ವರ್ಗ",
+        "hi": "सामाजिक सुरक्षा श्रेणी"
+      }
+    },
+    {
+      "name": "annual_income",
+      "type": "number",
+      "required": true,
+      "label": {
+        "en": "Annual Household Income (INR)",
+        "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+        "hi": "वार्षिक पारिवारिक आय (रु.)"
+      }
+    },
+    {
+      "name": "disability_details",
+      "type": "text",
+      "required": false,
+      "label": {
+        "en": "Disability / Special Needs Details (if applicable)",
+        "kn": "ಅಂಗವೈಕಲ್ಯ / ವಿಶೇಷ ಅಗತ್ಯಗಳ ವಿವರಗಳು",
+        "hi": "दिव्यांगता / विशेष आवश्यकता विवरण"
+      }
+    },
+    {
+      "name": "bank_account_number",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Bank Account Number",
+        "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+        "hi": "बैंक खाता संख्या"
+      }
+    },
+    {
+      "name": "bank_ifsc",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Bank IFSC Code",
+        "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+        "hi": "बैंक आईएफएससी कोड"
+      }
+    },
+    {
+      "name": "address",
+      "type": "textarea",
+      "required": true,
+      "label": {
+        "en": "Current Residential Address",
+        "kn": "ಪ್ರಸ್ತುತ ವಸತಿ ವಿಳಾಸ",
+        "hi": "वर्तमान निवास का पता"
+      }
+    },
+    {
+      "name": "declaration_consent",
+      "type": "checkbox",
+      "required": true,
+      "label": {
+        "en": "I verify that the above information is correct and I meet the social security criteria.",
+        "kn": "ಮೇಲಿನ ಮಾಹಿತಿಯು ಸರಿಯಾಗಿದೆ ಮತ್ತು ನಾನು ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಮಾನದಂಡಗಳನ್ನು ಪೂರೈಸುತ್ತೇನೆ ಎಂದು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+        "hi": "मैं सत्यापित करता/करती हूँ कि उपरोक्त जानकारी सही है और मैं सामाजिक सुरक्षा मानदंडों को पूरा करता/करती हूँ।"
+      }
+    }
+  ],
+  "source_url": "{MOCK_PORTAL_URL}/schemes/pension-002",
+  "effective_date": "2026-10-09",
+  "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."
+}

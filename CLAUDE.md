@@ -23,9 +23,11 @@ Full background, MVP feature list, UI screens and demo script: see `docs/PROJECT
    never by the LLM. Every eligibility result carries `source_url` and `effective_date`.
 2. **Human gate in code.** The `confirm` node calls LangGraph `interrupt()`. Nothing may
    click the portal's final Submit until the graph is resumed with an explicit approval.
-   **Submission is idempotent.** Once a case has an `app_id`, nothing submits it again: any
-   later message (any channel, any language, including "yes") gets the existing ID back
-   ("Already submitted. Your application ID is ..."), and no new confirm pause is opened.
+   **Submission is idempotent per scheme.** Once a scheme has an application ID in the
+   case's `applications`, nothing submits that scheme again: a request to submit it again
+   (a repeated "yes" on any channel / in any language, or naming that scheme) gets the
+   existing ID back ("Already submitted. Your application ID is ..."), with no new confirm
+   pause. Everything else routes normally (questions, status, other eligible schemes).
 3. **Never bypass user-only verification.** OTP / CAPTCHA => `interrupt({"type": "otp"})`,
    the citizen supplies the code. The agent never reads SMS or guesses codes.
 4. **Safe-stop.** If an expected portal element is missing, stop and hand control back
@@ -64,12 +66,18 @@ real SMS (India needs DLT registration; simulate or use WhatsApp sandbox).
 ```
 POST /turn/{case_id}
   request:  { "text": "I'm 62, can I get a pension?", "lang"?: "kn" | "hi" | "en" }
-  response: { "reply": "...", "pause": null | { "type": "confirm" | "otp" | "safe_stop", ...data } }
+  response: { "reply": "...", "pause": null | { "type": "confirm" | "otp" | "safe_stop", ...data },
+              "ui": null | { "type": "eligibility" | "submitted", ...data } }
 ```
 If the graph is paused, the incoming text resumes it (`Command(resume=text)`).
 `lang` is optional (added 2026-10-08, decision 1 below): voice sends the STT-detected
 language; when present it updates the case's `lang`, when absent the case keeps its
 previous `lang`. Any other value is rejected with 422. Old clients sending only `text` work.
+`ui` is optional output (added 2026-10-09, Fareeha): `reply` is what gets spoken (1-3 short
+sentences); `ui` is this turn's screen payload (every scheme with status, full reasons,
+source_url, effective_date, checklist with the portal's labels; or the submitted app ID and
+next schemes). Clients that read only reply/pause keep working; the voice bridge forwards
+`ui` in its RTVI `turn` message. **Team to be told (Aryan: bridge; Darshan: Schemes screen).**
 Do not change this shape without telling the whole team.
 
 ## Agent graph (target)
@@ -81,11 +89,25 @@ triggered by the scheduler on status change. Shared state: `lang`, `profile`,
 still possible, minus fields already known.
 
 ## Mock portal (separate repo: github.com/ayush81233/mock)
-Django + DRF + React. Planned API: `POST /api/otp/send/`, `POST /api/otp/verify/`,
-`GET /api/demo-inbox/`, `POST /api/applications/` (multipart), `GET /api/applications/<id>/`.
-Status is changed live from Django admin for the follow-up demo. Labelled
-"Demo portal, not a government website". YojanaSaathi reaches it ONLY via Playwright
-(and the status endpoint for polling).
+Django + DRF + React. Labelled "Demo portal, not a government website". YojanaSaathi
+reaches it ONLY via Playwright (and the status endpoint for polling). Read from the code at
+commit 6e6e24d (2026-10-09):
+- **Schemes:** exactly 4, seeded by `backend/schemes/management/commands/seed_schemes.py`,
+  the source of truth for `rules/*.json` (see "Schemes" below). Frontend route
+  `/schemes/:id`, so `source_url` = `{MOCK_PORTAL_URL}/schemes/<id>`.
+- **API:** `POST /api/auth/request-otp/`, `POST /api/auth/verify-otp/` (returns a DRF token),
+  `GET /api/schemes/`, `GET /api/schemes/<id>/`, `POST /api/applications/`,
+  `GET /api/applications/mine/`, `GET|.. /api/applications/<application_number>/`,
+  `.../submit/`, `.../documents/`, `.../pdf/`; `/api/notifications/`.
+- **Auth:** the application endpoints need the citizen's token (`TokenAuthentication`,
+  `Authorization: Token <key>`), which is issued only by OTP login. Phase 4/6 must hold it
+  per case (outside graph state) and never log it.
+- **OTP:** real Twilio Verify SMS, and only to the registered test mobile(s) in the portal's
+  `TWILIO_ALLOWED_MOBILE`; any other number is refused. The citizen reads the code out (rule 3).
+- **Application number:** `YJS-` + 10 uppercase hex chars (e.g. `YJS-07531B2688`).
+- **Statuses:** `DRAFT`, `SUBMITTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`,
+  `CORRECTION_REQUIRED` (changed live in Django admin for the follow-up demo). Our
+  `applications[scheme]["status"]` uses these codes; spoken labels are `status_<CODE>` templates.
 
 ## Repo layout
 ```
@@ -94,16 +116,18 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
   graph.py   CaseState + nodes + build_graph(checkpointer)
   gate.py    deterministic yes/no/unclear parser for the confirm pause
   numbers.py number words kn/hi/en -> int (digits, lakh/saavira/hazaar, fused Kannada)
-  facts.py   deterministic facts per message (numbers -> age/income, district, category...)
+  facts.py   deterministic facts per message (numbers -> age/income, district, scheme choice)
   districts.py  district lookup -> canonical English name (31 Karnataka districts)
   rules.py   three-valued JSON Logic evaluator + scheme loader (eligibility decided here)
   checklist.py  document mapper (required docs minus what the citizen has)
   replies.py + i18n/{en,kn,hi}.json   reviewed reply templates (key replies never from LLM)
   llm.py     provider factory (.env), structured extraction, free-form answers, warm-up
+  portal_seed.py  reads the mock portal's seed_schemes.py (ast, never executed)
   config.py  env settings (loads repo-root .env)
   cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl); [case] [lang]
-rules/   one JSON file per scheme: rule, required_fields, documents, source_url, effective_date,
-         titles/source_name (kn/hi/en), topic, verification ("VERIFIED ..." or "DEMO ...")
+rules/   one JSON file per mock-portal scheme (portal IDs): rule, required_fields, documents
+         (portal labels kn/hi/en), application_fields, titles, topic, priority, aliases,
+         portal_rules, source_url, effective_date, verification (all "DEMO ...")
 voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, talks only to /turn)
   bot.py     pipeline + bot() entry for Pipecat's dev runner (webrtc now, twilio in Phase 7)
   bridge.py  AgentBridge: finished turn -> POST /turn with lang -> speak reply
@@ -112,7 +136,8 @@ voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, 
   tests/     bridge tests (run with the voice venv)
 web/     React (Vite) app
 tests/   pytest (deterministic parts: gate, numbers, facts, rules, checklist, replies, flow,
-         /turn contract); conftest.py gives every test a FakeLLM; test_llm_live.py is opt-in
+         /turn contract, per-scheme idempotency, portal seed sync); conftest.py gives every
+         test a FakeLLM; test_llm_live.py is opt-in; fixtures/portal_seed.json = seed snapshot
 docs/    PROJECT_BRIEF.md
 ```
 
@@ -126,6 +151,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q                          # tests (no LLM needed)
 .\.venv\Scripts\python.exe -m agent.cli my-case kn               # chat with /turn by text
 $env:RUN_LIVE_LLM="1"; .\.venv\Scripts\python.exe -m pytest tests/test_llm_live.py -q -s  # live Ollama
+$env:MOCK_PORTAL_REPO="C:\path\to\mock"; .\.venv\Scripts\python.exe -m pytest tests/test_portal_seed.py -q  # vs live seed
+.\.venv\Scripts\python.exe -m agent.portal_seed <mock>\backend\schemes\management\commands\seed_schemes.py  # snapshot
 
 # voice (separate venv; agent must be running)
 py -3.12 -m venv voice\.venv
@@ -153,8 +180,9 @@ Env vars (all loaded in `agent/config.py`):
 | `OLLAMA_BASE_URL` | agent | default http://localhost:11434 |
 | `LLM_TIMEOUT` | agent | seconds per LLM call (default 20), then deterministic fallback |
 | `LLM_WARMUP`, `LLM_KEEPWARM` | agent | load model at startup (1); 1-token ping every N s (2 for ollama, 0 = off) |
-| `MOCK_PORTAL_URL` | Phase 4 | site Playwright drives (public URL) |
+| `MOCK_PORTAL_URL` | agent, Phase 4 | site Playwright drives (public URL); fills `{MOCK_PORTAL_URL}` in rules' `source_url` |
 | `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
+| `MOCK_PORTAL_REPO` | tests | optional local clone of the portal; seed-sync test also checks it |
 | `DATABASE_URL`, `MASTER_KEY`, `TWILIO_*` | later phases | |
 
 ## Team decisions (2026-10-08)
@@ -185,6 +213,8 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   `UserTurnProcessor` (transcripts pass it first) and why `voice/tests` sleep before stop frames.
 - **Pipecat TTS without an output transport** never finishes (waits for playback), so
   `EndFrame` hangs. `voice.smoke` synthesises its test clip with Sarvam's REST TTS instead.
+- **Demo laptop power:** keep it plugged in with Windows power mode "Best performance". The
+  GPU's low-power state is what causes the ~3 s LLM latency after a pause (Phase 2 latency notes).
 - **Windows event loops (Phases 3-4):** async psycopg needs `SelectorEventLoop`, async
   Playwright needs `ProactorEventLoop`, and `uvicorn --reload` can break Playwright
   subprocesses. Decide deliberately when adding Postgres and Playwright.
@@ -230,31 +260,48 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
 - Bug: after a submit, the next message restarted the graph (interview -> new confirm
   pause), so a second "yes" ran `submit` again. Same ID only because the stub hardcodes it;
   in Phase 4 it would have been a second portal submission.
-- Fix, two layers in `agent/graph.py`: `route_entry` sends any case with `app_id` to
-  `already_submitted` (no form, no gate); `submit` itself refuses when `app_id` exists.
+- First fix (`route_entry`: any case with `app_id` -> `already_submitted`) turned every later
+  message into "already submitted", a dead end once a citizen has several eligible schemes.
+- **Now per scheme (2026-10-09):** `applications` = {scheme_id: {"app_id", "status"}}. The
+  router sends to `already_submitted` only (a) a message naming a scheme that is in
+  `applications`, or (b) a bare yes (`parse_decision` == yes, no new facts, no scheme picked)
+  after a submission, answered with `last_submitted`'s ID. Everything else routes normally.
+  After a submit the agent names the next eligible scheme and asks the citizen to *say its
+  name* (not "yes"), so a stray repeated "yes" can never start a new application.
+  `prepare` and `submit` both refuse a scheme already in `applications` (defence in depth).
   The portal call is `_submit_to_portal()` (Phase 4 puts Playwright there; tests count calls).
-- `app_id` is the marker, not `status` (status will change in Phase 6: approved, etc.).
+- The application ID is the marker, not `status` (status changes in Phase 6).
 - Cancelled cases ("no") can still start again; nothing was submitted.
-- Phase 2 note: the router may answer status questions on a submitted case, but must keep
-  `route_entry`'s rule that a submitted case never reaches confirm/submit again.
-- Tests: `tests/test_idempotent_submit.py` (same channel, across voice + text, every
-  language, submit-node guard).
+- Tests: `tests/test_idempotent_submit.py`: after submitting pension-001, (a) "yes" again in
+  every language / naming it -> existing ID, no submit; (b) questions and status answered
+  normally; (c) choosing pension-002 (by name or "next") starts its flow; (d) exactly one
+  portal submission per scheme, also across voice + text; submit-node guard.
 
 ## Implementation decisions (Phase 2, agent brain)
-- **Graph:** `route_entry` (submitted -> `already_submitted`) -> `router` -> `interview` ->
-  `eligibility` -> `document`; `respond` (free-form), `status`, `declined`; proceed:
-  `document` -> `prepare` (read-back preview; Phase 4 puts planner + browser here) ->
-  `confirm` -> `submit`. "yes" to "shall I fill the form?" only reaches `prepare`; the gate
-  still needs its own explicit yes. Idempotent-submit rule unchanged.
-- **Interview scope:** a scheme is in scope if the citizen named its `topic` (pension,
-  farmer, scholarship, women); none named = all schemes. `missing` = required_fields of
-  in-scope schemes whose rule is still UNKNOWN, ordered by `FIELD_ORDER`; one question per turn.
+- **Graph:** `START -> router` -> `interview` -> `eligibility`; `respond` (free-form), `status`,
+  `declined`, `choose_reask`, `already_submitted`; proceed: `eligibility` -> `prepare`
+  (read-back preview; Phase 4 puts planner + browser here) -> `confirm` -> `submit`. The
+  document checklist is built per scheme inside `eligibility` / `prepare` (no separate node).
+  Choosing a scheme only reaches `prepare`; the gate still needs its own explicit yes.
+- **Interview scope:** questions only for the schemes of the topic the citizen named
+  (pension / health; none named = all). `missing` = required_fields of in-scope schemes still
+  UNKNOWN, in `FIELD_ORDER` (age, annual_income); one question per turn.
+- **Matching:** eligibility is then evaluated for ALL 4 schemes, ordered topic first, then
+  `priority` (pension-001 = 1). Several matches: speak the count, the one-line reason and the
+  top 2 titles, ask "which one?" (`asking="choose"`). One match: title, reason, number of
+  documents, "shall I start?". A scheme is picked by name (`aliases` + titles in kn/hi/en),
+  by position ("ಮೊದಲನೆಯದು", "दूसरा", "second"), by "next", or by the LLM's `scheme` field
+  as a fallback; a bare "yes" at "which one?" asks for a name. No match in the named topic:
+  say why and offer to check the other schemes (`asking="others"`).
 - **Rules engine:** own JSON Logic evaluator with Kleene logic (missing var = UNKNOWN, not
   false), so "age 55" decides the pension without asking income. Operators are whitelisted.
-- **Schemes:** `pension-001` DEMO (mock portal), `pm-kisan` VERIFIED (PIB FAQ 23 Nov 2021,
-  partial: some exclusions not asked), `post-matric-sc` VERIFIED (Meghalaya DHTE page restating
-  the central scheme; central PDF is a scan), `gruha-lakshmi` DEMO (Seva Sindhu is JS-only).
-  Details in each file's `verification`. Re-check before any real use.
+- **Schemes (changed 2026-10-09): only the 4 mock-portal schemes, all DEMO.** `rules/*.json`
+  mirror the portal seed (commit 6e6e24d): pension-001 (min_age 60, max_income 300000),
+  pension-002 (min_age 60), health-001 (max_income 500000), health-002 (max_income 400000);
+  titles, document names and application-field labels are the portal's own kn/hi/en text.
+  `tests/test_portal_seed.py` fails if a rules file disagrees with the seed snapshot (or a
+  live clone via `MOCK_PORTAL_REPO`). The seed has no effective date: `effective_date` is the
+  seed commit date. The earlier pm-kisan / post-matric-sc / gruha-lakshmi files were removed.
 - **Numbers never from the LLM converting words.** Order: STT digits, then `agent/numbers.py`
   (kn/hi/en number words), then the LLM value as a fallback, flagged (`readback`,
   `preview.needs_readback`, amber at review). If the parser read a number the LLM placed,
@@ -269,7 +316,9 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   `LLM_PROVIDER=none` runs the golden path with no LLM at all.
 - **Replies:** key replies are templates in `agent/i18n/{en,kn,hi}.json` (tests check same
   keys and placeholders). **The kn and hi files NEED NATIVE-SPEAKER REVIEW** (marked in
-  `_review`); so do the kn/hi `titles` / `source_name` in `rules/*.json`. The LLM writes only
+  `_review`). Scheme titles and document names are NOT in the templates: they are the
+  portal's wording from `rules/*.json`, so both sides say the same thing. Spoken replies are
+  1-3 short sentences; full reasons, source and checklist go to `ui`. The LLM writes only
   `respond` answers (general questions), then the pending question is asked again.
 - **Language:** `lang` from the client wins; if the case has none, the message script
   decides (Kannada / Devanagari); Latin text keeps the case's lang (default English).
@@ -279,19 +328,46 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   post-idle turns to 1.1-1.4 s; one was still 3.4 s. Model stays loaded (`keep_alive=-1`),
   warm-up runs in a background thread at startup; `/health` reports `llm` state and `/turn`
   skips the LLM while it is still `warming`.
-- **Contract unchanged.** Eligibility data (reasons, source_url, effective_date, checklist)
-  lives in graph state and the confirm `preview`; the web Schemes screen will need a read
-  endpoint (e.g. `GET /case/{id}`) in Phase 5, to be agreed with the team.
-- Known gaps: edits at the confirm pause ("no, my income is ...") cancel instead of
-  editing (Phase 4 review screen); eligibility replies are 3-4 sentences (reason + source +
-  checklist + question), longer than the 1-3 sentence rule.
+- **Contract:** `/turn` gained the optional `ui` output (see "The one API contract"); the
+  confirm `preview` also carries fields, documents, source_url and effective_date.
+- Known gap: edits at the confirm pause ("no, my income is ...") cancel instead of editing
+  (Phase 4 review screen).
+- **Acceptance VERIFIED 2026-10-09** by Fareeha: voice test (all 5 steps: Kannada pension
+  line -> income question -> eligible with reason + source -> read-back + confirm -> "ಹೌದು"
+  submits -> repeated "ಹೌದು" gets the same ID) and the `agent.cli` text version. That run was
+  on the single-match flow; the 4-match / per-scheme flow above needs its own run.
+
+## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); not built yet
+- **Application fields:** each rules file has the scheme's `application_fields` from the
+  portal seed (name, type, required, options, label kn/hi/en). After the citizen picks a
+  scheme, the agent asks ONLY the required fields still missing from the profile, one per
+  turn, read back before submit. pension-001: full_name, dob, gender, marital_status,
+  annual_income, disbursement_mode, bank_account_number, bank_ifsc, nominee_name, address,
+  declaration_consent. pension-002: full_name, dob, gender, assistance_category,
+  annual_income, disability_details (optional), bank_account_number, bank_ifsc, address,
+  declaration_consent. health-001: full_name, dob, gender, annual_income, hospital_name,
+  medical_condition, bank_account_number, bank_ifsc, address, declaration_consent.
+  health-002: applicant_name, dob, gender, family_members_count, ration_card_category,
+  annual_income, coverage_preference, bank_account_number, bank_ifsc, address,
+  declaration_consent. Select/radio options must map to the portal's exact English option.
+- **`declaration_consent` is a legal affirmation** (e.g. pension-001: "I solemnly affirm that
+  I am not drawing any other central/state government pension."). The agent must read the
+  portal's label out in the citizen's language and get an explicit yes for it (deterministic
+  gate, like confirm); it never ticks the box by itself, and the review screen shows it.
+- **Application numbers** look like `YJS-XXXXXXXXXX`; store them in `applications`.
+- **Statuses** (Phase 6 polling): DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED,
+  CORRECTION_REQUIRED; templates `status_<CODE>` exist in kn/hi/en.
+- **OTP** is a real Twilio Verify SMS, only to the portal's registered test mobile; the
+  citizen reads the code out (`interrupt({"type": "otp"})`); never read SMS.
+- **Auth:** the portal's application endpoints need the citizen's token from OTP login;
+  keep it per case outside graph state, never log it.
 
 ## Build phases (one at a time; stop after each for review)
 Each phase: short plan, build, unit tests for deterministic parts, then report what was
 built + commands + a hand acceptance test, update this file, and stop.
 0. Foundation: layout, env, pinned deps, `/health` + `/turn` on a stub graph (DONE 2026-10-08)
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
-2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09; voice acceptance by Fareeha pending)
+2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09, voice + text acceptance verified; then changed to the 4 portal schemes, multiple matches, per-scheme idempotency, short replies + `ui`)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault
 4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
 5. Web app: the 6 screens + landing page

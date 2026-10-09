@@ -1,7 +1,9 @@
 """FastAPI app: the one contract every channel uses (web, voice, phone).
 
 POST /turn/{case_id}  {"text": "...", "lang"?: "kn"|"hi"|"en"}
-  -> {"reply": "...", "pause": null | {"type": ..., ...}}
+  -> {"reply": "...", "pause": null | {"type": ..., ...}, "ui": null | {"type": ..., ...}}
+"reply" is what gets spoken (short); "ui" is this turn's screen payload (full reasons,
+sources, checklists). Clients that only read reply/pause keep working.
 If the case's graph is paused at an interrupt, the text resumes it (Command(resume=text)).
 "lang" is optional (voice passes the STT-detected language); when given it updates the case.
 """
@@ -63,6 +65,7 @@ class TurnIn(BaseModel):
 class TurnOut(BaseModel):
     reply: str
     pause: dict | None = None
+    ui: dict | None = None
 
 
 @app.post("/turn/{case_id}", response_model=TurnOut)
@@ -71,11 +74,13 @@ def turn(case_id: str, m: TurnIn) -> TurnOut:
     with _case_locks[case_id]:
         paused = bool(graph.get_state(cfg).interrupts)
         lang = {"lang": m.lang} if m.lang else {}
-        inp = Command(resume=m.text, update=lang or None) if paused else {"msg": m.text, **lang}
+        # ui is per turn: a resume skips the router, so clear the previous turn's payload here
+        inp = Command(resume=m.text, update={**lang, "ui": None}) if paused else {"msg": m.text, **lang}
         out = graph.invoke(inp, cfg, version="v2")
     return TurnOut(
         reply=out.value.get("reply", ""),
         pause=out.interrupts[0].value if out.interrupts else None,
+        ui=out.value.get("ui"),
     )
 
 

@@ -2,7 +2,8 @@
 
 Text lives in agent/i18n/{en,kn,hi}.json (same keys in every file; tests/test_replies.py
 checks keys and {placeholders}). Kannada and Hindi are marked "needs native-speaker
-review" until a native speaker signs them off. This module only formats values into them:
+review" until a native speaker signs them off. Scheme titles and document names are the
+mock portal's own wording, kept in rules/*.json. This module only formats values into them:
 Indian money grouping (₹1,20,000), localised dates, field labels, and rule reasons.
 """
 
@@ -66,8 +67,6 @@ def value(field: str, v: Any, lang: str | None) -> str:
         return money(v)
     if field == "gender" and v in ("female", "male"):
         return t(f"gender_{v}", lang)
-    if field == "category" and v in ("SC", "ST", "OBC", "General"):
-        return t(f"category_{v}", lang)
     if field == "district" and isinstance(v, str):
         return local_name(v, _lang(lang))
     return str(v)
@@ -96,10 +95,11 @@ def reasons(cs: list[Clause], lang: str | None) -> str:
     return join([reason(c, lang) for c in cs], lang)
 
 
-def doc(doc_id: str, lang: str | None) -> str:
-    key = f"doc_{doc_id}"
-    return t(key, lang) if key in strings(_lang(lang)) else doc_id.replace("_", " ")
-
-
 def readback(fields: dict[str, Any], lang: str | None) -> str:
+    """age 62, annual income ₹1,20,000"""
     return ", ".join(f"{label(k, lang)} {value(k, v, lang)}" for k, v in fields.items())
+
+
+def facts_phrase(fields: dict[str, Any], lang: str | None) -> str:
+    """age 62 and annual income ₹1,20,000 (the one-line spoken reason)"""
+    return join([f"{label(k, lang)} {value(k, v, lang)}" for k, v in fields.items()], lang)

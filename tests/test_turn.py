@@ -9,7 +9,7 @@ from agent.main import app, graph
 
 client = TestClient(app)
 
-# One message with everything pension-001 needs (age + income): eligible + checklist.
+# One message with age + income: the citizen qualifies for all 4 portal schemes.
 EN_READY = "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?"
 KN_READY = "ನನಗೆ 62 ವರ್ಷ, ಆದಾಯ ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ. ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?"
 
@@ -24,14 +24,14 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
     r = client.post(f"/turn/{case_id}", json=body)
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"reply", "pause"}  # contract shape
+    assert set(body) == {"reply", "pause", "ui"}  # contract shape (ui added 2026-10-09)
     return body
 
 
 def to_confirm(case_id: str, ready: str = EN_READY, lang: str | None = None) -> dict:
-    """Interview -> eligible -> "proceed" -> the confirm pause."""
+    """Interview -> 4 matches -> pick pension-001 -> the confirm pause."""
     assert turn(case_id, ready, lang)["pause"] is None
-    out = turn(case_id, "proceed")
+    out = turn(case_id, "senior citizen pension")
     assert out["pause"]["type"] == "confirm"
     return out
 
@@ -120,6 +120,6 @@ def test_unknown_lang_rejected(case_id):
 def test_cancelled_case_can_start_again(case_id):
     to_confirm(case_id)
     turn(case_id, "no")
-    out = turn(case_id, "proceed")
+    out = turn(case_id, "senior citizen pension")
     assert out["pause"]["type"] == "confirm"  # nothing was submitted, so the form can be redone
     # A submitted case does not restart: see test_idempotent_submit.py

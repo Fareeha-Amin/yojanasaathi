@@ -1,0 +1,188 @@
+{
+  "scheme_id": "health-001",
+  "title": "National Health Support Scheme",
+  "titles": {
+    "en": "National Health Support Scheme",
+    "kn": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+    "hi": "राष्ट्रीय स्वास्थ्य सहायता योजना"
+  },
+  "category": "Health",
+  "topic": "health",
+  "priority": 3,
+  "aliases": [
+    "national health",
+    "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ",
+    "राष्ट्रीय स्वास्थ्य"
+  ],
+  "portal_rules": {
+    "max_income": 500000
+  },
+  "rule": {
+    "<=": [
+      {
+        "var": "annual_income"
+      },
+      500000
+    ]
+  },
+  "required_fields": [
+    "annual_income"
+  ],
+  "documents": [
+    {
+      "doc": "identity_proof",
+      "when": null,
+      "label": {
+        "en": "Identity Proof",
+        "kn": "ಗುರುತಿನ ಪುರಾವೆ",
+        "hi": "पहचान प्रमाण"
+      }
+    },
+    {
+      "doc": "residence_proof",
+      "when": null,
+      "label": {
+        "en": "Residence Proof",
+        "kn": "ನಿವಾಸ ಪುರಾವೆ",
+        "hi": "निवास प्रमाण"
+      }
+    },
+    {
+      "doc": "income_certificate",
+      "when": null,
+      "label": {
+        "en": "Income Certificate",
+        "kn": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "hi": "आय प्रमाण पत्र"
+      }
+    },
+    {
+      "doc": "bank_account_details",
+      "when": null,
+      "label": {
+        "en": "Bank Account Details",
+        "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "hi": "बैंक खाता विवरण"
+      }
+    },
+    {
+      "doc": "medical_documents",
+      "when": null,
+      "label": {
+        "en": "Medical Documents, where applicable",
+        "kn": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "hi": "चिकित्सा दस्तावेज (जहां लागू हो)"
+      }
+    }
+  ],
+  "application_fields": [
+    {
+      "name": "full_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Full Name of Patient / Beneficiary",
+        "kn": "ರೋಗಿ / ಫಲಾನುಭವಿಯ ಪೂರ್ಣ ಹೆಸರು",
+        "hi": "मरीज / लाभार्थी का पूरा नाम"
+      }
+    },
+    {
+      "name": "dob",
+      "type": "date",
+      "required": true,
+      "label": {
+        "en": "Date of Birth",
+        "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+        "hi": "जन्म तिथि"
+      }
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "label": {
+        "en": "Gender",
+        "kn": "ಲಿಂಗ",
+        "hi": "लिंग"
+      }
+    },
+    {
+      "name": "annual_income",
+      "type": "number",
+      "required": true,
+      "label": {
+        "en": "Annual Family Income (INR)",
+        "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+        "hi": "वार्षिक पारिवारिक आय (रु.)"
+      }
+    },
+    {
+      "name": "hospital_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Hospital / Medical Center Name",
+        "kn": "ಆಸ್ಪತ್ರೆ / ವೈದ್ಯಕೀಯ ಕೇಂದ್ರದ ಹೆಸರು",
+        "hi": "अस्पताल / चिकित्सा केंद्र का नाम"
+      }
+    },
+    {
+      "name": "medical_condition",
+      "type": "textarea",
+      "required": true,
+      "label": {
+        "en": "Medical Diagnosis / Ailment",
+        "kn": "ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯ / ಕಾಯಿಲೆ",
+        "hi": "चिकित्सा निदान / बीमारी"
+      }
+    },
+    {
+      "name": "bank_account_number",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Bank Account Number for DBT",
+        "kn": "ನೇರ ಪ್ರಯೋಜನಕ್ಕಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+        "hi": "डीबीटी हेतु बैंक खाता संख्या"
+      }
+    },
+    {
+      "name": "bank_ifsc",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Bank IFSC Code",
+        "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+        "hi": "बैंक आईएफएससी कोड"
+      }
+    },
+    {
+      "name": "address",
+      "type": "textarea",
+      "required": true,
+      "label": {
+        "en": "Residential Address",
+        "kn": "ವಸತಿ ವಿಳಾಸ",
+        "hi": "निवास का पता"
+      }
+    },
+    {
+      "name": "declaration_consent",
+      "type": "checkbox",
+      "required": true,
+      "label": {
+        "en": "I hereby certify that all information submitted is accurate and medical documents are genuine.",
+        "kn": "ಸಲ್ಲಿಸಿದ ಎಲ್ಲಾ ಮಾಹಿತಿಯು ನಿಖರವಾಗಿದೆ ಮತ್ತು ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು ನೈಜವಾಗಿವೆ ಎಂದು ನಾನು ಪ್ರಮಾಣೀಕರಿಸುತ್ತೇನೆ.",
+        "hi": "मैं प्रमाणित करता/करती हूँ कि प्रस्तुत जानकारी सत्य है और चिकित्सा दस्तावेज प्रामाणिक हैं।"
+      }
+    }
+  ],
+  "source_url": "{MOCK_PORTAL_URL}/schemes/health-001",
+  "effective_date": "2026-10-09",
+  "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."
+}

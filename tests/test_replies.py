@@ -5,7 +5,7 @@ import re
 import pytest
 
 from agent import replies
-from agent.facts import FIELDS
+from agent.graph import FIELD_ORDER
 from agent.replies import money, strings, t
 from agent.rules import Clause
 
@@ -32,8 +32,8 @@ def test_kannada_and_hindi_marked_for_review(lang):
     assert "NEEDS NATIVE-SPEAKER REVIEW" in strings(lang)["_review"]
 
 
-def test_every_field_has_a_question_and_label():
-    for f in FIELDS:
+def test_every_rule_field_has_a_question_and_label():
+    for f in FIELD_ORDER:
         assert f"ask_{f}" in keys("en") and f"label_{f}" in keys("en")
 
 
@@ -65,4 +65,9 @@ def test_reasons():
     assert replies.reason(Clause("gender", "==", "female", "male", False), "en") == "gender: man, must be woman"
     assert replies.reason(Clause("district", "in", [], "Chennai", False), "en") == \
         "district: Chennai, not covered by this scheme"
-    assert replies.reason(Clause("pays_income_tax", "==", False, False, True), "hi") == "आयकर भरना: नहीं"
+    assert replies.facts_phrase({"age": 62, "annual_income": 120000}, "kn") == "ವಯಸ್ಸು 62 ಮತ್ತು ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000"
+
+
+def test_no_scheme_text_in_templates():
+    # scheme titles and document names are the portal's wording (rules/*.json)
+    assert not any(k.startswith(("doc_", "category_")) for k in keys("en"))

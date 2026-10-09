@@ -43,16 +43,6 @@ def test_monthly_income_is_annualised_and_flagged():
     ("annual_income", "80000", "annual_income", 80000),
     ("age", "62", "age", 62),
     ("age", "ಅರವತ್ತೆರಡು", "age", 62),
-    ("owns_farmland", "ಹೌದು, ಇದೆ", "owns_farmland", True),
-    ("owns_farmland", "ಇಲ್ಲ", "owns_farmland", False),
-    ("pays_income_tax", "नहीं", "pays_income_tax", False),
-    ("is_student", "yes", "is_student", True),
-    ("gender", "ಮಹಿಳೆ", "gender", "female"),
-    ("gender", "पुरुष", "gender", "male"),
-    ("category", "SC", "category", "SC"),
-    ("category", "ಪರಿಶಿಷ್ಟ ಜಾತಿ", "category", "SC"),
-    ("category", "अनुसूचित जनजाति", "category", "ST"),
-    ("district", "ತುಮಕೂರು", "district", "Tumakuru"),
 ])
 def test_answer_to_pending_question(asking, text, field, value):
     f = extract(text, asking)
@@ -65,12 +55,6 @@ def test_age_answer_out_of_range_is_not_taken():
     assert "age" not in f.values and not f.answered
 
 
-def test_short_codes_only_as_answers():
-    assert "category" not in extract("I study B.Sc in college").values  # "sc" token
-    assert "category" not in extract("I came 1st in class").values  # "st" token
-    assert extract("SC").values["category"] == "SC"  # a bare reply
-
-
 def test_first_person_gender_is_flagged():
     f = extract("ನಾನು ತುಮಕೂರಿನ ಮಹಿಳೆ")
     assert f.values["gender"] == "female" and "gender" in f.readback
@@ -81,9 +65,9 @@ def test_first_person_gender_is_flagged():
 @pytest.mark.parametrize("text, topics", [
     ("ನನಗೆ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?", ["pension"]),
     ("क्या मुझे पेंशन मिलेगी?", ["pension"]),
-    ("scholarship for my son", ["scholarship"]),
-    ("ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆ", ["women"]),
-    ("मैं किसान हूँ", ["farmer"]),
+    ("I need help with hospital bills", ["health"]),
+    ("ಆಸ್ಪತ್ರೆ ಚಿಕಿತ್ಸೆಗೆ ಸಹಾಯ ಬೇಕು", ["health"]),
+    ("इलाज के लिए मदद", ["health"]),
     ("hello", []),
 ])
 def test_topics(text, topics):
@@ -95,14 +79,45 @@ def test_proceed_and_decline():
     assert extract("नहीं", "proceed").proceed is False
     assert extract("please apply").proceed is True
     # a document statement with "no" in it is not a refusal to apply
-    f = extract("I have aadhaar and photo but no caste certificate", "proceed")
+    f = extract("I have aadhaar and a passbook but no income certificate", "proceed")
     assert f.proceed is None
-    assert f.docs_have == ["aadhaar", "photo"] and f.docs_missing == ["caste_certificate"]
+    assert f.docs_have == ["identity_proof", "bank_account_details"]
+    assert f.docs_missing == ["income_certificate"]
 
 
 def test_documents_kannada():
     f = extract("ನನ್ನ ಹತ್ತಿರ ಆಧಾರ್ ಇದೆ, ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ ಇಲ್ಲ")
-    assert f.docs_have == ["aadhaar"] and f.docs_missing == ["income_certificate"]
+    assert f.docs_have == ["identity_proof"] and f.docs_missing == ["income_certificate"]
+
+
+@pytest.mark.parametrize("text, chosen", [
+    ("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ", "pension-001"),
+    ("senior citizen pension please", "pension-001"),
+    ("वरिष्ठ नागरिक पेंशन योजना", "pension-001"),
+    ("ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ", "pension-002"),
+    ("social security pension", "pension-002"),
+    ("राष्ट्रीय स्वास्थ्य सहायता योजना", "health-001"),
+    ("family healthcare", "health-002"),
+    ("ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ", "health-002"),
+    ("pension", None),  # names two schemes: not a choice
+    ("I'm 62, can I get a pension?", None),
+])
+def test_scheme_choice_by_name(text, chosen):
+    assert extract(text).chosen == chosen
+
+
+@pytest.mark.parametrize("text, ordinal", [
+    ("the first one", 0), ("ಮೊದಲನೆಯದು", 0), ("पहली वाली", 0),
+    ("second", 1), ("ಎರಡನೇದು", 1), ("दूसरा", 1), ("the third", 2),
+])
+def test_scheme_choice_by_position(text, ordinal):
+    assert extract(text, "choose").ordinal == ordinal
+
+
+def test_next_and_a_choice_is_not_a_yes_no_answer():
+    assert extract("the next one", "choose").next_one
+    f = extract("yes, the second one", "choose")
+    assert f.ordinal == 1 and f.proceed is None
 
 
 def test_yes_no_answers():

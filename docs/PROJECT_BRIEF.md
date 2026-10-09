@@ -52,11 +52,17 @@ LangGraph Studio open during Q&A.
 Stretch: a scholarship scheme for a Hindi student demo; mocked DigiLocker fetch.
 
 ## Schemes
-Pick 3-5 with different rule shapes. Mock portal currently seeds demo schemes,
-including `pension-001` "Senior Citizen Pension Scheme" (age >= 60, income <= 3,00,000)
-which drives the golden-path demo. Candidates for real-world modelling: an old-age
-pension, an NSP scholarship, PM-KISAN, a Karnataka scheme such as Gruha Lakshmi.
-Encode rules only from official pages, with URL and effective date.
+Only the 4 mock-portal schemes (decided 2026-10-09), all DEMO, all with application forms.
+Source of truth: the portal seed (github.com/ayush81233/mock,
+`backend/schemes/management/commands/seed_schemes.py`); `tests/test_portal_seed.py` fails
+if a rules file disagrees with it.
+- `pension-001` Senior Citizen Pension Scheme: age >= 60, income <= 3,00,000
+- `pension-002` Social Security Pension Assistance: age >= 60
+- `health-001` National Health Support Scheme: income <= 5,00,000
+- `health-002` Family Healthcare Assistance: income <= 4,00,000
+The golden-path citizen (62, income 1,20,000) qualifies for all four; pension-001 is
+offered first. A real scheme would be encoded only from its official page, with URL and
+effective date.
 
 Rule file shape (`rules/<scheme_id>.json`):
 ```json
@@ -65,11 +71,15 @@ Rule file shape (`rules/<scheme_id>.json`):
   "title": "Senior Citizen Pension Scheme",
   "rule": {"and": [{">=": [{"var": "age"}, 60]}, {"<=": [{"var": "annual_income"}, 300000]}]},
   "required_fields": ["age", "annual_income"],
-  "documents": [{"doc": "aadhaar", "when": null}, {"doc": "income_certificate", "when": null}],
-  "source_url": "<official page>",
-  "effective_date": "2026-04-01"
+  "documents": [{"doc": "identity_proof", "when": null,
+                 "label": {"en": "Identity Proof", "kn": "ಗುರುತಿನ ಪುರಾವೆ", "hi": "पहचान प्रमाण"}}],
+  "application_fields": [{"name": "full_name", "type": "text", "required": true, "label": {...}}],
+  "source_url": "{MOCK_PORTAL_URL}/schemes/pension-001",
+  "effective_date": "2026-10-09"
 }
 ```
+(Full shape: see any file in `rules/`; titles, document labels and application fields are
+copied from the portal seed.)
 
 ## UI (design canvas "YojanaSaathi UI")
 Palette: deep green #0B5D4B, marigold #F2B21B, ink #17201C, panel #F4F2EC,
@@ -104,11 +114,15 @@ SMS in India needs DLT registration: simulate it or read the app ID aloud.
 
 ## Golden-path demo
 1. Speak Kannada: "ನನಗೆ 62 ವರ್ಷ. ನನಗೆ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?" (I'm 62. Can I get a pension?)
-2. Agent asks 1-2 missing questions (income), shows eligible scheme with cited rule
-3. Checklist with one missing document
-4. "Proceed": Playwright fills the mock portal live (split screen)
-5. OTP pause: teammate reads the code from the portal's demo inbox on a second phone
-6. Review + read-back; answer "ಹೌದು"; application ID appears
+2. Agent asks the missing question (income), then says she qualifies for 4 schemes,
+   pension-001 first, and asks which one; the screen shows every scheme with its cited
+   rule, source and checklist
+3. She picks "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ"; the agent asks only the application fields still missing
+4. Playwright fills the mock portal live (split screen)
+5. OTP pause: the portal sends a real SMS (Twilio Verify) to the registered test mobile;
+   she reads the code out
+6. Review + read-back (incl. the declaration, read out); answer "ಹೌದು"; application ID
+   (YJS-...) appears and the agent offers the next eligible scheme
 7. Teammate flips status in Django admin -> push notification in Kannada
 Optional: toggle a renamed field on the portal to show safe-stop.
 Backups: recorded video; text mode in the same UI if voice fails.

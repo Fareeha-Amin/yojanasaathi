@@ -1,0 +1,616 @@
+{
+  "_source": "github.com/ayush81233/mock @ 6e6e24d (2026-10-09), backend/schemes/management/commands/seed_schemes.py, trimmed by agent/portal_seed.py",
+  "schemes": [
+    {
+      "id": "health-001",
+      "title": {
+        "en": "National Health Support Scheme",
+        "kn": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+        "hi": "राष्ट्रीय स्वास्थ्य सहायता योजना"
+      },
+      "eligibility_rules": {
+        "max_income": 500000
+      },
+      "documents": {
+        "en": [
+          "Identity Proof",
+          "Residence Proof",
+          "Income Certificate",
+          "Bank Account Details",
+          "Medical Documents, where applicable"
+        ],
+        "kn": [
+          "ಗುರುತಿನ ಪುರಾವೆ",
+          "ನಿವಾಸ ಪುರಾವೆ",
+          "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)"
+        ],
+        "hi": [
+          "पहचान प्रमाण",
+          "निवास प्रमाण",
+          "आय प्रमाण पत्र",
+          "बैंक खाता विवरण",
+          "चिकित्सा दस्तावेज (जहां लागू हो)"
+        ]
+      },
+      "application_fields": [
+        {
+          "name": "full_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Full Name of Patient / Beneficiary",
+            "kn": "ರೋಗಿ / ಫಲಾನುಭವಿಯ ಪೂರ್ಣ ಹೆಸರು",
+            "hi": "मरीज / लाभार्थी का पूरा नाम"
+          }
+        },
+        {
+          "name": "dob",
+          "type": "date",
+          "required": true,
+          "label": {
+            "en": "Date of Birth",
+            "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+            "hi": "जन्म तिथि"
+          }
+        },
+        {
+          "name": "gender",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Male",
+            "Female",
+            "Other"
+          ],
+          "label": {
+            "en": "Gender",
+            "kn": "ಲಿಂಗ",
+            "hi": "लिंग"
+          }
+        },
+        {
+          "name": "annual_income",
+          "type": "number",
+          "required": true,
+          "label": {
+            "en": "Annual Family Income (INR)",
+            "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+            "hi": "वार्षिक पारिवारिक आय (रु.)"
+          }
+        },
+        {
+          "name": "hospital_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Hospital / Medical Center Name",
+            "kn": "ಆಸ್ಪತ್ರೆ / ವೈದ್ಯಕೀಯ ಕೇಂದ್ರದ ಹೆಸರು",
+            "hi": "अस्पताल / चिकित्सा केंद्र का नाम"
+          }
+        },
+        {
+          "name": "medical_condition",
+          "type": "textarea",
+          "required": true,
+          "label": {
+            "en": "Medical Diagnosis / Ailment",
+            "kn": "ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯ / ಕಾಯಿಲೆ",
+            "hi": "चिकित्सा निदान / बीमारी"
+          }
+        },
+        {
+          "name": "bank_account_number",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Bank Account Number for DBT",
+            "kn": "ನೇರ ಪ್ರಯೋಜನಕ್ಕಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+            "hi": "डीबीटी हेतु बैंक खाता संख्या"
+          }
+        },
+        {
+          "name": "bank_ifsc",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Bank IFSC Code",
+            "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+            "hi": "बैंक आईएफएससी कोड"
+          }
+        },
+        {
+          "name": "address",
+          "type": "textarea",
+          "required": true,
+          "label": {
+            "en": "Residential Address",
+            "kn": "ವಸತಿ ವಿಳಾಸ",
+            "hi": "निवास का पता"
+          }
+        },
+        {
+          "name": "declaration_consent",
+          "type": "checkbox",
+          "required": true,
+          "label": {
+            "en": "I hereby certify that all information submitted is accurate and medical documents are genuine.",
+            "kn": "ಸಲ್ಲಿಸಿದ ಎಲ್ಲಾ ಮಾಹಿತಿಯು ನಿಖರವಾಗಿದೆ ಮತ್ತು ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು ನೈಜವಾಗಿವೆ ಎಂದು ನಾನು ಪ್ರಮಾಣೀಕರಿಸುತ್ತೇನೆ.",
+            "hi": "मैं प्रमाणित करता/करती हूँ कि प्रस्तुत जानकारी सत्य है और चिकित्सा दस्तावेज प्रामाणिक हैं।"
+          }
+        }
+      ]
+    },
+    {
+      "id": "health-002",
+      "title": {
+        "en": "Family Healthcare Assistance",
+        "kn": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+        "hi": "पारिवारिक स्वास्थ्य सहायता योजना"
+      },
+      "eligibility_rules": {
+        "max_income": 400000
+      },
+      "documents": {
+        "en": [
+          "Identity Proof",
+          "Residence Proof",
+          "Income Certificate",
+          "Family Details",
+          "Bank Account Details"
+        ],
+        "kn": [
+          "ಗುರುತಿನ ಪುರಾವೆ",
+          "ನಿವಾಸ ಪುರಾವೆ",
+          "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "ಕುಟುಂಬದ ವಿವರಗಳು",
+          "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು"
+        ],
+        "hi": [
+          "पहचान प्रमाण",
+          "निवास प्रमाण",
+          "आय प्रमाण पत्र",
+          "पारिवारिक विवरण",
+          "बैंक खाता विवरण"
+        ]
+      },
+      "application_fields": [
+        {
+          "name": "applicant_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Head of Household / Applicant Name",
+            "kn": "ಕುಟುಂಬದ ಮುಖ್ಯಸ್ಥ / ಅರ್ಜಿದಾರರ ಹೆಸರು",
+            "hi": "परिवार के मुखिया / आवेदक का नाम"
+          }
+        },
+        {
+          "name": "dob",
+          "type": "date",
+          "required": true,
+          "label": {
+            "en": "Date of Birth",
+            "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+            "hi": "जन्म तिथि"
+          }
+        },
+        {
+          "name": "gender",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Male",
+            "Female",
+            "Other"
+          ],
+          "label": {
+            "en": "Gender",
+            "kn": "ಲಿಂಗ",
+            "hi": "लिंग"
+          }
+        },
+        {
+          "name": "family_members_count",
+          "type": "number",
+          "required": true,
+          "label": {
+            "en": "Number of Dependent Family Members",
+            "kn": "ಅವಲಂಬಿತ ಕುಟುಂಬ ಸದಸ್ಯರ ಸಂಖ್ಯೆ",
+            "hi": "आश्रित परिवार के सदस्यों की संख्या"
+          }
+        },
+        {
+          "name": "ration_card_category",
+          "type": "select",
+          "required": true,
+          "options": [
+            "BPL (Below Poverty Line)",
+            "AAY (Antyodaya Anna)",
+            "APL (State Ration Card)"
+          ],
+          "label": {
+            "en": "Ration / Food Security Card Category",
+            "kn": "ಪಡಿತರ ಚೀಟಿ ವರ್ಗ",
+            "hi": "राशन कार्ड श्रेणी"
+          }
+        },
+        {
+          "name": "annual_income",
+          "type": "number",
+          "required": true,
+          "label": {
+            "en": "Annual Household Income (INR)",
+            "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+            "hi": "वार्षिक पारिवारिक आय (रु.)"
+          }
+        },
+        {
+          "name": "coverage_preference",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "In-Patient Hospitalization",
+            "Outpatient Chronic Disease Care",
+            "Diagnostic Support"
+          ],
+          "label": {
+            "en": "Assistance Type Needed",
+            "kn": "ಅಗತ್ಯವಿರುವ ನೆರವಿನ ವಿಧ",
+            "hi": "आवश्यक सहायता प्रकार"
+          }
+        },
+        {
+          "name": "bank_account_number",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Primary Bank Account Number",
+            "kn": "ಪ್ರಾಥಮಿಕ ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+            "hi": "प्राथमिक बैंक खाता संख्या"
+          }
+        },
+        {
+          "name": "bank_ifsc",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Bank IFSC Code",
+            "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+            "hi": "बैंक आईएफएससी कोड"
+          }
+        },
+        {
+          "name": "address",
+          "type": "textarea",
+          "required": true,
+          "label": {
+            "en": "Family Residence Address",
+            "kn": "ಕುಟುಂಬದ ವಾಸಸ್ಥಳ ವಿಳಾಸ",
+            "hi": "पारिवारिक निवास का पता"
+          }
+        },
+        {
+          "name": "declaration_consent",
+          "type": "checkbox",
+          "required": true,
+          "label": {
+            "en": "I declare that the family members listed are dependent residents of the household.",
+            "kn": "ಪಟ್ಟಿಯಲ್ಲಿರುವ ಕುಟುಂಬದ ಸದಸ್ಯರು ಮನೆಯ ಅವಲಂಬಿತ ನಿವಾಸಿಗಳಾಗಿದ್ದಾರೆ ಎಂದು ನಾನು ಘೋಷಿಸುತ್ತೇನೆ.",
+            "hi": "मैं घोषणा करता/करती हूँ कि सूचीबद्ध सदस्य परिवार के आश्रित निवासी हैं।"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pension-001",
+      "title": {
+        "en": "Senior Citizen Pension Scheme",
+        "kn": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+        "hi": "वरिष्ठ नागरिक पेंशन योजना"
+      },
+      "eligibility_rules": {
+        "min_age": 60,
+        "max_income": 300000
+      },
+      "documents": {
+        "en": [
+          "Identity Proof",
+          "Age Proof",
+          "Residence Proof",
+          "Income Certificate",
+          "Bank Account Details"
+        ],
+        "kn": [
+          "ಗುರುತಿನ ಪುರಾವೆ",
+          "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+          "ನಿವಾಸ ಪುರಾವೆ",
+          "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು"
+        ],
+        "hi": [
+          "पहचान प्रमाण",
+          "आयु प्रमाण",
+          "निवास प्रमाण",
+          "आय प्रमाण पत्र",
+          "बैंक खाता विवरण"
+        ]
+      },
+      "application_fields": [
+        {
+          "name": "full_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Senior Citizen Applicant Full Name",
+            "kn": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+            "hi": "वरिष्ठ नागरिक आवेदक का पूरा नाम"
+          }
+        },
+        {
+          "name": "dob",
+          "type": "date",
+          "required": true,
+          "label": {
+            "en": "Date of Birth (Must be 60 years or older)",
+            "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+            "hi": "जन्म तिथि (60 वर्ष या अधिक होनी चाहिए)"
+          }
+        },
+        {
+          "name": "gender",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Male",
+            "Female",
+            "Other"
+          ],
+          "label": {
+            "en": "Gender",
+            "kn": "ಲಿಂಗ",
+            "hi": "लिंग"
+          }
+        },
+        {
+          "name": "marital_status",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Married",
+            "Widowed",
+            "Single / Unmarried",
+            "Divorced"
+          ],
+          "label": {
+            "en": "Marital Status",
+            "kn": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+            "hi": "वैवाहिक स्थिति"
+          }
+        },
+        {
+          "name": "annual_income",
+          "type": "number",
+          "required": true,
+          "label": {
+            "en": "Current Annual Income from All Sources (INR)",
+            "kn": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
+            "hi": "सभी स्रोतों से वर्तमान वार्षिक आय (रु.)"
+          }
+        },
+        {
+          "name": "disbursement_mode",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Direct Bank Transfer (DBT)",
+            "Post Office Savings Bank (POSB)"
+          ],
+          "label": {
+            "en": "Preferred Pension Disbursement Channel",
+            "kn": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+            "hi": "पेंशन भुगतान का पसंदीदा माध्यम"
+          }
+        },
+        {
+          "name": "bank_account_number",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Pension Bank / Post Office Account Number",
+            "kn": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+            "hi": "पेंशन बैंक / डाकघर खाता संख्या"
+          }
+        },
+        {
+          "name": "bank_ifsc",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Branch IFSC / Postal Code",
+            "kn": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+            "hi": "शाखा आईएफएससी / पोस्टल कोड"
+          }
+        },
+        {
+          "name": "nominee_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Nominee / Guardian Full Name",
+            "kn": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+            "hi": "नॉमिनी / अभिभावक का पूरा नाम"
+          }
+        },
+        {
+          "name": "address",
+          "type": "textarea",
+          "required": true,
+          "label": {
+            "en": "Permanent Address",
+            "kn": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+            "hi": "स्थायी निवास का पता"
+          }
+        },
+        {
+          "name": "declaration_consent",
+          "type": "checkbox",
+          "required": true,
+          "label": {
+            "en": "I solemnly affirm that I am not drawing any other central/state government pension.",
+            "kn": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+            "hi": "मैं सत्यनिष्ठा से प्रतिज्ञा करता/करती हूँ कि मैं कोई अन्य सरकारी पेंशन प्राप्त नहीं कर रहा/रही हूँ।"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pension-002",
+      "title": {
+        "en": "Social Security Pension Assistance",
+        "kn": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+        "hi": "सामाजिक सुरक्षा पेंशन सहायता योजना"
+      },
+      "eligibility_rules": {
+        "min_age": 60
+      },
+      "documents": {
+        "en": [
+          "Identity Proof",
+          "Residence Proof",
+          "Income Certificate",
+          "Bank Account Details",
+          "Age Proof, where applicable"
+        ],
+        "kn": [
+          "ಗುರುತಿನ ಪುರಾವೆ",
+          "ನಿವಾಸ ಪುರಾವೆ",
+          "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)"
+        ],
+        "hi": [
+          "पहचान प्रमाण",
+          "निवास प्रमाण",
+          "आय प्रमाण पत्र",
+          "बैंक खाता विवरण",
+          "आयु प्रमाण (जहां लागू हो)"
+        ]
+      },
+      "application_fields": [
+        {
+          "name": "full_name",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Beneficiary Full Name",
+            "kn": "ಫಲಾನುಭವಿಯ ಪೂರ್ಣ ಹೆಸರು",
+            "hi": "लाभार्थी का पूरा नाम"
+          }
+        },
+        {
+          "name": "dob",
+          "type": "date",
+          "required": true,
+          "label": {
+            "en": "Date of Birth",
+            "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+            "hi": "जन्म तिथि"
+          }
+        },
+        {
+          "name": "gender",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Male",
+            "Female",
+            "Other"
+          ],
+          "label": {
+            "en": "Gender",
+            "kn": "ಲಿಂಗ",
+            "hi": "लिंग"
+          }
+        },
+        {
+          "name": "assistance_category",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Old Age Assistance",
+            "Disability Welfare Assistance",
+            "Destitute / Widow Assistance",
+            "Special Care Support"
+          ],
+          "label": {
+            "en": "Social Security Category",
+            "kn": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ವರ್ಗ",
+            "hi": "सामाजिक सुरक्षा श्रेणी"
+          }
+        },
+        {
+          "name": "annual_income",
+          "type": "number",
+          "required": true,
+          "label": {
+            "en": "Annual Household Income (INR)",
+            "kn": "ವಾರ್ಷಿಕ ಕುಟುಂಬ ಆದಾಯ (ರೂ.)",
+            "hi": "वार्षिक पारिवारिक आय (रु.)"
+          }
+        },
+        {
+          "name": "disability_details",
+          "type": "text",
+          "required": false,
+          "label": {
+            "en": "Disability / Special Needs Details (if applicable)",
+            "kn": "ಅಂಗವೈಕಲ್ಯ / ವಿಶೇಷ ಅಗತ್ಯಗಳ ವಿವರಗಳು",
+            "hi": "दिव्यांगता / विशेष आवश्यकता विवरण"
+          }
+        },
+        {
+          "name": "bank_account_number",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Bank Account Number",
+            "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ",
+            "hi": "बैंक खाता संख्या"
+          }
+        },
+        {
+          "name": "bank_ifsc",
+          "type": "text",
+          "required": true,
+          "label": {
+            "en": "Bank IFSC Code",
+            "kn": "ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್",
+            "hi": "बैंक आईएफएससी कोड"
+          }
+        },
+        {
+          "name": "address",
+          "type": "textarea",
+          "required": true,
+          "label": {
+            "en": "Current Residential Address",
+            "kn": "ಪ್ರಸ್ತುತ ವಸತಿ ವಿಳಾಸ",
+            "hi": "वर्तमान निवास का पता"
+          }
+        },
+        {
+          "name": "declaration_consent",
+          "type": "checkbox",
+          "required": true,
+          "label": {
+            "en": "I verify that the above information is correct and I meet the social security criteria.",
+            "kn": "ಮೇಲಿನ ಮಾಹಿತಿಯು ಸರಿಯಾಗಿದೆ ಮತ್ತು ನಾನು ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಮಾನದಂಡಗಳನ್ನು ಪೂರೈಸುತ್ತೇನೆ ಎಂದು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+            "hi": "मैं सत्यापित करता/करती हूँ कि उपरोक्त जानकारी सही है और मैं सामाजिक सुरक्षा मानदंडों को पूरा करता/करती हूँ।"
+          }
+        }
+      ]
+    }
+  ]
+}

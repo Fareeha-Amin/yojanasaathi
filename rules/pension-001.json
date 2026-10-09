@@ -8,21 +8,215 @@
   },
   "category": "Pension",
   "topic": "pension",
-  "rule": {"and": [{">=": [{"var": "age"}, 60]}, {"<=": [{"var": "annual_income"}, 300000]}]},
-  "required_fields": ["age", "annual_income"],
-  "documents": [
-    {"doc": "aadhaar", "when": null},
-    {"doc": "income_certificate", "when": null},
-    {"doc": "residence_proof", "when": null},
-    {"doc": "bank_passbook", "when": null},
-    {"doc": "photo", "when": null}
+  "priority": 1,
+  "aliases": [
+    "senior citizen",
+    "ಹಿರಿಯ ನಾಗರಿಕ",
+    "वरिष्ठ नागरिक"
   ],
-  "source_url": "DEMO: matches mock portal seed pension-001; replace with official page for real schemes",
-  "source_name": {
-    "en": "the demo portal's pension rule",
-    "kn": "ಡೆಮೊ ಪೋರ್ಟಲ್‌ನ ಪಿಂಚಣಿ ನಿಯಮ",
-    "hi": "डेमो पोर्टल का पेंशन नियम"
+  "portal_rules": {
+    "min_age": 60,
+    "max_income": 300000
   },
-  "effective_date": "2026-04-01",
-  "verification": "DEMO: scheme of the mock portal (github.com/ayush81233/mock), not a real government scheme."
+  "rule": {
+    "and": [
+      {
+        ">=": [
+          {
+            "var": "age"
+          },
+          60
+        ]
+      },
+      {
+        "<=": [
+          {
+            "var": "annual_income"
+          },
+          300000
+        ]
+      }
+    ]
+  },
+  "required_fields": [
+    "age",
+    "annual_income"
+  ],
+  "documents": [
+    {
+      "doc": "identity_proof",
+      "when": null,
+      "label": {
+        "en": "Identity Proof",
+        "kn": "ಗುರುತಿನ ಪುರಾವೆ",
+        "hi": "पहचान प्रमाण"
+      }
+    },
+    {
+      "doc": "age_proof",
+      "when": null,
+      "label": {
+        "en": "Age Proof",
+        "kn": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+        "hi": "आयु प्रमाण"
+      }
+    },
+    {
+      "doc": "residence_proof",
+      "when": null,
+      "label": {
+        "en": "Residence Proof",
+        "kn": "ನಿವಾಸ ಪುರಾವೆ",
+        "hi": "निवास प्रमाण"
+      }
+    },
+    {
+      "doc": "income_certificate",
+      "when": null,
+      "label": {
+        "en": "Income Certificate",
+        "kn": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "hi": "आय प्रमाण पत्र"
+      }
+    },
+    {
+      "doc": "bank_account_details",
+      "when": null,
+      "label": {
+        "en": "Bank Account Details",
+        "kn": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "hi": "बैंक खाता विवरण"
+      }
+    }
+  ],
+  "application_fields": [
+    {
+      "name": "full_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Senior Citizen Applicant Full Name",
+        "kn": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+        "hi": "वरिष्ठ नागरिक आवेदक का पूरा नाम"
+      }
+    },
+    {
+      "name": "dob",
+      "type": "date",
+      "required": true,
+      "label": {
+        "en": "Date of Birth (Must be 60 years or older)",
+        "kn": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+        "hi": "जन्म तिथि (60 वर्ष या अधिक होनी चाहिए)"
+      }
+    },
+    {
+      "name": "gender",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Male",
+        "Female",
+        "Other"
+      ],
+      "label": {
+        "en": "Gender",
+        "kn": "ಲಿಂಗ",
+        "hi": "लिंग"
+      }
+    },
+    {
+      "name": "marital_status",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Married",
+        "Widowed",
+        "Single / Unmarried",
+        "Divorced"
+      ],
+      "label": {
+        "en": "Marital Status",
+        "kn": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+        "hi": "वैवाहिक स्थिति"
+      }
+    },
+    {
+      "name": "annual_income",
+      "type": "number",
+      "required": true,
+      "label": {
+        "en": "Current Annual Income from All Sources (INR)",
+        "kn": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
+        "hi": "सभी स्रोतों से वर्तमान वार्षिक आय (रु.)"
+      }
+    },
+    {
+      "name": "disbursement_mode",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "Direct Bank Transfer (DBT)",
+        "Post Office Savings Bank (POSB)"
+      ],
+      "label": {
+        "en": "Preferred Pension Disbursement Channel",
+        "kn": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+        "hi": "पेंशन भुगतान का पसंदीदा माध्यम"
+      }
+    },
+    {
+      "name": "bank_account_number",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Pension Bank / Post Office Account Number",
+        "kn": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+        "hi": "पेंशन बैंक / डाकघर खाता संख्या"
+      }
+    },
+    {
+      "name": "bank_ifsc",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Branch IFSC / Postal Code",
+        "kn": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+        "hi": "शाखा आईएफएससी / पोस्टल कोड"
+      }
+    },
+    {
+      "name": "nominee_name",
+      "type": "text",
+      "required": true,
+      "label": {
+        "en": "Nominee / Guardian Full Name",
+        "kn": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+        "hi": "नॉमिनी / अभिभावक का पूरा नाम"
+      }
+    },
+    {
+      "name": "address",
+      "type": "textarea",
+      "required": true,
+      "label": {
+        "en": "Permanent Address",
+        "kn": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+        "hi": "स्थायी निवास का पता"
+      }
+    },
+    {
+      "name": "declaration_consent",
+      "type": "checkbox",
+      "required": true,
+      "label": {
+        "en": "I solemnly affirm that I am not drawing any other central/state government pension.",
+        "kn": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+        "hi": "मैं सत्यनिष्ठा से प्रतिज्ञा करता/करती हूँ कि मैं कोई अन्य सरकारी पेंशन प्राप्त नहीं कर रहा/रही हूँ।"
+      }
+    }
+  ],
+  "source_url": "{MOCK_PORTAL_URL}/schemes/pension-001",
+  "effective_date": "2026-10-09",
+  "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."
 }
