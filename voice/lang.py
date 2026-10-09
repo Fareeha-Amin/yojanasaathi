@@ -62,6 +62,7 @@ def tts_language(text: str) -> str:
 # Spoken when the client connects. Kannada first (design rule); the agent takes over
 # from the citizen's first reply.
 GREETING = "ನಮಸ್ಕಾರ, ನಾನು ಯೋಜನಾಸಾಥಿ. ಹೇಳಿ, ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?"
+GREETING_SUBTITLE = "Hello, I'm YojanaSaathi. Tell me, how can I help you?"
 
 # Spoken when /turn fails (agent down, timeout). Nothing was decided or submitted.
 AGENT_UNREACHABLE: dict[TurnLang, str] = {

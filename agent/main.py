@@ -24,13 +24,13 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.types import Command
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from agent import audit, auth, config, db, privacy, rules, summary
+from agent import audit, auth, config, db, privacy, rules, summary, tts
 from agent.facts import AGE_MAX, AGE_MIN
 from agent.graph import build_graph
 from agent.llm import get_llm
@@ -50,6 +50,7 @@ store = db.open_store(config.DATABASE_URL)
 vault = Vault(store, config.VAULT_DIR, _master_key)
 audit.set_store(store)
 graph = build_graph(store.checkpointer)
+speech = tts.SarvamTTS(config.SARVAM_API_KEY, cache_size=config.TTS_CACHE_SIZE)
 
 # One turn at a time per case: a double-send (e.g. voice barge-in) must not race
 # between reading "is it paused?" and resuming. (One agent process; see CLAUDE.md.)
@@ -225,6 +226,33 @@ def edit(case_id: str, e: EditIn) -> TurnOut:
             raise HTTPException(409, "nothing to review: the case is not waiting for confirmation")
         update = {"docs_stored": store.document_types(case_id), "ui": None, "subtitle": None}
         return _run(case_id, Command(resume={"edit": {e.field: e.value}}, update=update), resumed=True)
+
+
+# --- read aloud (Sarvam Bulbul, same voice as the bot) ----------------------------------
+
+
+class TTSIn(BaseModel):
+    text: str = Field(min_length=1, max_length=tts.MAX_CHARS)
+    lang: Literal["kn", "hi", "en"] | None = None
+
+
+@app.post("/tts")
+def speak(t: TTSIn, authorization: str | None = Header(None)) -> Response:
+    """WAV audio of `text` for the web app (read aloud, replay, typed-turn replies when the
+    voice bot is off). Needs a valid session token (any case): it spends Sarvam credit.
+    503 when SARVAM_API_KEY is not set, 502 when Sarvam fails: the app then falls back."""
+    try:
+        auth.verify(auth.bearer(authorization))
+    except auth.AuthError as e:
+        raise HTTPException(401, str(e), headers={"WWW-Authenticate": "Bearer"}) from None
+    if not speech.available:
+        raise HTTPException(503, "read aloud is not configured (SARVAM_API_KEY)")
+    try:
+        wav = speech.synthesize(t.text, t.lang)
+    except tts.TTSError as e:
+        _log.warning("tts failed: %s", e)
+        raise HTTPException(502, "read aloud failed") from None
+    return Response(wav, media_type="audio/wav", headers={"Cache-Control": "private, max-age=86400"})
 
 
 # --- the citizen's data: consent, documents, view / delete ------------------------------

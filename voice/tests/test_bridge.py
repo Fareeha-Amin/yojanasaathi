@@ -148,3 +148,31 @@ def test_speak_ignores_empty_other_types_and_caps_length():
                RTVIClientMessageFrame(msg_id="3", type="speak", data="not a dict"),
                RTVIClientMessageFrame(msg_id="4", type="speak", data={"text": "a" * 1000}))
     assert said(down) == [(Language.EN_IN, "a" * 600)]
+
+
+def test_greeting_is_spoken_and_shown_in_the_web_app():
+    from voice.lang import GREETING, GREETING_SUBTITLE
+
+    agent = FakeAgent()
+    bridge = AgentBridge(case_id="case-1", send_turn=agent.turn)
+
+    async def go():
+        async def greet():
+            await asyncio.sleep(0.05)
+            await bridge.say(GREETING, show=True, subtitle=GREETING_SUBTITLE)
+        task = asyncio.create_task(greet())
+        down, _ = await run_test(bridge, frames_to_send=[SleepFrame(sleep=0.3)])
+        await task
+        return down
+
+    down = asyncio.run(go())
+    [msg] = [f for f in down if isinstance(f, RTVIServerMessageFrame)]
+    assert msg.data == {"type": "say", "case_id": "case-1", "text": GREETING, "subtitle": GREETING_SUBTITLE}
+    assert said(down) == [(Language.KN_IN, GREETING)]
+    assert agent.calls == []
+
+
+def test_plain_say_sends_no_ui_message():
+    agent = FakeAgent()
+    down = run(agent, RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": KN_REPLY}))
+    assert [f for f in down if isinstance(f, RTVIServerMessageFrame)] == []

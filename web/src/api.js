@@ -111,6 +111,22 @@ export const uploadDocument = (s, docType, file, aadhaarLast4) =>
 export const deleteDocument = (s, docId) =>
   req(`/cases/${c(s)}/documents/${encodeURIComponent(docId)}`, { method: "DELETE", token: s.token });
 
+/** WAV of `text` from the agent's Sarvam Bulbul (POST /tts). Throws ApiError (503 = not configured). */
+export async function tts(s, text, lang) {
+  let res;
+  try {
+    res = await fetch(`${API}/tts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${s.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(lang ? { text, lang } : { text }),
+    });
+  } catch {
+    throw new ApiError(0, "network");
+  }
+  if (!res.ok) throw new ApiError(res.status, `tts ${res.status}`);
+  return res.blob();
+}
+
 export const myData = (s) => req(`/cases/${c(s)}/data`, { token: s.token });
 
 export const deleteMyData = (s) => req(`/cases/${c(s)}/data`, { method: "DELETE", token: s.token });

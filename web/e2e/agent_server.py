@@ -2,7 +2,8 @@
 
 Own database: DATABASE_URL's name + "_e2e_test", dropped and created on every start (never
 the real one; db.recreate_database refuses names not ending in _test). No LLM (the golden
-path is deterministic), a test MASTER_KEY, a temporary vault. Port: E2E_AGENT_PORT (8010).
+path is deterministic), no Sarvam read-aloud (E2E_SARVAM=1 to allow it), a test MASTER_KEY,
+a temporary vault. Port: E2E_AGENT_PORT (8010).
 
 Run by hand: .\\.venv\\Scripts\\python.exe web\\e2e\\agent_server.py
 """
@@ -32,6 +33,8 @@ os.environ.update({
     "VAULT_DIR": tempfile.mkdtemp(prefix="ys-vault-e2e-"),
     "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0",
 })
+if os.environ.get("E2E_SARVAM") != "1":  # read aloud costs Sarvam credit: off unless asked
+    os.environ["SARVAM_API_KEY"] = ""
 
 import uvicorn  # noqa: E402
 

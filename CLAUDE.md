@@ -76,7 +76,9 @@ Web app endpoints (Phase 5, all need `Authorization: Bearer <token>` for that ca
 `/session`): `POST /session` (new random case `web-<hex>` + JWT, or refresh with a valid
 token), `GET /cases/{id}/summary?lang=` (the screens), `POST /cases/{id}/edit
 {"field": "age"|"annual_income", "value": int}` (review edit; only at the confirm pause;
-returns the /turn shape), plus the Phase 3 consent / documents / data endpoints.
+returns the /turn shape), `POST /tts {"text", "lang"?}` (WAV from Sarvam Bulbul, the bot's
+voice; any valid session token; 503 without SARVAM_API_KEY), plus the Phase 3 consent /
+documents / data endpoints.
 If the graph is paused, the incoming text resumes it (`Command(resume=text)`).
 `lang` is optional (added 2026-10-08, decision 1 below): voice sends the STT-detected
 language; when present it updates the case's `lang`, when absent the case keeps its
@@ -124,6 +126,7 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
              consent|documents|data (JWT per case)
   auth.py    web session JWT (HS256, stdlib only, key derived from MASTER_KEY); CLI mints a token
   summary.py GET /cases/{id}/summary: the web screens' read model (kn/hi + *_en), no LLM
+  tts.py     POST /tts: Sarvam Bulbul REST (bot's voice settings), WAV chunks joined, LRU cache
   graph.py   CaseState + nodes + build_graph(checkpointer)
   db.py      Postgres pool + PostgresSaver (case memory) + table queries; StartupError
   schema.sql our tables (applied at every start): citizens, profiles, cases, case_events,
@@ -157,7 +160,9 @@ web/     React (Vite) PWA, port 5173 (Phase 5)
   vite.config.js        proxy /api -> AGENT_URL (:8000), /voice -> VOICE_URL (:7860); vitest config
   src/case.jsx          CaseProvider: session, summary, transcript, voice, all actions; routeForTurn()
   src/api.js            /session + /turn + /cases/... client (token in localStorage "ys.session")
-  src/voice.js          Pipecat client (lazy-loaded on first mic tap); "turn" messages, speak()
+  src/voice.js          Pipecat client (lazy-loaded on first mic tap); bot audio -> DOM <audio>;
+                        "turn"/"say" messages, speak(), mic/bot preflight with error reasons
+  src/speech.js         read aloud via POST /tts (cached per text+lang), browser speech last
   src/i18n.js           UI strings kn/hi/en (kn/hi NEED NATIVE-SPEAKER REVIEW); format.js
   src/components.jsx    <Bi> (local text + English underneath), header, nav, mic, voice dock
   src/screens/          Landing, Talk, Schemes, Documents, Prefill, Review, Applications, Profile
@@ -214,7 +219,9 @@ Env vars (all loaded in `agent/config.py`):
 | `VOICE_URL` | Vite proxy (shell env) | voice bot, default http://127.0.0.1:7860 |
 | `VITE_API_URL`, `VITE_VOICE_URL` | web build | override `/api`, `/voice` (e.g. hosted agent) |
 | `SESSION_TTL_HOURS` | agent | web session token lifetime (720 = 30 days) |
-| `SARVAM_API_KEY` | voice | Saaras STT + Bulbul TTS |
+| `SARVAM_API_KEY` | voice, agent | Saaras STT + Bulbul TTS; agent `POST /tts` (read aloud) |
+| `TTS_CACHE_SIZE` | agent | /tts results kept in memory (128) |
+| `E2E_SARVAM` | e2e agent | `1` lets the e2e agent call Sarvam for /tts (off by default) |
 | `VOICE_CASE_ID` | voice | case when the client sends none; default `demo-case-1` (= web app) |
 | `LLM_PROVIDER`, `LLM_MODEL` | agent | `ollama` + `qwen3:8b` (local); `openai` / `anthropic` / `none` |
 | `LLM_API_KEY`, `LLM_BASE_URL` | agent | cloud providers only (`LLM_BASE_URL` = any OpenAI-compatible API) |
@@ -506,8 +513,26 @@ dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
   "yes, my income is 2 lakh"; the same value again is not an edit ("yes, I'm 62" submits).
 - **Typed text language:** Kannada / Devanagari script decides (and switches the UI); Latin
   text uses the UI language. The language switch = the language replies come in.
-- **Read aloud / replay:** through the bot (Bulbul) when voice is on; else the browser's speech
-  synthesis if it has a voice for the language (often none for kn on Windows), else nothing.
+- **Read aloud / replay (fixed in the Phase 5 fix-up):** through the bot (`speak`) when voice is
+  live; else `POST /tts` on the agent (Sarvam Bulbul REST with the bot's settings: bulbul:v3,
+  speaker shubh, pace 1.0, 24 kHz, preprocessing on; language from the text's script; WAV
+  chunks joined; LRU cache by language + text, and an object-URL cache in the browser); the
+  browser's speechSynthesis only if /tts fails. Typed-turn replies are spoken the same way when
+  voice is off ("Speak replies aloud" on Profile, default on, localStorage `ys.speakReplies`).
+- **Bot audio (fixed in the fix-up):** SmallWebRTC calls `onTrackStarted(track)` with NO
+  participant for the bot's track (only local tracks carry `{local: true}`), so the first
+  version's `!participant` guard never played the bot. Now: every non-local audio track plays
+  through `<audio id="ys-bot-audio" autoplay playsinline>` in the DOM; a rejected `play()`
+  (autoplay policy) shows "Tap to hear Saathi". Verified live 2026-10-09 (fake-mic Chrome, no
+  autoplay flag): greeting + reply measured on the element's output.
+- **Bot lines in the transcript:** the bot greets on RTVI `on_client_ready` (not on WebRTC
+  connect: earlier messages can be lost) and sends `{"type": "say", "text", "subtitle"}` with
+  it; the web app shows it as a Saathi bubble. Saathi bubbles are deduplicated (same text within
+  20 s, last 4 messages) so a voice "turn"/"say" and an HTTP reply never show twice.
+- **Voice states:** connecting, listening, you're speaking, thinking, Saathi is speaking, and
+  error with its reason: the web app checks the microphone (getUserMedia) and the bot
+  (`/voice/status`) before connecting, so it can say "microphone blocked", "no microphone",
+  "microphone in use", "voice service not reachable" or "voice couldn't start".
 - **PWA:** hand-written `manifest.webmanifest` + `sw.js` (app shell + fonts cached; `/api`,
   `/voice`, non-GET never cached), PNG icons 192/512/maskable. Pipecat client lazy-loaded
   (main bundle ~308 kB, voice chunk ~417 kB).

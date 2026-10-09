@@ -17,7 +17,7 @@ function Toggle({ k, checked, onChange, disabled }) {
 }
 
 export default function Profile() {
-  const { summary, session, setConsent, loadMyData, deleteMyData, newCase } = useCase();
+  const { summary, session, setConsent, loadMyData, deleteMyData, newCase, speakReplies, setSpeakReplies } = useCase();
   const [data, setData] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
@@ -42,6 +42,8 @@ export default function Profile() {
           onChange={(v) => run(() => setConsent({ profile: v }))} />
         <Toggle k="consent_documents" checked={!!consent.documents} disabled={working}
           onChange={(v) => run(() => setConsent({ documents: v }))} />
+        <Toggle k="speak_replies" checked={!!speakReplies} onChange={(v) => setSpeakReplies(v)} />
+        <p className="muted small"><Bi k="speak_replies_body" /></p>
       </section>
 
       <section className="card" aria-labelledby="saved-h">

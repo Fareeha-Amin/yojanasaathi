@@ -47,6 +47,10 @@ DOC_MAX_BYTES = int(os.getenv("DOC_MAX_BYTES", str(10 * 1024 * 1024)))
 
 # Web app session tokens (Phase 5, agent/auth.py; signing key derived from MASTER_KEY).
 SESSION_TTL_HOURS = float(os.getenv("SESSION_TTL_HOURS", str(24 * 30)))
+# POST /tts (agent/tts.py): Sarvam Bulbul for read-aloud when the voice bot isn't connected.
+# Same key as the voice bot. Unset: /tts answers 503 and the web app falls back.
+SARVAM_API_KEY = _opt("SARVAM_API_KEY")
+TTS_CACHE_SIZE = int(os.getenv("TTS_CACHE_SIZE", "128"))
 
 # Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
 MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives

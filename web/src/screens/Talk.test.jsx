@@ -57,3 +57,17 @@ describe("Talk", () => {
     expect(ctx.navigate).toHaveBeenCalledWith("review");
   });
 });
+
+describe("Talk: voice states and audio", () => {
+  it("an error names its reason", () => {
+    renderScreen(Talk, { summary: fx("interview"), voice: { status: "error", reason: "blocked" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Microphone blocked. Allow it in the address bar");
+  });
+
+  it.each([
+    ["connecting", "Connecting…"], ["listening", "Listening…"], ["thinking", "Thinking…"], ["bot", "Saathi is speaking"],
+  ])("%s is shown", (status, text) => {
+    renderScreen(Talk, { summary: fx("interview"), voice: { status } });
+    expect(screen.getByRole("status")).toHaveTextContent(text);
+  });
+});

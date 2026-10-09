@@ -90,3 +90,23 @@ describe("Landing", () => {
     expect(screen.getByText("Nothing is submitted until you say yes")).toBeInTheDocument();
   });
 });
+
+describe("Tap to hear Saathi", () => {
+  it("appears only when autoplay was blocked, and resumes on tap", async () => {
+    const { TapToHear } = await import("../components.jsx");
+    const off = renderScreen(TapToHear, { audioBlocked: false, resumeAudio: vi.fn() });
+    expect(screen.queryByRole("button", { name: /Tap to hear Saathi/ })).toBeNull();
+    off.unmount();
+    const { ctx } = renderScreen(TapToHear, { audioBlocked: true, resumeAudio: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: /Tap to hear Saathi/ }));
+    expect(ctx.resumeAudio).toHaveBeenCalled();
+  });
+});
+
+describe("Profile: speak replies", () => {
+  it("toggles the setting", async () => {
+    const { ctx } = renderScreen(Profile, { summary: fx("submitted"), speakReplies: true, setSpeakReplies: vi.fn() });
+    await userEvent.click(screen.getByRole("switch", { name: /Speak replies aloud/ }));
+    expect(ctx.setSpeakReplies).toHaveBeenCalledWith(false);
+  });
+});

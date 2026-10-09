@@ -58,6 +58,8 @@ every frame.
   the `/start` body. After every turn the bot sends an RTVI server message
   `{"type": "turn", "case_id", "text", "lang", "reply", "subtitle", "pause", "ui"}`; the web
   app shows the bubbles and opens the review / OTP / schemes screens from it.
+- **`say` server message:** lines the bot says on its own (the greeting, sent on RTVI
+  client-ready) also go to the client as `{"type": "say", "text", "subtitle"}`.
 - **`speak` client message:** `{"t": "speak", "d": {"text": ...}}` makes Bulbul read the text
   (max 600 characters) without calling `/turn`. The web app uses it to speak replies of its
   own turns (typed text, buttons, review edits) and for read-aloud / replay.

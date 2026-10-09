@@ -18,6 +18,8 @@ Web app (Phase 5): every turn goes to the client as an RTVI server message
 (typed text, buttons, review edits) go to /turn over HTTP; it then sends an RTVI client
 message {"t": "speak", "d": {"text": ...}} so Bulbul reads that reply (and "read aloud" /
 "replay") in the same voice. "speak" only speaks: it never calls /turn.
+Things the bot says on its own (the greeting) go to the client as {"type": "say", "text",
+"subtitle"} so the web app shows them as Saathi bubbles too.
 """
 
 import asyncio
@@ -81,8 +83,12 @@ class AgentBridge(FrameProcessor):
 
         await self.push_frame(frame, direction)
 
-    async def say(self, text: str) -> None:
-        """Speak text in the language its script calls for."""
+    async def say(self, text: str, *, show: bool = False, subtitle: str | None = None) -> None:
+        """Speak text in the language its script calls for. show=True also sends it to the
+        client UI (for lines that are not a /turn reply, e.g. the greeting)."""
+        if show:
+            await self.push_frame(RTVIServerMessageFrame(
+                data={"type": "say", "case_id": self._case_id, "text": text, "subtitle": subtitle}))
         language = Language(tts_language(text))
         await self.push_frame(TTSUpdateSettingsFrame(delta=TTSSettings(language=language)))
         await self.push_frame(TTSSpeakFrame(text, append_to_context=False))

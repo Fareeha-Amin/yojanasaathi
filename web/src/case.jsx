@@ -6,18 +6,25 @@
 // Both end in applyTurn(): add the bubbles, open the screen the turn calls for (confirm ->
 // Review, otp / safe_stop -> Pre-fill, submitted -> My applications, eligibility -> Schemes),
 // and reload the summary (the screens' source of truth).
+// Speech: with voice on, the bot speaks (its own replies, plus "speak" for web-side ones);
+// with voice off, typed-turn replies (setting "Speak replies", default on), "Read aloud" and
+// "Replay" use POST /tts (Bulbul, same voice), browser speech only as the last fallback.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as defaultApi from "./api.js";
 import { maskAadhaar } from "./format.js";
 import { LANGS, scriptLang, tr } from "./i18n.js";
+import { browserSpeak, speakViaTts, stopSpeech } from "./speech.js";
 
 export const CaseContext = createContext(null);
 export const useCase = () => useContext(CaseContext);
 
 export const ROUTES = ["", "talk", "schemes", "documents", "prefill", "review", "applications", "profile"];
 const LANG_KEY = "ys.lang";
+const SPEAK_KEY = "ys.speakReplies";
 const THINKING_TIMEOUT_MS = 12000; // speech the STT dropped: stop showing "thinking"
+const DEDUPE_MS = 20000; // the same Saathi line twice within this window is shown once
+const LIVE = new Set(["listening", "user", "thinking", "bot"]);
 
 export function routeFromHash(hash) {
   const r = (hash || "").replace(/^#\/?/, "").split(/[?/]/)[0];
@@ -41,6 +48,14 @@ export function answerText(field, value) {
   return field === "age" ? `I am ${value} years old` : `my annual income is ${value}`;
 }
 
+function storedSpeakReplies() {
+  try {
+    return localStorage.getItem(SPEAK_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 function storedLang() {
   try {
     const l = localStorage.getItem(LANG_KEY);
@@ -61,23 +76,13 @@ function lazyCreateVoice(opts) {
     speak(text) {
       return v ? v.speak(text) : false;
     },
+    async resumeAudio() {
+      if (v) await v.resumeAudio();
+    },
     async disconnect() {
       if (v) await v.disconnect();
     },
   };
-}
-
-function browserSpeak(text, lang) {
-  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
-  if (!synth || !text) return false;
-  const voice = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith(lang));
-  if (!voice) return false;
-  synth.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.voice = voice;
-  u.lang = voice.lang;
-  synth.speak(u);
-  return true;
 }
 
 export function CaseProvider({ children, api = defaultApi, createVoice = lazyCreateVoice }) {
@@ -91,14 +96,18 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
   const [route, setRoute] = useState(() => routeFromHash(window.location.hash));
   const [voice, setVoice] = useState({ status: "off" });
   const [installEvent, setInstallEvent] = useState(null);
+  const [audioBlocked, setAudioBlocked] = useState(null); // () => play(), from a tap
+  const [speakReplies, setSpeakRepliesState] = useState(storedSpeakReplies);
 
   const sessionRef = useRef(null);
   const langRef = useRef(lang);
   const busyRef = useRef(false);
   const voiceRef = useRef(null);
   const levelRef = useRef(0);
+  const voiceStatusRef = useRef("off");
   const idRef = useRef(0);
   const thinkingTimer = useRef(null);
+  const speakRepliesRef = useRef(speakReplies);
 
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash(window.location.hash));
@@ -173,19 +182,49 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
     return msg;
   }, []);
 
+  /** A Saathi line, unless the same line was just shown (a voice "turn"/"say" and an HTTP
+   * reply can carry the same text). */
+  const addAgentMessage = useCallback((m) => {
+    const now = Date.now();
+    setMessages((ms) => {
+      const dup = ms.slice(-4).some((x) => x.from === "agent" && x.text === m.text && now - x.at < DEDUPE_MS);
+      if (dup) return ms;
+      idRef.current += 1;
+      return [...ms, { id: idRef.current, from: "agent", at: now, ...m }];
+    });
+  }, []);
+
   const applyTurn = useCallback((res, { userText, via }) => {
     if (userText) addMessage({ from: "user", text: maskAadhaar(userText), via });
-    if (res.reply) addMessage({ from: "agent", text: res.reply, en: res.subtitle || null, via });
+    if (res.reply) addAgentMessage({ text: res.reply, en: res.subtitle || null, via });
     const r = routeForTurn(res);
     if (r) navigate(r);
     refresh();
-  }, [addMessage, navigate, refresh]);
+  }, [addMessage, addAgentMessage, navigate, refresh]);
 
-  const speak = useCallback((text) => {
+  /** Read text aloud: the bot when voice is live, else /tts, else the browser. */
+  const speak = useCallback(async (text, l = langRef.current) => {
     if (!text) return false;
-    if (voiceRef.current) return voiceRef.current.speak(text);
-    return browserSpeak(text, langRef.current);
-  }, []);
+    if (voiceRef.current && LIVE.has(voiceStatusRef.current)) return voiceRef.current.speak(text);
+    const s = sessionRef.current;
+    if (s && api.tts) {
+      try {
+        const out = await speakViaTts((t, lg) => api.tts(s, t, lg), text, l);
+        if (out.state === "blocked") setAudioBlocked(() => out.retry);
+        return true;
+      } catch {
+        /* /tts not configured or failed: the browser's voice, if it has one */
+      }
+    }
+    return browserSpeak(text, l);
+  }, [api]);
+
+  /** After a web-side turn: the bot speaks it (voice on), or /tts if "Speak replies". */
+  const speakReply = useCallback((text) => {
+    if (!text) return;
+    if (voiceRef.current && LIVE.has(voiceStatusRef.current)) voiceRef.current.speak(text);
+    else if (speakRepliesRef.current) speak(text);
+  }, [speak]);
 
   /** One web-side turn: typed text or a button that stands for words ("ಹೌದು", a title). */
   const send = useCallback(async (text, { shown } = {}) => {
@@ -200,7 +239,7 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
     try {
       const res = await api.turn(s, msg, l);
       applyTurn(res, { userText: shown ?? msg, via: "text" });
-      if (voiceRef.current && res.reply) voiceRef.current.speak(res.reply);
+      speakReply(res.reply);
       return res;
     } catch {
       addMessage({ from: "agent", text: tr(langRef.current, "error_agent"), en: tr("en", "error_agent"), error: true });
@@ -209,7 +248,7 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
       busyRef.current = false;
       setBusy(false);
     }
-  }, [api, applyTurn, addMessage, setLang]);
+  }, [api, applyTurn, addMessage, setLang, speakReply]);
 
   const edit = useCallback(async (field, value, shown) => {
     const s = sessionRef.current;
@@ -219,13 +258,13 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
     try {
       const res = await api.edit(s, field, value);
       applyTurn(res, { userText: shown, via: "text" });
-      if (voiceRef.current && res.reply) voiceRef.current.speak(res.reply);
+      speakReply(res.reply);
       return res;
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [api, applyTurn]);
+  }, [api, applyTurn, speakReply]);
 
   // --- voice ------------------------------------------------------------------------
   const clearThinking = () => {
@@ -233,28 +272,39 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
     thinkingTimer.current = null;
   };
 
+  const setVoiceStatus = useCallback((v) => {
+    voiceStatusRef.current = v.status;
+    setVoice(v);
+  }, []);
+
   const connectVoice = useCallback(async () => {
     const s = sessionRef.current;
     if (voiceRef.current || !s) return;
-    setVoice({ status: "connecting" });
+    stopSpeech();
+    setAudioBlocked(null);
+    setVoiceStatus({ status: "connecting" });
+    let lastReason = null;
+    const mine = () => voiceRef.current === v;
     const v = createVoice({
       caseId: s.case_id,
       on: {
         state: (st) => {
-          if (st === "ready") setVoice({ status: "listening" });
+          if (mine() && st === "ready") setVoiceStatus({ status: "listening" });
         },
         user: (speaking) => {
+          if (!mine()) return;
           clearThinking();
-          setVoice({ status: speaking ? "user" : "thinking" });
+          setVoiceStatus({ status: speaking ? "user" : "thinking" });
           if (!speaking) {
-            thinkingTimer.current = setTimeout(
-              () => setVoice((x) => (x.status === "thinking" ? { status: "listening" } : x)),
-              THINKING_TIMEOUT_MS);
+            thinkingTimer.current = setTimeout(() => {
+              if (voiceStatusRef.current === "thinking") setVoiceStatus({ status: "listening" });
+            }, THINKING_TIMEOUT_MS);
           }
         },
         bot: (speaking) => {
+          if (!mine()) return;
           clearThinking();
-          setVoice((x) => (x.status === "off" ? x : { status: speaking ? "bot" : "listening" }));
+          setVoiceStatus({ status: speaking ? "bot" : "listening" });
         },
         level: (l) => {
           levelRef.current = l;
@@ -264,12 +314,18 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
           if (msg.lang) setLang(msg.lang, { reload: false });
           applyTurn(msg, { userText: msg.text, via: "voice" });
         },
-        error: () => {},
+        say: (msg) => addAgentMessage({ text: msg.text, en: msg.subtitle || null, via: "voice" }),
+        audioBlocked: () => setAudioBlocked(() => () => voiceRef.current?.resumeAudio()),
+        audioPlaying: () => setAudioBlocked(null),
+        error: (reason) => {
+          lastReason = reason || "failed";
+          if (mine()) setVoiceStatus({ status: "error", reason: lastReason });
+        },
         disconnected: () => {
           clearThinking();
-          if (voiceRef.current === v) {
+          if (mine()) {
             voiceRef.current = null;
-            setVoice({ status: "off" });
+            setVoiceStatus(lastReason ? { status: "error", reason: lastReason } : { status: "off" });
           }
         },
       },
@@ -277,17 +333,18 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
     voiceRef.current = v;
     try {
       await v.connect();
-    } catch {
-      voiceRef.current = null;
-      setVoice({ status: "error" });
+    } catch (e) {
+      if (mine()) voiceRef.current = null;
+      setVoiceStatus({ status: "error", reason: e?.reason || "failed" });
     }
-  }, [createVoice, applyTurn, setLang]);
+  }, [createVoice, applyTurn, addAgentMessage, setLang, setVoiceStatus]);
 
   const disconnectVoice = useCallback(async () => {
     const v = voiceRef.current;
     voiceRef.current = null;
     clearThinking();
-    setVoice({ status: "off" });
+    setAudioBlocked(null);
+    setVoiceStatus({ status: "off" });
     if (v) {
       try {
         await v.disconnect();
@@ -295,7 +352,7 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
         /* already gone */
       }
     }
-  }, []);
+  }, [setVoiceStatus]);
 
   useEffect(() => () => {
     voiceRef.current?.disconnect().catch(() => {});
@@ -362,11 +419,29 @@ export function CaseProvider({ children, api = defaultApi, createVoice = lazyCre
       setInstallEvent(null);
     },
     dismissNotice: () => setNotice(null),
-  }), [navigate, refresh, start, setLang, send, edit, speak, connectVoice, disconnectVoice, api, installEvent]);
+    resumeAudio: async () => {
+      const retry = audioBlocked;
+      setAudioBlocked(null);
+      try {
+        await retry?.();
+      } catch {
+        /* still blocked: the button comes back on the next attempt */
+      }
+    },
+    setSpeakReplies: (on) => {
+      speakRepliesRef.current = on;
+      setSpeakRepliesState(on);
+      try {
+        localStorage.setItem(SPEAK_KEY, on ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+    },
+  }), [navigate, refresh, start, setLang, send, edit, speak, connectVoice, disconnectVoice, api, installEvent, audioBlocked]);
 
   const value = {
     lang, session, summary, messages, busy, error, notice, route, voice, levelRef,
-    canInstall: !!installEvent, ...actions,
+    canInstall: !!installEvent, audioBlocked: !!audioBlocked, speakReplies, ...actions,
   };
   return <CaseContext.Provider value={value}>{children}</CaseContext.Provider>;
 }

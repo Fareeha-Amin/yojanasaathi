@@ -27,7 +27,8 @@ def _test_env() -> dict[str, str]:
     url = config.TEST_DATABASE_URL or (db.url_for_tests(config.DATABASE_URL) if config.DATABASE_URL else "")
     return {"DATABASE_URL": url, "MASTER_KEY": TEST_MASTER_KEY,
             "VAULT_DIR": tempfile.mkdtemp(prefix="ys-vault-test-"),
-            "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0"}
+            "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0",
+            "SARVAM_API_KEY": ""}  # no Sarvam calls from tests (also in subprocesses)
 
 
 TEST_ENV = _test_env()
@@ -76,3 +77,6 @@ def subprocess_env() -> dict[str, str]:
 def pytest_addoption(parser):
     parser.addoption("--regen-web-fixtures", action="store_true",
                      help="rewrite web/src/test/fixtures/*.json from GET /summary (tests/web_fixtures.py)")
+
+
+config.SARVAM_API_KEY = None  # tests never call Sarvam; test_tts.py scripts the responses
