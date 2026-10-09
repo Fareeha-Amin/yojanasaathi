@@ -68,6 +68,7 @@ def test_interview_why_i_ask(case_id):
         "source": None, "unsure": False}
     ask = out["asking"]
     assert ask["kind"] == "field" and ask["field"] == "annual_income"
+    assert (ask["label"], ask["label_en"]) == ("ವಾರ್ಷಿಕ ಆದಾಯ", "Annual income")  # the "?" chip
     assert ask["question"] == t("ask_annual_income", "kn")
     assert ask["question_en"] == t("ask_annual_income", "en")
     # pension topic: only the pension scheme that still needs income is named
@@ -116,7 +117,9 @@ def test_question_left_names_the_field(case_id):
     assert s["pension-002"]["status"] == "eligible"
     assert s["pension-001"]["status"] == "unknown"
     assert s["pension-001"]["missing_fields"] == [
-        {"field": "annual_income", "label": "Annual income", "label_en": "Annual income"}]  # display labels
+        {"field": "annual_income", "label": "Annual income", "label_en": "Annual income",  # display labels
+         "question": "What is your family's total income in one year?",
+         "question_en": "What is your family's total income in one year?"}]
 
 
 def test_review_from_the_confirm_pause(case_id):

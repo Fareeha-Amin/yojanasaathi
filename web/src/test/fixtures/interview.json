@@ -19,6 +19,8 @@
   "asking": {
     "kind": "field",
     "field": "annual_income",
+    "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+    "label_en": "Annual income",
     "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
     "question_en": "What is your family's total income in one year?",
     "why": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಪರಿಶೀಲಿಸಲು ನಿಮ್ಮ ವಾರ್ಷಿಕ ಆದಾಯ ಕೇಳುತ್ತಿದ್ದೇನೆ.",
@@ -36,7 +38,9 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "Annual income"
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
         }
       ],
       "clauses": [
@@ -177,7 +181,9 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "Annual income"
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
         }
       ],
       "clauses": [
@@ -243,7 +249,9 @@
         {
           "field": "annual_income",
           "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
-          "label_en": "Annual income"
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
         }
       ],
       "clauses": [

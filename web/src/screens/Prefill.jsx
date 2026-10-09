@@ -1,81 +1,111 @@
-// Pre-fill + OTP. Phase 4 (browser agent) is not built yet, so the step list is a
-// placeholder until the agent sends real progress. What this screen already renders:
-//   pause {type: "otp", ...}        -> "Your turn: enter the OTP" (typed or spoken; resumes /turn)
-//   pause {type: "safe_stop", ...}  -> stop + hand-over card (message / step / screenshot if given)
-//   summary.progress or ui {type: "progress", steps: [{key, label?, label_en?, status, screenshot?}]}
-// `status` is "waiting" | "running" | "done"; `screenshot` is a URL the agent serves.
+// Preparing your application (design page 4), driven by real pause data. Phase 4 (browser
+// agent) is not built yet, so until it sends progress the step list is a placeholder.
+//   pause {type: "otp", masked_phone?}  -> "Your turn: enter the OTP" (typed or said; resumes /turn)
+//   pause {type: "safe_stop", message?, screenshot?}  -> stop + hand-over card
+//   summary.progress or ui {type: "progress", steps: [{key, label, label_en, status, screenshot}]}
+//   status: "waiting" | "running" | "done". The phone is shown exactly as the portal masks it.
 
 import { useState } from "react";
-import { Bi, useT } from "../components.jsx";
+import { Bi, ScreenHeader, useLabel } from "../components.jsx";
 import { useCase } from "../case.jsx";
+import { tr } from "../i18n.js";
+import { Icon } from "../icons.jsx";
 
 const PLAN = ["step_open", "step_login", "step_personal", "step_bank", "step_docs", "step_stop"];
+const OTP_LEN = 6;
 
-function Steps({ steps }) {
+function Steps({ steps, paused }) {
   return (
-    <ol className="agent-steps">
-      {steps.map((s, i) => (
-        <li key={s.key || i} className={`agent-step agent-step-${s.status}`}>
-          <span className="step-dot" aria-hidden="true">{s.status === "done" ? "✓" : i + 1}</span>
-          <div>
-            {s.k ? <Bi k={s.k} block /> : <Bi text={s.label} en={s.label_en} block />}
-            <span className="muted small"><Bi k={`step_${s.status}`} /></span>
+    <section className="card steps-card" aria-labelledby="steps-h">
+      <div className="card-top">
+        <h2 id="steps-h" className="steps-title"><Bi k="on_demo_portal" /></h2>
+        <span className={`pill ${paused ? "pill-amber" : "pill-grey"}`}><Bi k={paused ? "paused" : "not_connected"} /></span>
+      </div>
+      <ol className="agent-steps">
+        {steps.map((s, i) => (
+          <li key={s.key || i} className={`agent-step agent-step-${s.status}`}>
+            <span className="step-dot" aria-hidden="true">{s.status === "done" && <Icon name="check" size={18} strokeWidth={3} />}</span>
+            <span className="step-text">
+              {s.k ? <Bi k={s.k} /> : s.label}
+              <span className="sr-only"> · {s.status}</span>
+            </span>
             {s.screenshot && <img src={s.screenshot} alt={`Screenshot: ${s.label_en || s.label || ""}`} className="shot" />}
-          </div>
-        </li>
-      ))}
-    </ol>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
-function OtpCard({ pause }) {
-  const { send, busy } = useCase();
-  const t = useT();
-  const [code, setCode] = useState("");
+function OtpCard({ pause, code, setCode }) {
+  const { connectVoice, lang } = useCase();
+  const label = useLabel();
   return (
     <section className="card otp-card" aria-labelledby="otp-h">
-      <h2 id="otp-h"><Bi k="otp_title" block /></h2>
-      <p><Bi k="otp_body" block /></p>
-      {pause.masked_phone && <p className="muted">{pause.masked_phone}</p>}
-      <form className="row" onSubmit={(e) => {
-        e.preventDefault();
-        if (code) send(code, { shown: "••••••" });
-        setCode("");
-      }}>
-        <label htmlFor="otp" className="sr-only">{t("otp_label")} · OTP code</label>
+      <div className="otp-head">
+        <span className="otp-icon"><Icon name="shield" /></span>
+        <div>
+          <h2 id="otp-h"><Bi k="otp_title" /></h2>
+          <p className="muted">
+            {pause.masked_phone ? tr(lang, "otp_body_phone", { phone: pause.masked_phone }) : <Bi k="otp_body" />}
+          </p>
+        </div>
+      </div>
+      <label htmlFor="otp" className="sr-only">{label("otp_label")}</label>
+      <div className="otp-boxes">
         <input id="otp" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="otp-input" placeholder="• • • • • •" />
-        <button type="submit" className="btn btn-primary" disabled={busy || code.length < 4}><Bi k="otp_send" /></button>
-      </form>
-      <p className="note-lock"><Bi k="otp_never" /></p>
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} className="otp-input" />
+        {Array.from({ length: OTP_LEN }, (_, i) => (
+          <span key={i} aria-hidden="true" className={`otp-box ${i < code.length ? "filled" : ""} ${i === code.length ? "active" : ""}`}>
+            {code[i] || ""}
+          </span>
+        ))}
+      </div>
+      <button type="button" className="btn btn-gold btn-block" onClick={connectVoice}>
+        <Icon name="mic" /> <Bi k="say_code" />
+      </button>
     </section>
   );
 }
 
 export default function Prefill() {
-  const { summary, navigate } = useCase();
+  const { summary, navigate, send, busy } = useCase();
+  const [code, setCode] = useState("");
   const pause = summary?.pause;
   const progress = summary?.progress?.steps;
   const steps = progress?.length ? progress : PLAN.map((k) => ({ key: k, k, status: "waiting" }));
+  const otp = pause?.type === "otp";
+  const scheme = (summary?.schemes || []).find((s) => s.scheme_id === summary?.selected);
+
+  const sendCode = () => {
+    if (code.length < 4) return;
+    send(code, { shown: "••••••" });
+    setCode("");
+  };
+
   return (
-    <main className="screen">
-      <h1><Bi k="prefill_title" block /></h1>
-      {pause?.type === "otp" && <OtpCard pause={pause} />}
+    <main className="screen prefill">
+      <ScreenHeader k="prefill_title" back="talk" eyebrow={scheme ? scheme.title : null} />
       {pause?.type === "safe_stop" && (
         <section className="card safe-stop" role="alert" aria-labelledby="ss-h">
-          <h2 id="ss-h"><Bi k="safe_stop_title" block /></h2>
-          <p><Bi k="safe_stop_body" block /></p>
+          <h2 id="ss-h"><Icon name="alert" /> <Bi k="safe_stop_title" /></h2>
+          <p><Bi k="safe_stop_body" /></p>
           {pause.message && <p className="muted">{pause.message}</p>}
           {pause.screenshot && <img src={pause.screenshot} alt="Screenshot of the portal where I stopped" className="shot" />}
         </section>
       )}
-      {!progress?.length && (
-        <p className="placeholder"><Bi k="prefill_placeholder" block /></p>
-      )}
-      <Steps steps={steps} />
-      <button type="button" className="btn btn-secondary" onClick={() => navigate("talk")}>
-        <Bi k="finish_later" />
-      </button>
+      <Steps steps={steps} paused={otp || pause?.type === "safe_stop"} />
+      {!progress?.length && !otp && <p className="placeholder"><Bi k="prefill_placeholder" /></p>}
+      {otp && <OtpCard pause={pause} code={code} setCode={setCode} />}
+      <p className="note-lock"><Icon name="lock" size={20} /> <Bi k="otp_never" /></p>
+      <div className="sticky-cta sticky-cta-two">
+        <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate("talk")}>
+          <Bi k="finish_later" />
+        </button>
+        <button type="button" className="btn btn-primary btn-lg" disabled={!otp || busy || code.length < 4} onClick={sendCode}>
+          <Bi k="continue" dual />
+        </button>
+      </div>
     </main>
   );
 }

@@ -53,7 +53,8 @@ def _schemes(state: dict[str, Any], lang: str) -> list[dict[str, Any]]:
         scheme = rules.load_schemes()[a["scheme_id"]]
         a["category"] = t(f"topic_{scheme['topic']}", lang).capitalize()  # Pension / ಪಿಂಚಣಿ
         a["category_en"] = scheme.get("category") or scheme["topic"].capitalize()
-        a["missing_fields"] = [{"field": f, "label": label(f, lang), "label_en": label(f, "en")}
+        a["missing_fields"] = [{"field": f, "label": label(f, lang), "label_en": label(f, "en"),
+                                "question": t(f"ask_{f}", lang), "question_en": t(f"ask_{f}", "en")}
                                for f in a["missing_fields"]]
         for c in a["clauses"]:  # WHY box: rule vs the citizen's value
             c["label"], c["label_en"] = label(c["field"], lang), label(c["field"], "en")
@@ -77,8 +78,8 @@ def _asking(state: dict[str, Any], lang: str) -> dict[str, Any] | None:
     if asking in FIELD_ORDER:
         q, q_en = _two(lang, lambda l: t(f"ask_{asking}", l))
         why, why_en = _two(lang, lambda l: why_asking(state, l))
-        return {"kind": "field", "field": asking, "question": q, "question_en": q_en,
-                "why": why, "why_en": why_en}
+        return {"kind": "field", "field": asking, "label": label(asking, lang), "label_en": label(asking, "en"),
+                "question": q, "question_en": q_en, "why": why, "why_en": why_en}
     if asking in ("choose", "proceed", "others"):
         q, q_en = _two(lang, lambda l: _reask(state, l))
         return {"kind": asking, "question": q, "question_en": q_en, "why": None, "why_en": None}
