@@ -1,0 +1,409 @@
+{
+  "case_id": "web-interview",
+  "lang": "kn",
+  "case_lang": "kn",
+  "status": "collecting",
+  "selected": null,
+  "profile": [
+    {
+      "field": "age",
+      "label": "ವಯಸ್ಸು",
+      "label_en": "Age",
+      "value": 62,
+      "text": "62",
+      "text_en": "62",
+      "source": "digits",
+      "unsure": false
+    }
+  ],
+  "asking": {
+    "kind": "field",
+    "field": "annual_income",
+    "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+    "label_en": "Annual income",
+    "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+    "question_en": "What is your family's total income in one year?",
+    "why": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಪರಿಶೀಲಿಸಲು ನಿಮ್ಮ ವಾರ್ಷಿಕ ಆದಾಯ ಕೇಳುತ್ತಿದ್ದೇನೆ.",
+    "why_en": "I ask your annual income to check: Senior Citizen Pension Scheme."
+  },
+  "schemes": [
+    {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "status": "unknown",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು"
+      ],
+      "missing_fields": [
+        {
+          "field": "annual_income",
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
+        }
+      ],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        },
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 300000,
+          "value": null,
+          "result": null,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "age_proof",
+          "status": "needed",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+          "label_en": "Age Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Senior Citizen Pension Scheme",
+      "reasons_en": [
+        "age 62, at least 60 needed"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "pension-002",
+      "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "age_proof",
+          "status": "needed",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Age Proof, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Social Security Pension Assistance",
+      "reasons_en": [
+        "age 62, at least 60 needed"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "health-001",
+      "title": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+      "status": "unknown",
+      "reasons": [],
+      "missing_fields": [
+        {
+          "field": "annual_income",
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
+        }
+      ],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 500000,
+          "value": null,
+          "result": null,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "medical_documents",
+          "status": "needed",
+          "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Medical Documents, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "National Health Support Scheme",
+      "reasons_en": [],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    },
+    {
+      "scheme_id": "health-002",
+      "title": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+      "status": "unknown",
+      "reasons": [],
+      "missing_fields": [
+        {
+          "field": "annual_income",
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income",
+          "question": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+          "question_en": "What is your family's total income in one year?"
+        }
+      ],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 400000,
+          "value": null,
+          "result": null,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "family_details",
+          "status": "needed",
+          "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+          "label_en": "Family Details"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Family Healthcare Assistance",
+      "reasons_en": [],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    }
+  ],
+  "checklist": {
+    "scheme_ids": [
+      "pension-002"
+    ],
+    "title": null,
+    "title_en": null,
+    "items": [
+      {
+        "doc": "identity_proof",
+        "status": "needed",
+        "label": "ಗುರುತಿನ ಪುರಾವೆ",
+        "label_en": "Identity Proof",
+        "document": null,
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      },
+      {
+        "doc": "residence_proof",
+        "status": "needed",
+        "label": "ನಿವಾಸ ಪುರಾವೆ",
+        "label_en": "Residence Proof",
+        "document": null,
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      },
+      {
+        "doc": "income_certificate",
+        "status": "needed",
+        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "label_en": "Income Certificate",
+        "document": null,
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      },
+      {
+        "doc": "bank_account_details",
+        "status": "needed",
+        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "label_en": "Bank Account Details",
+        "document": null,
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      },
+      {
+        "doc": "age_proof",
+        "status": "needed",
+        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "label_en": "Age Proof, where applicable",
+        "document": null,
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      }
+    ],
+    "others": [],
+    "ready": 0,
+    "total": 5,
+    "missing": 5
+  },
+  "documents": [],
+  "consent": {
+    "profile": false,
+    "documents": false,
+    "at": null
+  },
+  "pause": null,
+  "review": null,
+  "progress": null,
+  "applications": [],
+  "next": [],
+  "last_reply": {
+    "text": "ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?",
+    "en": "What is your family's total income in one year?"
+  },
+  "limits": {
+    "doc_retention_hours": 24.0,
+    "doc_max_bytes": 10485760
+  }
+}

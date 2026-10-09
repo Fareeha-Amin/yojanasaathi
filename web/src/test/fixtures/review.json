@@ -1,0 +1,668 @@
+{
+  "case_id": "web-review",
+  "lang": "kn",
+  "case_lang": "kn",
+  "status": "awaiting_confirmation",
+  "selected": "pension-001",
+  "profile": [
+    {
+      "field": "age",
+      "label": "ವಯಸ್ಸು",
+      "label_en": "Age",
+      "value": 62,
+      "text": "62",
+      "text_en": "62",
+      "source": "digits",
+      "unsure": false
+    },
+    {
+      "field": "annual_income",
+      "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+      "label_en": "Annual income",
+      "value": 120000,
+      "text": "₹1,20,000",
+      "text_en": "₹1,20,000",
+      "source": "number_words",
+      "unsure": false
+    }
+  ],
+  "asking": null,
+  "schemes": [
+    {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು",
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹3,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        },
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 300000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "age_proof",
+          "status": "needed",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+          "label_en": "Age Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Senior Citizen Pension Scheme",
+      "reasons_en": [
+        "age 62, at least 60 needed",
+        "annual income ₹1,20,000, limit ₹3,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "pension-002",
+      "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "age_proof",
+          "status": "needed",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Age Proof, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Social Security Pension Assistance",
+      "reasons_en": [
+        "age 62, at least 60 needed"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "health-001",
+      "title": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹5,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 500000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "medical_documents",
+          "status": "needed",
+          "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Medical Documents, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "National Health Support Scheme",
+      "reasons_en": [
+        "annual income ₹1,20,000, limit ₹5,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    },
+    {
+      "scheme_id": "health-002",
+      "title": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹4,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 400000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "family_details",
+          "status": "needed",
+          "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+          "label_en": "Family Details"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Family Healthcare Assistance",
+      "reasons_en": [
+        "annual income ₹1,20,000, limit ₹4,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    }
+  ],
+  "checklist": {
+    "scheme_ids": [
+      "pension-001"
+    ],
+    "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+    "title_en": "Senior Citizen Pension Scheme",
+    "items": [
+      {
+        "doc": "identity_proof",
+        "status": "needed",
+        "label": "ಗುರುತಿನ ಪುರಾವೆ",
+        "label_en": "Identity Proof",
+        "document": null,
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "age_proof",
+        "status": "needed",
+        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+        "label_en": "Age Proof",
+        "document": null,
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "residence_proof",
+        "status": "needed",
+        "label": "ನಿವಾಸ ಪುರಾವೆ",
+        "label_en": "Residence Proof",
+        "document": null,
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "income_certificate",
+        "status": "needed",
+        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "label_en": "Income Certificate",
+        "document": null,
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "bank_account_details",
+        "status": "needed",
+        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "label_en": "Bank Account Details",
+        "document": null,
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      }
+    ],
+    "others": [
+      {
+        "doc": "medical_documents",
+        "status": "needed",
+        "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "label_en": "Medical Documents, where applicable",
+        "document": null,
+        "schemes": [
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "National Health Support Scheme"
+        ]
+      },
+      {
+        "doc": "family_details",
+        "status": "needed",
+        "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+        "label_en": "Family Details",
+        "document": null,
+        "schemes": [
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Family Healthcare Assistance"
+        ]
+      }
+    ],
+    "ready": 0,
+    "total": 5,
+    "missing": 5
+  },
+  "documents": [],
+  "consent": {
+    "profile": false,
+    "documents": false,
+    "at": null
+  },
+  "pause": {
+    "type": "confirm",
+    "preview": {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "fields": {
+        "age": 62,
+        "annual_income": 120000
+      },
+      "needs_readback": [],
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "needed",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ"
+        },
+        {
+          "doc": "age_proof",
+          "status": "needed",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "needed",
+          "label": "ನಿವಾಸ ಪುರಾವೆ"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "needed",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "needed",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು"
+        }
+      ],
+      "documents_missing": 5,
+      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+      "effective_date": "2026-10-09"
+    }
+  },
+  "review": {
+    "scheme_id": "pension-001",
+    "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+    "title_en": "Senior Citizen Pension Scheme",
+    "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+    "readback_en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first.",
+    "fields": [
+      {
+        "field": "age",
+        "label": "ವಯಸ್ಸು",
+        "label_en": "Age",
+        "value": 62,
+        "text": "62",
+        "text_en": "62",
+        "unsure": false,
+        "editable": true
+      },
+      {
+        "field": "annual_income",
+        "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+        "label_en": "Annual income",
+        "value": 120000,
+        "text": "₹1,20,000",
+        "text_en": "₹1,20,000",
+        "unsure": false,
+        "editable": true
+      }
+    ],
+    "form_fields": [
+      {
+        "name": "full_name",
+        "type": "text",
+        "required": true,
+        "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+        "label_en": "Senior Citizen Applicant Full Name",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "dob",
+        "type": "date",
+        "required": true,
+        "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+        "label_en": "Date of Birth (Must be 60 years or older)",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "gender",
+        "type": "select",
+        "required": true,
+        "label": "ಲಿಂಗ",
+        "label_en": "Gender",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "marital_status",
+        "type": "select",
+        "required": true,
+        "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+        "label_en": "Marital Status",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "annual_income",
+        "type": "number",
+        "required": true,
+        "label": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
+        "label_en": "Current Annual Income from All Sources (INR)",
+        "value": 120000,
+        "text": "₹1,20,000",
+        "from_answers": true
+      },
+      {
+        "name": "disbursement_mode",
+        "type": "radio",
+        "required": true,
+        "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+        "label_en": "Preferred Pension Disbursement Channel",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "bank_account_number",
+        "type": "text",
+        "required": true,
+        "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+        "label_en": "Pension Bank / Post Office Account Number",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "bank_ifsc",
+        "type": "text",
+        "required": true,
+        "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+        "label_en": "Branch IFSC / Postal Code",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "nominee_name",
+        "type": "text",
+        "required": true,
+        "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+        "label_en": "Nominee / Guardian Full Name",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "address",
+        "type": "textarea",
+        "required": true,
+        "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+        "label_en": "Permanent Address",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      },
+      {
+        "name": "declaration_consent",
+        "type": "checkbox",
+        "required": true,
+        "label": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+        "label_en": "I solemnly affirm that I am not drawing any other central/state government pension.",
+        "value": null,
+        "text": null,
+        "from_answers": false
+      }
+    ],
+    "screenshots": [],
+    "documents": [
+      {
+        "doc": "identity_proof",
+        "status": "needed",
+        "label": "ಗುರುತಿನ ಪುರಾವೆ",
+        "label_en": "Identity Proof",
+        "document": null
+      },
+      {
+        "doc": "age_proof",
+        "status": "needed",
+        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+        "label_en": "Age Proof",
+        "document": null
+      },
+      {
+        "doc": "residence_proof",
+        "status": "needed",
+        "label": "ನಿವಾಸ ಪುರಾವೆ",
+        "label_en": "Residence Proof",
+        "document": null
+      },
+      {
+        "doc": "income_certificate",
+        "status": "needed",
+        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "label_en": "Income Certificate",
+        "document": null
+      },
+      {
+        "doc": "bank_account_details",
+        "status": "needed",
+        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "label_en": "Bank Account Details",
+        "document": null
+      }
+    ],
+    "documents_missing": 5,
+    "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+    "effective_date": "2026-10-09",
+    "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+    "effective_date_text_en": "9 October 2026"
+  },
+  "progress": null,
+  "applications": [],
+  "next": [
+    {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "title_en": "Senior Citizen Pension Scheme"
+    },
+    {
+      "scheme_id": "pension-002",
+      "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+      "title_en": "Social Security Pension Assistance"
+    },
+    {
+      "scheme_id": "health-001",
+      "title": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+      "title_en": "National Health Support Scheme"
+    },
+    {
+      "scheme_id": "health-002",
+      "title": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+      "title_en": "Family Healthcare Assistance"
+    }
+  ],
+  "last_reply": {
+    "text": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+    "en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first."
+  },
+  "limits": {
+    "doc_retention_hours": 24.0,
+    "doc_max_bytes": 10485760
+  }
+}

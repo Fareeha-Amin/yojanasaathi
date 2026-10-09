@@ -1,0 +1,20 @@
+{
+  "name": "YojanaSaathi · ಯೋಜನಾಸಾಥಿ",
+  "short_name": "YojanaSaathi",
+  "description": "Voice-first help from “Am I eligible?” to “Application submitted”, in Kannada, Hindi and English. Demo project, not a government website.",
+  "lang": "kn",
+  "dir": "ltr",
+  "start_url": "/#/talk",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F2EC",
+  "theme_color": "#0B5D4B",
+  "categories": ["government", "utilities"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
