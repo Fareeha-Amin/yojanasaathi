@@ -105,3 +105,62 @@ CREATE OR REPLACE TRIGGER audit_log_no_change
 CREATE OR REPLACE TRIGGER audit_log_no_truncate
     BEFORE TRUNCATE ON audit_log
     FOR EACH STATEMENT EXECUTE FUNCTION audit_log_append_only();
+
+-- Phase 6: status tracking. The portal's read-only delegation token (sealed with MASTER_KEY,
+-- bound to the case; deleted when every application is final, or with the case) + the
+-- poller's schedule. paused_reason = 'expired' stops polling until the citizen renews.
+CREATE TABLE IF NOT EXISTS delegations (
+    case_id         text PRIMARY KEY REFERENCES cases(case_id) ON DELETE CASCADE,
+    sealed          text NOT NULL,
+    expires_at      text,
+    scopes          text[] NOT NULL DEFAULT '{}',
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    last_checked_at timestamptz,
+    next_check_at   timestamptz NOT NULL DEFAULT now(),
+    fail_count      integer NOT NULL DEFAULT 0,
+    paused_reason   text
+);
+
+-- One row per submitted application: the last status we saw, the portal's own last-updated
+-- stamp, whether it is final (APPROVED / REJECTED), the portal's lifecycle events (for the
+-- timeline) and, for CORRECTION_REQUIRED / a rejected document, what the portal asked for.
+CREATE TABLE IF NOT EXISTS tracked_apps (
+    case_id           text NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+    scheme_id         text NOT NULL,
+    app_id            text NOT NULL,
+    status            text NOT NULL DEFAULT 'SUBMITTED',
+    portal_updated_at text,
+    final             boolean NOT NULL DEFAULT false,
+    last_checked_at   timestamptz,
+    correction        jsonb,  -- {flagged_at, docs: [{type, doc, status, remark}], reason}
+    history           jsonb NOT NULL DEFAULT '[]'::jsonb,
+    PRIMARY KEY (case_id, scheme_id)
+);
+
+-- Updates for the citizen: spoken once at the start of the next turn (delivered_at), and
+-- pushed once (pushed_at). dedupe_key makes the same portal change one row, however often
+-- it is seen. `data` = status codes, document names and the portal's remark, never tokens.
+CREATE TABLE IF NOT EXISTS case_updates (
+    id           bigserial PRIMARY KEY,
+    case_id      text NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+    scheme_id    text,
+    app_id       text,
+    kind         text NOT NULL,  -- status_changed | document_problem | delegation_expired
+    data         jsonb NOT NULL DEFAULT '{}'::jsonb,
+    dedupe_key   text NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    delivered_at timestamptz,
+    pushed_at    timestamptz,
+    UNIQUE (case_id, dedupe_key)
+);
+CREATE INDEX IF NOT EXISTS case_updates_unread ON case_updates (case_id) WHERE delivered_at IS NULL;
+
+-- Web push subscriptions (browser side comes later). The keys are sealed.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id         bigserial PRIMARY KEY,
+    case_id    text NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+    endpoint   text NOT NULL,
+    sealed     text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (case_id, endpoint)
+);

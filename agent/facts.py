@@ -93,6 +93,20 @@ PROCEED = _phrases(
 STATUS = _phrases(
     "status", "application status", "my application", "ಸ್ಥಿತಿ", "ಅರ್ಜಿಯ ಸ್ಥಿತಿ",
     "स्थिति", "स्टेटस", "आवेदन की स्थिति",
+    # Phase 6: "what happened to my application?"
+    "what happened to my application", "how is my application", "where is my application",
+    "ಅರ್ಜಿ ಏನಾಯ್ತು", "ಅರ್ಜಿ ಏನಾಯಿತು", "ಅರ್ಜಿ ಏನಾಯ್ತ", "ಅರ್ಜಿ ಎಲ್ಲಿದೆ", "ಅರ್ಜಿ ಯಾವ ಹಂತ",
+    "आवेदन का क्या हुआ", "आवेदन क्या हुआ", "आवेदन कहाँ", "आवेदन कहां", "mera avedan ka kya hua",
+)
+# Phase 6: renew the read-only portal access; resubmit after a correction
+RENEW = _phrases("renew", "reconnect", "ನವೀಕರಿಸಿ", "ನವೀಕರಣ", "ನವೀಕರಿಸು", "नवीनीकरण", "नवीकरण", "रिन्यू",
+                 "naveekaran")
+CORRECT = _phrases(
+    "resubmit", "re-submit", "submit again", "send it again", "corrected", "i uploaded", "uploaded it",
+    "i have uploaded", "correction",
+    "ಮರುಸಲ್ಲಿಸಿ", "ಮರುಸಲ್ಲಿಕೆ", "ಮತ್ತೆ ಸಲ್ಲಿಸಿ", "ಮತ್ತೊಮ್ಮೆ ಸಲ್ಲಿಸಿ", "ತಿದ್ದುಪಡಿ", "ತಿದ್ದಿದ",
+    "ಅಪ್ಲೋಡ್ ಮಾಡಿದ",
+    "दोबारा जमा", "फिर से जमा", "पुनः जमा", "सुधार", "सुधरा", "अपलोड कर दिया", "अपलोड किया",
 )
 
 # Choosing among the offered schemes: position in the list, or "next".
@@ -166,6 +180,8 @@ class Facts:
     next_one: bool = False  # "the next one", "another scheme"
     proceed: bool | None = None  # True: wants to apply / yes to our yes-no question; False: no
     status: bool = False
+    renew: bool = False  # "renew": new portal access for status tracking
+    correct: bool = False  # "resubmit" / "I uploaded the corrected document"
     docs_have: list[str] = field(default_factory=list)
     docs_missing: list[str] = field(default_factory=list)
     answered: bool = False  # the pending question was answered deterministically
@@ -290,6 +306,8 @@ def extract(text: str, asking: str | None = None) -> Facts:
 
     facts.topics = [t for t, phrases in TOPICS.items() if _has(tokens, phrases)]
     facts.status = _has(tokens, STATUS)
+    facts.renew = _has(tokens, RENEW)
+    facts.correct = _has(tokens, CORRECT)
     if _has(tokens, PROCEED):
         facts.proceed = True
     _choice(tokens, facts)

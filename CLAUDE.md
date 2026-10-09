@@ -150,6 +150,11 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
              api.py (portal API + warm-up), drift.py, fields.py (form parsers, masking), edge.py
              (OTP + sensitive answers kept out of the graph), nodes.py (graph nodes), progress.py,
              smoke.py (python -m agent.portal.smoke)
+  tracking/  Phase 6 status tracking + follow-up (see "Implementation decisions (Phase 6)"): api.py (portal
+             agent API client), store.py (Postgres: delegation, tracked apps, updates, push subs),
+             poller.py (APScheduler job + check_case), followup.py (compose(): the update text),
+             push.py (pywebpush), turn.py (what /turn does around the graph), nodes.py (renew + correction)
+  upload_docs.py  CLI: store a scheme's documents for a case; --only=<doc> uploads just the corrected one
   cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl); [case] [lang]
 rules/   one JSON file per mock-portal scheme (portal IDs): rule, required_fields, documents
          (portal labels kn/hi/en), application_fields, titles, topic, priority, aliases,
@@ -246,6 +251,10 @@ Env vars (all loaded in `agent/config.py`):
 | `PORTAL_FIRST_TIMEOUT`, `PORTAL_TIMEOUT` | agent | portal API timeouts, 90 s for the first call (Render sleeps), 20 s |
 | `BROWSER_HEADLESS`, `BROWSER_SLOWMO_MS` | agent | demo: `false` and `250` so the form is seen being filled |
 | `BROWSER_IDLE_SECONDS`, `OTP_TTL_SECONDS` | agent | a case's browser session closes when idle (900); code lifetime (600) |
+| `STATUS_POLL_SECONDS` | agent | poll each citizen's open applications this often (300; **30 for the demo**) |
+| `STATUS_POLL` | agent | `0` = no background polling (tests; the status question still checks) |
+| `TRACK_TIMEOUT`, `TRACK_NOW_TIMEOUT`, `TRACK_BACKOFF_MAX` | agent | portal call timeouts (15 s poller, 8 s "check now"); back-off cap (900 s) |
+| `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` | agent | web push; `python -m agent.tracking.push keys` prints a pair; unset = push off |
 | `TWILIO_*` | Phase 7 | |
 
 ## Team decisions (2026-10-08)
@@ -626,6 +635,90 @@ dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
   on the Phase 5 branch (UI is Kannada, tests expect English); the Playwright e2e text path still assumes the
   old stub flow. Both are web-side work, on hold.
 
+## Implementation decisions (Phase 6, status tracking and follow-up)
+- **Portal facts used** (portal repo, read 2026-10-10; live check: a bogus delegation token gets `403
+  DELEGATION_TOKEN_INVALID`): `GET {MOCK_PORTAL_API}/agent/v1/citizen/applications/` (list: status, `updated_at`,
+  `submitted_at`), `.../{no}/documents/` (`document_type` = the seed's English document name, `verification_status`,
+  `remarks`), `.../{no}/history/` (`lifecycle_events` = the portal's notifications, newest first), `/notifications/`;
+  headers X-Agent-API-Key + X-Citizen-Delegation-Token. 403 INVALID = ended, 429 THROTTLED (Retry-After honoured if
+  sent). Replace a document: citizen API `POST /applications/{no}/documents/` (multipart `document_type` + `file`,
+  upsert; only DRAFT / CORRECTION_REQUIRED / SUBMITTED); resubmit: `POST /applications/{no}/submit/` (only DRAFT /
+  CORRECTION_REQUIRED; answer `{message, application}`). The portal has **no correction screen** (no data-testid), so
+  the correction uses these citizen API calls with the OTP session's token, not Playwright clicks (see below).
+- **Delegation token** now lives in Postgres (`delegations`, sealed with `agent/sealed.py`, bound to the case), not
+  in the case memory (state keeps only `delegation: {expires_at, scopes}`). Deleted when every application is final
+  (APPROVED / REJECTED), on "delete my data" and when the case is deleted (FK cascade); audit `delegation_deleted`.
+  Cases submitted before Phase 6 are picked up at their next turn (sealed token moved over, apps registered).
+- **Poller** (`agent/tracking/poller.py`): APScheduler `BackgroundScheduler` started in FastAPI's lifespan (own thread:
+  `/turn` never waits for it), ticks every `STATUS_POLL_SECONDS / 6` (max 10 s), polls the cases whose `next_check_at`
+  is due: ONE list call per citizen, plus documents/history only when something changed (status differs, or the
+  portal's `updated_at` moved). Success: `last_checked_at`, next due. Timeout / 5xx / 401: `next_check_at` backs off
+  2x the interval per consecutive failure (cap `TRACK_BACKOFF_MAX`); 429: the same, at least Retry-After. A failed
+  detail fetch for CORRECTION_REQUIRED / REJECTED aborts the check (retried, so the remark is never lost). All state
+  is in Postgres (`delegations`, `tracked_apps`, `case_updates`): a restart loses nothing.
+- **A change** is applied in one transaction (`TrackStore.apply_change`): `tracked_apps` row, `case_updates` row,
+  `case_events` `status_changed`, audit `status_changed` ({from, to, app_id}); `case_updates.dedupe_key`
+  (`status:<app>:<old>><new>:<portal updated_at>`) is unique per case, so the same change is one update however often
+  it is seen (two checks at once, retries). Documents flagged while the status stays the same -> `document_problem`.
+- **Follow-up** = `agent/tracking/followup.py compose(update, lang) -> (text, text_en)`: ONE function, reviewed
+  templates (`upd_*`, `next_*`, kn/hi/en in agent/i18n; **kn/hi need native-speaker review**), 1-2 sentences: what
+  changed + the one next action; the portal's remark and the flagged document are quoted (never translated or
+  rewritten); APPROVED congratulates; REJECTED gives the reason. Phase 7 (phone callback) calls the same function.
+  No LLM, no graph node: the poller, `/turn`, the push and `status_line()` all call it.
+- **Notify:** unread `case_updates` are spoken ONCE at the start of the citizen's next turn (voice, web, CLI: all
+  `/turn`): `agent/tracking/turn.py before()/after()` under the case lock, marked delivered only after the turn
+  succeeded; `/turn`'s contract is unchanged (the text is in front of `reply`, English in `subtitle`). Before the
+  graph runs, the poller's latest statuses are merged into `applications[*].status` (so replies and the summary
+  agree). `GET /cases/{id}/summary`: `applications[*]` have `status` (polled), `checked_at`, `portal_updated_at`,
+  `what_to_do` (next step; `renew: true` when access ended), `correction` (portal remark, flagged documents, `ready`
+  = corrected documents uploaded), `timeline` (our events + the portal's `portal_event`s from history), `final`; top
+  level `updates` (unread, composed) and `tracking` {active, paused, last_checked_at, access_ends}.
+- **Web push (backend only):** pywebpush + VAPID (`VAPID_*` in .env). `GET /cases/{id}/push` (public key, count),
+  `POST /cases/{id}/push/subscribe {endpoint, keys:{p256dh, auth}}`, `POST .../unsubscribe {endpoint}`: all need the
+  case token. Endpoint must be a public https URL (the server POSTs to it: no localhost / private IPs); keys are
+  sealed in Postgres. One push per update (`pushed_at`), payload = {title, body, body_en, lang, tag, kind,
+  scheme_id, status}; 404/410 deletes the subscription; a push failure never fails polling. The push does not count
+  as heard: the next turn still speaks it. The browser side (service worker, subscribing) comes later.
+- **Status question** ("what's my application status?", "ನನ್ನ ಅರ್ಜಿ ಏನಾಯ್ತು?", "मेरे आवेदन का क्या हुआ?"): the
+  `status` node checks the portal now (`check_case(now=True)`, `TRACK_NOW_TIMEOUT`), speaks status + last-updated
+  date + next step per application (`status_line`), and what it found counts as told. Portal unreachable: the last
+  known status and a word saying so.
+- **Expiry:** 403 DELEGATION_TOKEN_INVALID -> `delegations.paused_reason = 'expired'` (no more calls), ONE
+  `delegation_expired` update (spoken at the next turn + pushed; audit `delegation_expired`) saying "say renew".
+  "renew" (kn `ನವೀಕರಿಸಿ`, hi `नवीनीकरण`) -> graph `renew` (the Phase 4 login with the sealed registered mobile: portal
+  OTP SMS) -> `otp` (state `flow = "renew"`) -> `renew_delegate` (new read-only delegation, polling resumes, audit
+  `delegation_renewed`). Needs the mobile in the case memory; without it the agent says so.
+- **Correction (CORRECTION_REQUIRED):** the update names the document + remark and says "upload the corrected
+  document in the app, then say resubmit". Readiness = every flagged document uploaded AFTER the portal asked
+  (vault `created_at`); a corrected upload after a submission gets the retention expiry like the others.
+  Trigger: "resubmit" (kn `ಮರುಸಲ್ಲಿಸಿ`, hi `दोबारा जमा`), naming the scheme, or a bare yes when the documents are ready and
+  nothing else is being asked. Flow: `correct` (documents there? else "upload first", no browser) -> login + OTP
+  (`flow = "correct"`) -> `correct_check` (the portal still says CORRECTION_REQUIRED; read-back) ->
+  `correct_confirm` (**`interrupt({"type": "confirm", "kind": "correction", ...})`**, explicit yes only,
+  default-deny) -> `correct_submit` (replace each document, resubmit, once). Nothing is replaced or resubmitted
+  before the yes; the portal's status and ours must both say CORRECTION_REQUIRED at that moment, else
+  `resubmit_blocked` (a repeated yes / another channel can never resubmit twice); session lost before the yes ->
+  new login, new read-back, new yes; any portal surprise -> `safe_stop`. Audit: `correction_confirm_requested`,
+  `correction_approved|declined`, `document_read`, `documents_replaced`, `correction_resubmitted`. **Deviation from
+  rule 5 as worded:** no Playwright clicks (the portal has no screen for it): the portal's own citizen API with the
+  OTP session's token (`PortalAPI.replace_document / resubmit`, driver methods of the same names), same gate and
+  audit. Ask Ayush if a correction screen with data-testids is wanted. Idempotency of the first submission is
+  unchanged (the per-scheme rules above); a correction is not a new application.
+- **Privacy:** no token, portal remark or full number in logs (scheme IDs / status codes only), audit rows hold
+  codes and document names (never remarks), the case memory holds no token; the remark lives only in
+  `case_updates.data` / `tracked_apps.correction` (deleted with the case) and is Aadhaar-masked. `agent.privacy_check`
+  scans the new tables too. `GET /cases/{id}/data` has `tracking` (access end, last checked, statuses; no token).
+- **Tests:** `tests/fake_agent_api.py` (the portal's agent API over `httpx.MockTransport`, reading the FakeDriver's
+  portal: status changes, history, flagged documents, 403 expiry, 429 + Retry-After, timeouts, 5xx) with the real
+  client and poller; `tests/test_tracking.py` (detection, once-only telling, 3 languages, status question, back-off,
+  expiry + renewal, the whole correction flow incl. declining / stale / session lost / safe-stop, summary, restart
+  survival, no duplicates, push payload, privacy); `test_portal_browser.py` checks replace + resubmit against the
+  local fake portal's real multipart handling.
+- **Not done / named:** the web app (on hold) does not show `updates` / `correction` / push yet; the portal's
+  `/notifications/` endpoint is covered by the client but nothing reads it (history carries the same events);
+  without `updated_at` from the portal an identical repeated transition would not be re-announced; the bare-yes
+  trigger for a correction is ignored while a yes/no or form question is pending (say "resubmit" then).
+
 ## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); Phase 4 now built, kept for reference
 - **OTP through /turn (Phase 4):** the code typed or said resumes the graph as text, so it
   lands in the checkpoint's `msg`. Clear it (or keep only "otp given") before the next
@@ -676,7 +769,7 @@ built + commands + a hand acceptance test, update this file, and stop.
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (DONE 2026-10-09, voice acceptance verified)
 4. Browser agent + human gate: Playwright against the mock portal, OTP, safe-stop (DONE 2026-10-09 on branch `phase-4-portal`, live acceptance VERIFIED by Fareeha, see "Implementation decisions (Phase 4)")
 5. Web app: the 6 screens + landing page + privacy, voice via Pipecat JS client, JWT, summary + edits (BUILT 2026-10-09, before Phase 4; hand acceptance pending)
-6. Follow-up: APScheduler polling, follow-up agent, web push, reminders
+6. Follow-up: APScheduler polling, follow-up agent, web push (backend), renewal, corrections (BUILT 2026-10-10 on branch `phase-6-track`; hand acceptance pending, see "Implementation decisions (Phase 6)")
 7. Phone line: Twilio -> Pipecat -> `/turn`; caller number maps to case
 8. Evaluation & demo hardening: eval script, seed/reset, README, golden-path checklist
 

@@ -44,6 +44,8 @@ from agent.portal import fields as form_fields
 from agent.portal import get_driver, PortalError
 from agent.portal import nodes as portal
 from agent.replies import day, facts_phrase, join, label, readback, reason, reasons, t
+from agent.tracking import followup
+from agent.tracking import nodes as tracking_nodes
 
 # Order in which the interview asks. Must cover every required_field in rules/.
 FIELD_ORDER = ["age", "annual_income"]
@@ -92,7 +94,11 @@ class CaseState(TypedDict, total=False):
     stop: dict[str, Any] | None  # why the browser safe-stopped
     portal_note: str | None  # template key said before the OTP prompt (session restart)
     portal_told_slow: bool
-    delegation: dict[str, Any] | None  # read-only portal access for status tracking (sealed)
+    delegation: dict[str, Any] | None  # read-only portal access: when it ends + scopes (the sealed token is in Postgres, Phase 6)
+    # Phase 6: status tracking (agent/tracking/)
+    corrections: dict[str, dict[str, Any]]  # scheme -> {app_id, docs, waiting, ready}; set by /turn each turn
+    correcting: dict[str, Any] | None  # the correction in progress: scheme_id, app_id, docs
+    flow: str | None  # "renew" | "correct": what the OTP login is for
 
 
 def _lang(state: CaseState) -> str:
@@ -196,10 +202,21 @@ def _intent(state: CaseState, facts: Facts, ext: Extraction | None, msg: str,
     asking = state.get("asking")
     applications = state.get("applications") or {}
     last = state.get("last_submitted")
-    if pick:
-        return ("resubmit" if pick in applications else "proceed"), pick
     bare_yes = parse_decision(msg) == "yes" and not facts.values and not facts.docs_have \
         and not facts.docs_missing
+    # Phase 6. "renew": new read-only portal access. A correction (the portal sent an
+    # application back): "resubmit", naming the scheme, or a bare yes once the corrected
+    # documents are uploaded. None of these submits anything: the correction flow has its own
+    # OTP login, read-back and explicit-yes gate (agent/tracking/nodes.py).
+    if facts.renew:  # (the node says so when there is nothing to renew)
+        return "renew", None
+    corr = state.get("corrections") or {}
+    ready = [sid for sid, c in corr.items() if c.get("ready")]
+    answering = asking in ("proceed", "others") or (asking or "").startswith("form:")
+    if applications and (facts.correct or (pick in corr) or (bare_yes and ready and not answering)):
+        return "correct", pick if pick in corr else (ready or list(corr) or [None])[0]
+    if pick:
+        return ("resubmit" if pick in applications else "proceed"), pick
     # A stray / repeated "yes" after a submission (any channel) never starts anything new.
     if bare_yes and last and asking not in ("proceed", "others"):
         return "resubmit", last
@@ -220,7 +237,7 @@ def _intent(state: CaseState, facts: Facts, ext: Extraction | None, msg: str,
 
 
 Route = Literal["interview", "respond", "status", "declined", "choose_reask", "already_submitted",
-                "collect"]
+                "collect", "renew", "correct"]
 
 
 def router(state: CaseState) -> Command[Route]:
@@ -266,10 +283,13 @@ def router(state: CaseState) -> Command[Route]:
     }
     if intent == "proceed" and about:
         update["selected"] = about
+    if intent == "correct":
+        update["correcting"] = {"scheme_id": about}
     if lang:
         update["lang"] = lang
     goto = {"question": "respond", "status": "status", "decline": "declined",
-            "choose_reask": "choose_reask", "resubmit": "already_submitted"}.get(intent, "interview")
+            "choose_reask": "choose_reask", "resubmit": "already_submitted", "renew": "renew",
+            "correct": "correct"}.get(intent, "interview")
     return Command(goto=goto, update=update)
 
 
@@ -476,12 +496,40 @@ def respond(state: CaseState) -> CaseState:
 
 
 def status(state: CaseState) -> CaseState:
-    applications = state.get("applications") or {}
-    if applications:
-        return _say(_lang(state), lambda l: " ".join(
-            t("status_app", l, title=_title(sid, l), app_id=a["app_id"], status=t(f"status_{a['status']}", l))
-            for sid, a in list(applications.items())[-TOP_SPOKEN:]))
-    return _say(_lang(state), lambda l: " ".join(p for p in (t("status_none", l), _reask(state, l)) if p))
+    """"What's my application status?": check the portal now (short timeout), then speak
+    status + last-updated date + the next step per application; if the portal can't be reached
+    the last known status, and a word saying so. (Phase 6; agent/tracking/followup.py)"""
+    applications = dict(state.get("applications") or {})
+    if not applications:
+        return _say(_lang(state), lambda l: " ".join(p for p in (t("status_none", l), _reask(state, l)) if p))
+    rows: dict[str, dict[str, Any]] = {}
+    res_state = "no_tracking"
+    try:
+        from agent import tracking
+        from agent.portal.nodes import _case_id
+
+        res = tracking.get_poller().check_case(_case_id(), now=True)
+        res_state, rows = res.state, {r["scheme_id"]: r for r in res.apps}
+    except Exception:  # noqa: BLE001 (tracking not set up, or a database hiccup: answer from the case memory)
+        res_state = "unavailable"
+    for sid, a in applications.items():
+        if sid in rows:
+            applications[sid] = {**a, "status": rows[sid]["status"]}
+    shown = list(applications.items())[-TOP_SPOKEN:]
+
+    def say(l: str) -> str:
+        parts = []
+        for sid, a in shown:
+            if sid in rows:
+                parts.append(followup.status_line(rows[sid], l, paused=res_state in ("expired", "paused")))
+            else:
+                parts.append(t("status_app", l, title=_title(sid, l), app_id=a["app_id"],
+                               status=t(f"status_{a['status']}", l)))
+        if res_state in ("throttled", "unavailable"):
+            parts.append(t("status_checked_stale", l))
+        return " ".join(parts)
+
+    return {**_say(_lang(state), say), "applications": applications}
 
 
 def declined(state: CaseState) -> CaseState:
@@ -657,7 +705,11 @@ def build_graph(checkpointer: BaseCheckpointSaver):
                      ("choose_reask", choose_reask), ("already_submitted", already_submitted),
                      ("prepare", prepare), ("collect", portal.collect), ("portal_login", portal.portal_login),
                      ("otp", portal.otp), ("portal_fill", portal.portal_fill), ("confirm", confirm),
-                     ("submit", submit), ("safe_stop", portal.safe_stop)]:
+                     ("submit", submit), ("safe_stop", portal.safe_stop),
+                     ("renew", tracking_nodes.renew), ("renew_delegate", tracking_nodes.renew_delegate),
+                     ("correct", tracking_nodes.correct), ("correct_check", tracking_nodes.correct_check),
+                     ("correct_confirm", tracking_nodes.correct_confirm),
+                     ("correct_submit", tracking_nodes.correct_submit)]:
         g.add_node(name, fn)
     g.add_edge(START, "router")
     for name in ("respond", "status", "declined", "choose_reask", "already_submitted"):

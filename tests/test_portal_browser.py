@@ -240,3 +240,24 @@ def test_no_full_numbers_or_otp_in_logs(case_id, caplog):
     text = "\n".join(r.getMessage() for r in caplog.records)
     for secret in ("123456789012", mobile_of(case_id), OTP, "111111", "SBIN0001234", "yjs_del_"):
         assert secret not in text, secret
+
+
+def test_replace_document_and_resubmit_use_the_citizens_own_api(site):
+    """Phase 6: the portal has no correction screen, so the driver's replace + resubmit are the
+    portal's citizen API (multipart document_type + file, then submit) with the OTP session's token."""
+    from agent.portal.api import PortalAPI
+    from tests.fake_portal import _scheme_json
+
+    scheme = _scheme_json("pension-001")
+    number = "YJS-ABCDEF0123"
+    site._tokens["tok-correction"] = "9000000042"
+    site._apps.append({"number": number, "scheme": "pension-001", "status": "CORRECTION_REQUIRED", "mobile": "9000000042",
+                       "docs": set(scheme["documents"]),
+                       "form_data": {f["name"]: (True if f["type"] == "checkbox" else "x") for f in scheme["application_fields"]}})
+    api = PortalAPI()
+    assert api.application_status("tok-correction", number) == "CORRECTION_REQUIRED"
+    api.replace_document("tok-correction", number, "Identity Proof", "identity_proof.pdf", "application/pdf",
+                         b"%PDF-1.4 corrected bytes")
+    assert site.uploads[-1] == (number, "Identity Proof", b"%PDF-1.4 corrected bytes")
+    assert api.resubmit("tok-correction", number) == "SUBMITTED"
+    assert api.application_status("tok-correction", number) == "SUBMITTED"

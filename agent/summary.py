@@ -9,12 +9,16 @@ is only this turn's).
 Labels on screen are display labels (`field_*`: "Annual income"), not the lowercase ones the
 spoken sentences use. Never in here: document contents (metadata only, Aadhaar as last 4),
 tokens, message text, the full date of birth / mobile / account number / IFSC (masked).
+Phase 6: `applications[*]` carry the portal's latest status (polled), `checked_at`, `what_to_do`,
+the portal's remark / flagged documents (`correction`), a timeline that includes the portal's
+own lifecycle events, and `updates` (unread, not yet spoken) + `tracking` at the top.
 Phase 4: `progress` (browser steps, live while a turn is filling the form), the portal's
 form on Review with the values the page showed, screenshot IDs (GET
 /cases/{id}/screenshots/{shot_id}), the declaration. Phase 6 adds status checks to
 `applications[*].timeline` and `checked_at`.
 """
 
+from datetime import datetime, timezone
 from typing import Any
 
 from agent import config, rules
@@ -24,6 +28,8 @@ from agent.graph import (FIELD_ORDER, MISSING_DOCS, _checklist, _ordered, _reask
 from agent.portal import edge, progress
 from agent.portal import fields as form_fields
 from agent.replies import day, strings, t, value
+from agent.tracking import followup
+from agent.tracking import turn as track_turn
 from agent.vault import public
 
 DOC_ORDER = {"missing": 0, "needed": 1, "have": 2, "uploaded": 3}
@@ -225,7 +231,18 @@ def _form_field(f: dict[str, Any], profile: dict[str, Any], lang: str,
             "from_answers": v is not None, "from_page": False, "sensitive": f["name"] in form_fields.SENSITIVE}
 
 
-def _timeline(sid: str, audit_rows: list[dict[str, Any]], events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _when(v: Any) -> datetime | None:
+    if isinstance(v, datetime):
+        return v
+    try:
+        d = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def _timeline(sid: str, audit_rows: list[dict[str, Any]], events: list[dict[str, Any]],
+              history: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     seen_eligible = False
     for row in audit_rows:
@@ -243,33 +260,75 @@ def _timeline(sid: str, audit_rows: list[dict[str, Any]], events: list[dict[str,
     for ev in events:  # Phase 6: status changes polled from the portal
         if ev["kind"] == "status_changed" and ev.get("scheme_id") == sid:
             out.append({"at": ev["at"], "kind": "status_changed", "status": (ev.get("detail") or {}).get("status")})
+    for e in history or []:  # the portal's own lifecycle events (GET .../history/), English text
+        at = _when(e.get("at"))
+        if at is not None:
+            out.append({"at": at, "kind": "portal_event", "title": e.get("title"), "text": e.get("message")})
     return sorted(out, key=lambda i: i["at"])
 
 
 def _applications(state: dict[str, Any], lang: str, data: dict[str, Any] | None,
-                  docs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+                  docs: dict[str, dict[str, Any]], tracking: dict[str, Any] | None = None,
+                  documents: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     schemes = rules.load_schemes()
     audit_rows = (data or {}).get("audit") or []
     events = (data or {}).get("events") or []
+    tracked = {a["scheme_id"]: a for a in (tracking or {}).get("apps", [])}
+    delegation = (tracking or {}).get("delegation")
+    paused = bool(delegation and delegation["paused_reason"])
+    ready = track_turn.corrections(list(tracked.values()), documents or [])
     out = []
     for sid, a in (state.get("applications") or {}).items():
-        code = a.get("status") or "SUBMITTED"
+        tr = tracked.get(sid)
+        code = ((tr["status"] if tr else None) or a.get("status")) or "SUBMITTED"
+        correction = (tr or {}).get("correction") if code in ("CORRECTION_REQUIRED", "REJECTED") else None
+        todo = followup.next_step(code, correction, sid, lang)
+        todo_en = followup.next_step(code, correction, sid, "en")
         out.append({
             "scheme_id": sid, "title": rules.title(schemes[sid], lang),
             "title_en": rules.title(schemes[sid], "en"), "app_id": a.get("app_id"), "status": code,
             "status_text": t(f"badge_{code}", lang), "status_text_en": t(f"badge_{code}", "en"),
-            "timeline": _timeline(sid, audit_rows, events),
-            # "What to do": documents of this scheme not provided yet
+            "timeline": _timeline(sid, audit_rows, events, (tr or {}).get("history")),
+            # "What to do": the next step for this status, then documents not provided yet
+            "what_to_do": {"text": todo, "text_en": todo_en,
+                           "renew": paused and code not in ("APPROVED", "REJECTED")},
             "missing_documents": [{"doc": i["doc"], "label": i["label"], "label_en": i["label_en"]}
                                   for i in _missing(_doc_items(schemes[sid], state, lang, docs))],
-            "checked_at": None,  # Phase 6: last time the portal's status was polled
+            # what the portal asked for (CORRECTION_REQUIRED / REJECTED) and whether the corrected
+            # documents are uploaded: the citizen then says "resubmit"
+            "correction": None if not correction else {
+                "reason": correction.get("reason"),
+                "documents": [{"doc": d.get("doc"), "label": followup._doc_name(d, sid, lang),
+                               "label_en": followup._doc_name(d, sid, "en"), "status": d.get("status"),
+                               "remark": d.get("remark")} for d in correction.get("docs") or []],
+                "ready": bool((ready.get(sid) or {}).get("ready")),
+                "waiting": (ready.get(sid) or {}).get("waiting", [])},
+            "checked_at": tr["last_checked_at"] if tr else None,  # last time the portal's status was polled
+            "portal_updated_at": tr["portal_updated_at"] if tr else None,
+            "final": bool(tr and tr["final"]),
         })
     return out
 
 
+def _updates(tracking: dict[str, Any] | None, lang: str) -> list[dict[str, Any]]:
+    """Updates not spoken yet (the next turn speaks them first)."""
+    out = []
+    for u in (tracking or {}).get("unread", []):
+        text, text_en = followup.compose(u, lang)
+        out.append({"id": u["id"], "kind": u["kind"], "scheme_id": u["scheme_id"], "text": text,
+                    "text_en": text_en, "at": u["created_at"]})
+    return out
+
+
+def _tracking(tracking: dict[str, Any] | None) -> dict[str, Any]:
+    d = (tracking or {}).get("delegation")
+    return {"active": d is not None and not d["paused_reason"], "paused": d["paused_reason"] if d else None,
+            "last_checked_at": d["last_checked_at"] if d else None, "access_ends": d["expires_at"] if d else None}
+
+
 def build(case_id: str, state: dict[str, Any], pause: dict[str, Any] | None,
           documents: list[dict[str, Any]], consent: dict[str, Any], data: dict[str, Any] | None,
-          lang: str | None = None) -> dict[str, Any]:
+          lang: str | None = None, tracking: dict[str, Any] | None = None) -> dict[str, Any]:
     """The summary for one case. `state` = graph state values, `documents` = metadata rows,
     `data` = store.case_data() (events + audit) or None for a case with no turns yet."""
     lang = lang or state.get("lang") or "en"
@@ -295,7 +354,9 @@ def build(case_id: str, state: dict[str, Any], pause: dict[str, Any] | None,
         "review": _review(case_id, state, pause, lang, stored),
         "progress": _progress(case_id, state, lang),  # browser-agent steps (Pre-fill screen)
         "form": _form(state, lang),
-        "applications": _applications(state, lang, data, stored),
+        "applications": _applications(state, lang, data, stored, tracking, documents),
+        "updates": _updates(tracking, lang),
+        "tracking": _tracking(tracking),
         "next": [{"scheme_id": s, "title": rules.title(schemes[s], lang),
                   "title_en": rules.title(schemes[s], "en")} for s in offered],
         "last_reply": {"text": edge.expand(case_id, state, reply, lang, masked=True),

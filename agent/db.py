@@ -73,6 +73,12 @@ def check_url(url: str | None) -> str:
     return url
 
 
+def _retention_seconds() -> float:
+    from agent import config  # late: tests change the retention
+
+    return config.DOC_RETENTION_HOURS * 3600
+
+
 class Store:
     """Connection pool + checkpointer + the queries for our tables."""
 
@@ -141,6 +147,11 @@ class Store:
                 conn.execute(
                     "INSERT INTO case_events (case_id, kind, scheme_id, detail) VALUES (%s, 'submitted', %s, %s)",
                     (case_id, sid, Jsonb({"app_id": a.get("app_id"), "status": a.get("status")})))
+            for sid, a in new.items():  # Phase 6: the poller tracks every submitted application
+                conn.execute(
+                    "INSERT INTO tracked_apps (case_id, scheme_id, app_id, status) VALUES (%s, %s, %s, %s) "
+                    "ON CONFLICT (case_id, scheme_id) DO NOTHING",
+                    (case_id, sid, a.get("app_id"), a.get("status") or "SUBMITTED"))
             if new:
                 from agent import config  # late: tests change the retention
 
@@ -209,9 +220,12 @@ class Store:
                                (case_id, doc_type)).fetchone()
             row = conn.execute(
                 "INSERT INTO documents (case_id, citizen_id, doc_type, content_type, size_bytes, sha256, "
-                "storage_key, aadhaar_last4) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *",
+                "storage_key, aadhaar_last4, expires_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, "
+                # Phase 6: a corrected document uploaded after a submission is not kept forever
+                "CASE WHEN EXISTS (SELECT 1 FROM tracked_apps WHERE case_id = %s) "
+                "THEN now() + make_interval(secs => %s) END) RETURNING *",
                 (case_id, case["citizen_id"], doc_type, content_type, size, sha256, storage_key,
-                 aadhaar_last4)).fetchone()
+                 aadhaar_last4, case_id, _retention_seconds())).fetchone()
             self._audit(conn, "citizen", "document_stored", case_id, None, {
                 "doc_id": str(row["id"]), "doc_type": doc_type, "content_type": content_type,
                 "size_bytes": size, "aadhaar_last4": aadhaar_last4, "replaced": old is not None})

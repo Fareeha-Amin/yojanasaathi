@@ -34,13 +34,17 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from agent import audit, auth, config, db, privacy, rules, sealed, summary, tts
+from agent import audit, auth, config, db, privacy, rules, sealed, summary, tracking, tts
 from agent import portal
 from agent.facts import AGE_MAX, AGE_MIN
 from agent.graph import build_graph
 from agent.llm import get_llm
 from agent.portal import edge, progress
 from agent.portal.browser import PlaywrightDriver
+from agent.tracking import push as webpush
+from agent.tracking import turn as track_turn
+from agent.tracking.poller import Poller
+from agent.tracking.store import TrackStore, iso
 from agent.vault import Vault, VaultError, load_master_key, public
 
 _log = logging.getLogger("yojanasaathi")
@@ -66,6 +70,12 @@ progress.set_recorder(progress.Recorder(
     documents=store.documents, read_doc=lambda case_id, doc_id: vault.read(case_id, doc_id, actor="browser_agent")))
 driver = PlaywrightDriver()
 portal.set_driver(driver)
+# Phase 6: status tracking. State in Postgres (delegation token sealed, tracked applications,
+# unread updates, push subscriptions); the poller is APScheduler inside this process.
+track_store = TrackStore(store)
+tracking.set_store(track_store)
+poller = Poller(track_store)
+tracking.set_poller(poller)
 
 # One turn at a time per case: a double-send (e.g. voice barge-in) must not race
 # between reading "is it paused?" and resuming. (One agent process; see CLAUDE.md.)
@@ -98,8 +108,13 @@ async def lifespan(_: FastAPI):
     # background: /turn answers deterministically until the model is ready.
     if config.LLM_WARMUP:
         threading.Thread(target=get_llm().warmup, name="llm-warmup", daemon=True).start()
+    if config.STATUS_POLL:
+        poller.start()
+    if not webpush.configured():
+        _log.info("web push is off: no VAPID keys (python -m agent.tracking.push keys)")
     yield
     stop.set()
+    poller.stop()
     portal.get_driver().shutdown()
     store.close()
 
@@ -134,7 +149,7 @@ def _pause(case_id: str) -> dict | None:
     return interrupts[0].value if interrupts else None
 
 
-def _run(case_id: str, inp, resumed: bool) -> TurnOut:
+def _run(case_id: str, inp, resumed: bool, prep: track_turn.Prep | None = None) -> TurnOut:
     """Invoke the graph for one turn (caller holds the case lock) and record it."""
     # durability="sync": each step's checkpoint is written before the next step runs
     out = graph.invoke(inp, _cfg(case_id), version="v2", durability="sync")
@@ -144,8 +159,11 @@ def _run(case_id: str, inp, resumed: bool) -> TurnOut:
     # The spoken read-back of a sealed value ("I heard ⟦bank_account_number⟧") is filled in
     # only here: the checkpoint keeps the marker, never the digits.
     lang = values.get("lang") or "en"
-    return TurnOut(reply=edge.expand(case_id, values, values.get("reply", ""), lang) or "", pause=pause,
-                   ui=values.get("ui"), subtitle=edge.expand(case_id, values, values.get("subtitle"), "en"))
+    reply = edge.expand(case_id, values, values.get("reply", ""), lang) or ""
+    subtitle = edge.expand(case_id, values, values.get("subtitle"), "en")
+    if prep is not None:  # Phase 6: what changed at the portal is spoken first, once
+        reply, subtitle = track_turn.after(track_store, prep, lang, reply, subtitle)
+    return TurnOut(reply=reply, pause=pause, ui=values.get("ui"), subtitle=subtitle)
 
 
 @app.post("/turn/{case_id}", response_model=TurnOut)
@@ -162,13 +180,15 @@ def turn(case_id: str, m: TurnIn) -> TurnOut:
             audit.log_event("agent", "aadhaar_masked", case_id=case_id,
                             detail={"aadhaar_last4": aadhaar})
         paused = pause is not None
-        update = {"docs_stored": store.document_types(case_id), "form_input": None, **extra}
+        docs = store.documents(case_id)
+        prep = track_turn.before(track_store, case_id, snap.values or {}, docs)  # Phase 6
+        update = {"docs_stored": [d["doc_type"] for d in docs], "form_input": None, **extra, **prep.update}
         if m.lang:
             update["lang"] = m.lang
         # ui/subtitle are per turn: a resume skips the router, so clear the previous turn's here
         inp = (Command(resume=text, update={**update, "ui": None, "subtitle": None}) if paused
                else {"msg": text, **update})
-        return _run(case_id, inp, resumed=paused)
+        return _run(case_id, inp, resumed=paused, prep=prep)
 
 
 @app.get("/health")
@@ -232,7 +252,8 @@ def get_summary(case_id: str, lang: Literal["kn", "hi", "en"] | None = None) -> 
     state = graph.get_state(_cfg(case_id))
     pause = state.interrupts[0].value if state.interrupts else None
     return summary.build(case_id, state.values or {}, pause, store.documents(case_id),
-                         store.consent(case_id), store.case_data(case_id), lang)
+                         store.consent(case_id), store.case_data(case_id), lang,
+                         tracking=track_store.snapshot(case_id))
 
 
 class EditIn(BaseModel):
@@ -384,7 +405,64 @@ def get_data(case_id: str) -> dict:
                         for s in store.screenshots(case_id)],
         "events": data["events"],
         "audit": data["audit"],
+        "tracking": _tracking_data(case_id),
     }
+
+
+def _tracking_data(case_id: str) -> dict:
+    """Status tracking as the citizen's data: no token, only that access exists and when it ends."""
+    snap = track_store.snapshot(case_id)
+    d = snap["delegation"]
+    return {"delegation": None if d is None else {"expires_at": d["expires_at"], "scopes": d["scopes"],
+                                                  "paused": d["paused_reason"], "last_checked_at": iso(d["last_checked_at"])},
+            "applications": [{"scheme_id": a["scheme_id"], "app_id": a["app_id"], "status": a["status"],
+                              "final": a["final"], "last_checked_at": iso(a["last_checked_at"])} for a in snap["apps"]],
+            "unread_updates": len(snap["unread"]),
+            "push_subscriptions": len(track_store.subscriptions(case_id))}
+
+
+# --- web push (backend only: the browser side comes later) ---------------------------------
+
+
+class PushKeys(BaseModel):
+    p256dh: str = Field(min_length=1, max_length=256)
+    auth: str = Field(min_length=1, max_length=256)
+
+
+class PushIn(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
+    keys: PushKeys
+
+
+class PushOut(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
+
+
+@app.get("/cases/{case_id}/push", dependencies=CaseAuth)
+def push_info(case_id: str) -> dict:
+    """What the browser needs to subscribe: the VAPID public key (null = push is off)."""
+    return {"enabled": webpush.configured(), "public_key": config.VAPID_PUBLIC_KEY if webpush.configured() else None,
+            "subscriptions": len(track_store.subscriptions(case_id))}
+
+
+@app.post("/cases/{case_id}/push/subscribe", dependencies=CaseAuth)
+def push_subscribe(case_id: str, sub: PushIn) -> dict:
+    if not webpush.configured():
+        raise HTTPException(503, "web push is not configured (VAPID keys)")
+    if not webpush.valid_endpoint(sub.endpoint):
+        raise HTTPException(422, "the push endpoint must be a public https URL")
+    store.ensure_case(case_id)
+    webpush.subscribe(track_store, case_id, sub.endpoint, sub.keys.p256dh, sub.keys.auth)
+    audit.log_event("citizen", "push_subscribed", case_id=case_id)
+    return {"subscribed": True}
+
+
+@app.post("/cases/{case_id}/push/unsubscribe", dependencies=CaseAuth)
+def push_unsubscribe(case_id: str, sub: PushOut) -> dict:
+    removed = track_store.remove_subscription(case_id, sub.endpoint)
+    if removed:
+        audit.log_event("citizen", "push_unsubscribed", case_id=case_id)
+    return {"unsubscribed": removed}
 
 
 @app.delete("/cases/{case_id}/data", dependencies=CaseAuth)
@@ -400,6 +478,7 @@ def delete_data(case_id: str) -> dict:
         except portal.PortalError:
             pass
         progress.forget(case_id)
+        track_store.delete_delegation(case_id, "data_deleted")  # audit row; the rest goes with the case
         docs = vault.delete_case(case_id)
         counts = {"documents": docs, **store.delete_case_data(case_id), "case_memory": 1}
         audit.log_event("citizen", "data_deleted", case_id=case_id, detail=counts)

@@ -103,3 +103,16 @@ def portal_url_warnings() -> list[str]:
 def portal_ready() -> bool:
     """All portal settings present and well formed (else the agent won't open the browser)."""
     return not portal_url_warnings()
+
+
+# Status tracking (Phase 6, agent/tracking/): APScheduler inside FastAPI polls the portal's
+# agent API (read-only delegation) once per citizen with open applications.
+STATUS_POLL_SECONDS = float(os.getenv("STATUS_POLL_SECONDS", "300"))  # 30 for the demo
+STATUS_POLL = os.getenv("STATUS_POLL", "1").strip().lower() not in ("0", "false", "no")  # off: tests
+TRACK_TIMEOUT = float(os.getenv("TRACK_TIMEOUT", "15"))  # seconds per portal call from the poller
+TRACK_NOW_TIMEOUT = float(os.getenv("TRACK_NOW_TIMEOUT", "8"))  # "what's my status?" checks now
+TRACK_BACKOFF_MAX = float(os.getenv("TRACK_BACKOFF_MAX", "900"))  # errors / 429: 2x per failure, up to this
+# Web push (backend only for now). Generate keys: python -m agent.tracking.push keys
+VAPID_PRIVATE_KEY = _opt("VAPID_PRIVATE_KEY")  # base64url raw private key; secret
+VAPID_PUBLIC_KEY = _opt("VAPID_PUBLIC_KEY")  # base64url uncompressed point; the browser needs it
+VAPID_SUBJECT = os.getenv("VAPID_SUBJECT", "mailto:yojanasaathi@example.org")

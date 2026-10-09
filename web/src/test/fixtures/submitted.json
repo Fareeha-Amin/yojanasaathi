@@ -343,13 +343,13 @@
         "label": "ಗುರುತಿನ ಪುರಾವೆ",
         "label_en": "Identity Proof",
         "document": {
-          "id": "b878bc03-a36f-4c81-8aff-8301c617aa66",
+          "id": "8526b201-fccf-4ce5-b571-285ac14b4f5a",
           "doc_type": "identity_proof",
           "content_type": "application/pdf",
           "size_bytes": 28,
           "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.513091+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
+          "created_at": "2026-10-10T00:09:05.708802+05:30",
+          "expires_at": "2026-10-11T00:09:06.087130+05:30"
         },
         "schemes": [
           "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
@@ -368,13 +368,13 @@
         "label": "ನಿವಾಸ ಪುರಾವೆ",
         "label_en": "Residence Proof",
         "document": {
-          "id": "294d690a-4bf0-4e78-8a7c-6a2d4c637451",
+          "id": "4fa88bc7-6761-42d6-9d0f-aaa477c07e28",
           "doc_type": "residence_proof",
           "content_type": "application/pdf",
           "size_bytes": 29,
           "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.524388+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
+          "created_at": "2026-10-10T00:09:05.721673+05:30",
+          "expires_at": "2026-10-11T00:09:06.087130+05:30"
         },
         "schemes": [
           "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
@@ -393,13 +393,13 @@
         "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
         "label_en": "Income Certificate",
         "document": {
-          "id": "743b6dce-cf93-4168-86fc-ba9767c89174",
+          "id": "66f71300-8aec-4ecf-8a0f-1241f33c4a7c",
           "doc_type": "income_certificate",
           "content_type": "application/pdf",
           "size_bytes": 32,
           "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.531333+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
+          "created_at": "2026-10-10T00:09:05.727668+05:30",
+          "expires_at": "2026-10-11T00:09:06.087130+05:30"
         },
         "schemes": [
           "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
@@ -418,13 +418,13 @@
         "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
         "label_en": "Bank Account Details",
         "document": {
-          "id": "e7ef598b-15e9-4eda-9374-cc858cfc7620",
+          "id": "d65c87cf-3d6d-4489-a259-3d5b4c844747",
           "doc_type": "bank_account_details",
           "content_type": "application/pdf",
           "size_bytes": 34,
           "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.537873+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
+          "created_at": "2026-10-10T00:09:05.734795+05:30",
+          "expires_at": "2026-10-11T00:09:06.087130+05:30"
         },
         "schemes": [
           "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
@@ -443,13 +443,13 @@
         "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
         "label_en": "Age Proof, where applicable",
         "document": {
-          "id": "b6aa0354-16fc-4b35-bfe9-00eb99c317dc",
+          "id": "e20aee28-325b-42d9-99a6-e81c83d831ee",
           "doc_type": "age_proof",
           "content_type": "application/pdf",
           "size_bytes": 23,
           "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.518695+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
+          "created_at": "2026-10-10T00:09:05.715147+05:30",
+          "expires_at": "2026-10-11T00:09:06.087130+05:30"
         },
         "schemes": [
           "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
@@ -466,55 +466,55 @@
   },
   "documents": [
     {
-      "id": "b878bc03-a36f-4c81-8aff-8301c617aa66",
+      "id": "8526b201-fccf-4ce5-b571-285ac14b4f5a",
       "doc_type": "identity_proof",
       "content_type": "application/pdf",
       "size_bytes": 28,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.513091+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-10T00:09:05.708802+05:30",
+      "expires_at": "2026-10-11T00:09:06.087130+05:30"
     },
     {
-      "id": "b6aa0354-16fc-4b35-bfe9-00eb99c317dc",
+      "id": "e20aee28-325b-42d9-99a6-e81c83d831ee",
       "doc_type": "age_proof",
       "content_type": "application/pdf",
       "size_bytes": 23,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.518695+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-10T00:09:05.715147+05:30",
+      "expires_at": "2026-10-11T00:09:06.087130+05:30"
     },
     {
-      "id": "294d690a-4bf0-4e78-8a7c-6a2d4c637451",
+      "id": "4fa88bc7-6761-42d6-9d0f-aaa477c07e28",
       "doc_type": "residence_proof",
       "content_type": "application/pdf",
       "size_bytes": 29,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.524388+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-10T00:09:05.721673+05:30",
+      "expires_at": "2026-10-11T00:09:06.087130+05:30"
     },
     {
-      "id": "743b6dce-cf93-4168-86fc-ba9767c89174",
+      "id": "66f71300-8aec-4ecf-8a0f-1241f33c4a7c",
       "doc_type": "income_certificate",
       "content_type": "application/pdf",
       "size_bytes": 32,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.531333+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-10T00:09:05.727668+05:30",
+      "expires_at": "2026-10-11T00:09:06.087130+05:30"
     },
     {
-      "id": "e7ef598b-15e9-4eda-9374-cc858cfc7620",
+      "id": "d65c87cf-3d6d-4489-a259-3d5b4c844747",
       "doc_type": "bank_account_details",
       "content_type": "application/pdf",
       "size_bytes": 34,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.537873+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-10T00:09:05.734795+05:30",
+      "expires_at": "2026-10-11T00:09:06.087130+05:30"
     }
   ],
   "consent": {
     "profile": false,
     "documents": true,
-    "at": "2026-10-09T19:56:18.507214+05:30"
+    "at": "2026-10-10T00:09:05.701603+05:30"
   },
   "pause": null,
   "review": null,
@@ -526,49 +526,49 @@
         "label": "ಲಾಗಿನ್",
         "label_en": "Log in",
         "status": "done",
-        "screenshot": "668849f0-8b88-4421-b9d5-be16fb4a6959"
+        "screenshot": "7edee647-1298-4343-901b-5d1f759840b9"
       },
       {
         "key": "otp",
         "label": "OTP",
         "label_en": "OTP",
         "status": "done",
-        "screenshot": "c1765103-8641-4dd0-89e2-e5b678918349"
+        "screenshot": "0a51a76e-3731-4c6e-b982-e0555861d9c3"
       },
       {
         "key": "applicant",
         "label": "ಅರ್ಜಿದಾರರ ವಿವರ",
         "label_en": "Applicant details",
         "status": "done",
-        "screenshot": "8d12715c-b183-4de7-b550-2acd8f4e1741"
+        "screenshot": "f873459e-9b32-4596-b268-1b3f1bedd77c"
       },
       {
         "key": "details",
         "label": "ಯೋಜನೆಯ ವಿವರ",
         "label_en": "Scheme details",
         "status": "done",
-        "screenshot": "72379780-5e24-4b83-ba73-e82829bd86e2"
+        "screenshot": "9f627450-db8d-422a-a50e-2ae0c9ef0da4"
       },
       {
         "key": "documents",
         "label": "ದಾಖಲೆಗಳು",
         "label_en": "Documents",
         "status": "done",
-        "screenshot": "a63cbd6e-1744-45fe-9def-0657541fa54a"
+        "screenshot": "bc318c03-c4f0-4130-bb28-248abb757235"
       },
       {
         "key": "review",
         "label": "ಪರಿಶೀಲನೆ (ನಿಮ್ಮ ಹೌದುಗಾಗಿ ಇಲ್ಲಿ ನಿಲ್ಲುತ್ತದೆ)",
         "label_en": "Review (stop here for your yes)",
         "status": "done",
-        "screenshot": "c78fcd32-bd15-48d4-ae4a-1595da53c2da"
+        "screenshot": "078bf08e-3338-4181-bcab-b653f5a0063d"
       },
       {
         "key": "submit",
         "label": "ಸಲ್ಲಿಕೆ",
         "label_en": "Submit",
         "status": "done",
-        "screenshot": "85fb9b47-5e86-49a1-8ed9-c2a52c33d74e"
+        "screenshot": "401bb70a-1c62-400a-b0bf-d5fe723496b5"
       }
     ]
   },
@@ -655,27 +655,42 @@
       "status_text_en": "Submitted",
       "timeline": [
         {
-          "at": "2026-10-09T19:56:18.568039+05:30",
+          "at": "2026-10-10T00:09:05.770816+05:30",
           "kind": "eligibility_decided"
         },
         {
-          "at": "2026-10-09T19:56:18.847082+05:30",
+          "at": "2026-10-10T00:09:06.059610+05:30",
           "kind": "confirm_requested"
         },
         {
-          "at": "2026-10-09T19:56:18.861293+05:30",
+          "at": "2026-10-10T00:09:06.076330+05:30",
           "kind": "citizen_approved"
         },
         {
-          "at": "2026-10-09T19:56:18.866297+05:30",
+          "at": "2026-10-10T00:09:06.081452+05:30",
           "kind": "submitted",
           "app_id": "YJS-0000000001"
         }
       ],
+      "what_to_do": {
+        "text": "ಪರಿಶೀಲನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ. ಈಗ ಏನೂ ಮಾಡಬೇಕಿಲ್ಲ.",
+        "text_en": "It is waiting for review. Nothing to do now.",
+        "renew": false
+      },
       "missing_documents": [],
-      "checked_at": null
+      "correction": null,
+      "checked_at": null,
+      "portal_updated_at": null,
+      "final": false
     }
   ],
+  "updates": [],
+  "tracking": {
+    "active": true,
+    "paused": null,
+    "last_checked_at": null,
+    "access_ends": "2026-10-10T12:00:00Z"
+  },
   "next": [
     {
       "scheme_id": "pension-002",

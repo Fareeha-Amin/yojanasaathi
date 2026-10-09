@@ -44,6 +44,7 @@ config.DATABASE_URL = TEST_ENV["DATABASE_URL"] or None
 config.MASTER_KEY = TEST_MASTER_KEY
 config.VAULT_DIR = Path(TEST_ENV["VAULT_DIR"])
 config.BROWSER_HEADLESS, config.BROWSER_SLOWMO_MS = True, 0.0
+config.STATUS_POLL = False  # tests call poller.tick() themselves; no background scheduler
 for _k, _v in TEST_PORTAL.items():
     setattr(config, _k, _v)
 if config.DATABASE_URL:
@@ -69,6 +70,28 @@ def fake_driver() -> FakeDriver:
     portal.set_driver(fake)
     yield fake
     portal.set_driver(previous)
+
+
+@pytest.fixture(autouse=True)
+def fake_agent_api(fake_driver: FakeDriver):
+    """The portal's agent API (Phase 6) for the real poller / client: tests/fake_agent_api.py.
+    It follows the FakeDriver's applications. No test touches the network."""
+    import httpx
+
+    from agent import tracking
+    from agent.tracking.api import CitizenAPI
+    from tests.fake_agent_api import FakeAgentAPI
+
+    try:
+        poller = tracking.get_poller()
+    except tracking.TrackingError:  # a pure unit test that never imported agent.main
+        yield None
+        return
+    fake = FakeAgentAPI(fake_driver)
+    previous = poller.api
+    poller.api = CitizenAPI(httpx.Client(transport=httpx.MockTransport(fake.handler)))
+    yield fake
+    poller.api = previous
 
 
 @pytest.fixture

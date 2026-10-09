@@ -98,8 +98,9 @@ def test_b_question_after_submit_gets_a_normal_answer(case_id, fake_llm):
 def test_b_status_question_after_submit(case_id):
     submit_pension_001(case_id)
     out = text(case_id, "what is my application status?")
-    assert out["reply"] == t("status_app", "en", title="Senior Citizen Pension Scheme",
-                             app_id=FIRST, status="submitted")
+    # Phase 6: the portal is asked now; status + last-updated date + the next step are spoken
+    assert out["reply"].startswith("Senior Citizen Pension Scheme: submitted, last updated 9 October 2026.")
+    assert "waiting for review" in out["reply"]
 
 
 def test_b_eligibility_question_after_submit_offers_the_rest(case_id):

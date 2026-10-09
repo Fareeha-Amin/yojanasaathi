@@ -78,12 +78,12 @@ class PortalAPI:
     # --- calls -------------------------------------------------------------------------
 
     def _request(self, method: str, path: str, *, headers: dict[str, str], json: Any = None,
-                 what: str) -> Any:
+                 what: str, data: dict[str, str] | None = None, files: Any = None) -> Any:
         if not config.portal_ready():
             raise Unavailable("portal settings missing or invalid (see the agent's startup warnings)")
         try:
             r = httpx.request(method, f"{config.MOCK_PORTAL_API}{path}", headers=headers, json=json,
-                              timeout=self._timeout())
+                              data=data, files=files, timeout=self._timeout())
         except httpx.HTTPError as e:
             self._state = "error"
             raise Unavailable(f"{what}: portal not reachable ({type(e).__name__})") from None
@@ -121,3 +121,27 @@ class PortalAPI:
             raise SafeStop("delegation: no delegation token in the answer")
         return Delegation(token=token, expires_at=data.get("expires_at"),
                           scopes=list(data.get("scopes") or DELEGATION_SCOPES))
+
+    # --- Phase 6: the citizen's own corrections (token from the OTP login; the portal has no
+    # screen for these, so the scripted call is the portal's own citizen API, never the agent API)
+
+    def application_status(self, citizen_token: str, app_no: str) -> str | None:
+        for a in self.my_applications(citizen_token):
+            if a.get("application_number") == app_no:
+                return a.get("status")
+        return None
+
+    def replace_document(self, citizen_token: str, app_no: str, document_type: str, filename: str,
+                         content_type: str, data: bytes) -> None:
+        """POST /applications/{no}/documents/ (multipart document_type + file): the portal
+        replaces the document of that type (only while DRAFT / CORRECTION_REQUIRED)."""
+        self._request("POST", f"/applications/{app_no}/documents/",
+                      headers={"Authorization": f"Token {citizen_token}"}, what="replace document",
+                      data={"document_type": document_type}, files={"file": (filename, data, content_type)})
+
+    def resubmit(self, citizen_token: str, app_no: str) -> str:
+        """POST /applications/{no}/submit/ (allowed from CORRECTION_REQUIRED); the new status."""
+        body = self._request("POST", f"/applications/{app_no}/submit/",
+                             headers={"Authorization": f"Token {citizen_token}"}, json={}, what="resubmit")
+        status = body.get("status") if isinstance(body, dict) else None
+        return status or self.application_status(citizen_token, app_no) or "SUBMITTED"

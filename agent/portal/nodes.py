@@ -32,6 +32,7 @@ from agent.portal import DocUpload, PortalError, SafeStop, SessionGone, Unavaila
 from agent.portal import get_driver, progress
 from agent.portal.api import DELEGATION_HOURS, DELEGATION_SCOPES
 from agent.replies import day, join, money, t
+from agent.tracking import get_store
 from agent.replies import readback as readback_text
 
 OTP_TRIES = 3
@@ -189,7 +190,8 @@ def _unavailable(state: dict[str, Any], e: PortalError, step: str) -> Command:
 def _restart(state: dict[str, Any], why: str) -> Command:
     """The browser session is gone (idle, restart): log in again, never reuse a preview."""
     log_event("agent", "portal_session_restart", scheme_id=state.get("selected"), detail={"why": why})
-    return Command(goto="portal_login", update={"portal_note": "session_restart", "preview": None})
+    goto = {"renew": "renew", "correct": "correct"}.get(state.get("flow"), "portal_login")  # Phase 6 flows
+    return Command(goto=goto, update={"portal_note": "session_restart", "preview": None})
 
 
 def _drift(state: dict[str, Any], scheme: dict[str, Any], step: str) -> Command | None:
@@ -248,7 +250,7 @@ def prepare(state: dict[str, Any]) -> Command[Literal["portal_login", "portal_fi
         return Command(goto="__end__", update={"asking": None, **_say(lang, lambda l: t("portal_not_configured", l))})
     driver = get_driver()
     driver.warmup()
-    update: dict[str, Any] = {"ack_field": None, "portal_note": None}
+    update: dict[str, Any] = {"ack_field": None, "portal_note": None, "flow": None}  # flow: Phase 6 renew / correct
 
     # gender already said ("I am a woman"): the portal's option, read back at review
     form, shown = dict(state.get("form") or {}), dict(state.get("form_shown") or {})
@@ -377,7 +379,8 @@ def portal_login(state: dict[str, Any]) -> Command[Literal["otp", "safe_stop", "
         **_say(lang, sent)})
 
 
-def otp(state: dict[str, Any]) -> Command[Literal["otp", "portal_fill", "portal_login", "safe_stop", "__end__"]]:
+def otp(state: dict[str, Any]) -> Command[Literal["otp", "portal_fill", "portal_login", "safe_stop", "renew",
+                                                  "renew_delegate", "correct", "correct_check", "__end__"]]:
     info = dict(state.get("otp") or {})
     # Only the citizen supplies the code (design rule 3). Nothing above this line: the node
     # runs again from the top when the graph resumes.
@@ -393,15 +396,16 @@ def otp(state: dict[str, Any]) -> Command[Literal["otp", "portal_fill", "portal_
         if code:
             if driver.verify_otp(case_id, code):
                 log_event("citizen", "otp_verified", scheme_id=sid)
-                return Command(goto="portal_fill", update={"otp": {**info, "verified": True},
-                                                           "progress": progress.get(case_id)})
+                nxt = {"renew": "renew_delegate", "correct": "correct_check"}.get(state.get("flow"), "portal_fill")
+                return Command(goto=nxt, update={"otp": {**info, "verified": True},
+                                                 "progress": progress.get(case_id)})
             info["attempts"] = info.get("attempts", 0) + 1
             log_event("citizen", "otp_rejected", scheme_id=sid, detail={"attempt": info["attempts"]})
             if info["attempts"] >= OTP_TRIES:
                 driver.close(case_id, "otp_failed")
                 log_event("agent", "otp_failed", scheme_id=sid, detail={"attempts": info["attempts"]})
                 return Command(goto="__end__", update={
-                    "otp": info, "asking": None, "status": "stopped", "progress": progress.get(case_id),
+                    "otp": info, "asking": None, "status": "stopped", "progress": progress.get(case_id), "flow": None,
                     **_say(lang, lambda l: t("otp_failed", l, title=rules.title(_scheme(state), l)))})
             expired = time.time() - info.get("sent_at", 0) > config.OTP_TTL_SECONDS
             left = OTP_TRIES - info["attempts"]
@@ -421,7 +425,7 @@ def otp(state: dict[str, Any]) -> Command[Literal["otp", "portal_fill", "portal_
     if parse_decision(text) == "no" or _is_cancel(text):
         driver.close(case_id, "cancelled")
         log_event("citizen", "otp_cancelled", scheme_id=sid)
-        return Command(goto="__end__", update={"asking": None, "status": "cancelled",
+        return Command(goto="__end__", update={"asking": None, "status": "cancelled", "flow": None,
                                                **_say(lang, lambda l: t("cancelled", l))})
     return Command(goto="otp", update=_say(lang, lambda l: t("otp_unclear", l)))
 
@@ -570,9 +574,10 @@ def safe_stop(state: dict[str, Any]) -> Command[Literal["prepare", "__end__"]]:
         pass
     if _wants_retry(str(answer)):
         log_event("citizen", "safe_stop_retry", scheme_id=sid)
-        return Command(goto="prepare", update={"stop": None})
+        goto = {"renew": "renew", "correct": "correct"}.get(state.get("flow"), "prepare")
+        return Command(goto=goto, update={"stop": None})
     log_event("citizen", "safe_stop_ended", scheme_id=sid)
-    return Command(goto="__end__", update={"stop": None, "asking": None, "status": "stopped",
+    return Command(goto="__end__", update={"stop": None, "asking": None, "status": "stopped", "flow": None,
                                            **_say(lang, lambda l: t("safe_stop_ended", l))})
 
 
@@ -609,8 +614,11 @@ def after_submit(state: dict[str, Any], app_id: str) -> dict[str, Any]:
     update: dict[str, Any] = {"progress": progress.get(case_id)}
     try:
         d = driver.delegate(case_id)
-        update["delegation"] = {"sealed": sealed.seal(case_id, "delegation", d.token),
-                                "expires_at": d.expires_at, "scopes": d.scopes}
+        # Phase 6: the poller's table (agent/tracking/store.py), sealed; the case memory keeps
+        # only when it ends and what it may read, so deleting a final application's token never
+        # means editing a checkpoint
+        get_store().save_delegation(case_id, sealed.seal(case_id, "delegation", d.token), d.expires_at, d.scopes)
+        update["delegation"] = {"expires_at": d.expires_at, "scopes": d.scopes}
         log_event("browser_agent", "delegation_granted", scheme_id=sid,
                   detail={"scopes": d.scopes, "hours": DELEGATION_HOURS, "expires_at": d.expires_at})
     except PortalError as e:

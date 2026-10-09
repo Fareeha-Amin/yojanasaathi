@@ -191,7 +191,7 @@ def test_view_my_data(case_id):
     turn(case_id, READY)
     data = client.get(f"/cases/{case_id}/data").json()
     assert set(data) == {"case", "consent", "saved_profile", "case_memory", "documents", "screenshots",
-                         "events", "audit"}
+                         "events", "audit", "tracking"}
     assert data["case_memory"]["profile"] == {"age": 62, "annual_income": 120000}
     assert data["case"]["case_id"] == case_id
     assert "data_viewed" in [a["action"] for a in client.get(f"/cases/{case_id}/data").json()["audit"]]

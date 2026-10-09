@@ -25,7 +25,8 @@ from agent.db import Store, open_store
 from agent.privacy import AADHAAR_RE
 from agent.vault import MAGIC
 
-OUR_TABLES = ["citizens", "profiles", "cases", "case_events", "documents", "screenshots", "audit_log"]
+OUR_TABLES = ["citizens", "profiles", "cases", "case_events", "documents", "screenshots", "audit_log",
+              "delegations", "tracked_apps", "case_updates", "push_subscriptions"]
 CHECKPOINT_TABLES = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
 # Removed before scanning: UUIDs (checkpoint / task IDs), LangGraph channel versions,
 # f"{n:032}.{random.random():016}" (PostgresSaver.get_next_version), whose random part

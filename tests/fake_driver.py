@@ -35,6 +35,10 @@ class FakeDriver:
         self.fail: dict[str, Exception] = {}
         self.refuse_mobiles: set[str] = set()
         self.uploaded: list[tuple[str, str, int]] = []  # (case, doc, size)
+        self.portal_status: dict[str, str] = {}  # app number -> status on the "portal" (tests set it)
+        self.replaced: list[tuple[str, str, str, int]] = []  # (case, app, doc, size): Phase 6 corrections
+        self.resubmits: list[tuple[str, str]] = []  # (case, app)
+        self._d = 0  # delegation tokens issued
         self.values: dict[str, dict[str, Any]] = {}  # case -> what was "typed" (tests only)
         self._n = 0
 
@@ -129,7 +133,29 @@ class FakeDriver:
     def delegate(self, case_id: str) -> Delegation:
         self._maybe_fail("delegate")
         self._session(case_id)
-        return Delegation(token=f"yjs_del_fake{self._n}", expires_at="2026-10-10T12:00:00Z", scopes=DELEGATION_SCOPES)
+        self._d += 1
+        return Delegation(token=f"yjs_del_fake{self._d}", expires_at="2026-10-10T12:00:00Z", scopes=DELEGATION_SCOPES)
+
+    def application_status(self, case_id: str, app_id: str) -> str | None:
+        self._session(case_id, "logged_in", "review", "done")
+        return self.portal_status.get(app_id, "SUBMITTED")
+
+    def replace_document(self, case_id: str, app_id: str, doc) -> None:
+        self._maybe_fail("replace_document")
+        self._session(case_id, "logged_in", "review", "done")
+        if self.portal_status.get(app_id) != "CORRECTION_REQUIRED":
+            raise SafeStop("the portal does not accept documents now", step="correction")
+        data = progress.recorder().read_doc(case_id, doc.doc_id)
+        self.replaced.append((case_id, app_id, doc.doc, len(data)))
+
+    def resubmit(self, case_id: str, app_id: str) -> str:
+        self._maybe_fail("resubmit")
+        self._session(case_id, "logged_in", "review", "done")
+        if self.portal_status.get(app_id) != "CORRECTION_REQUIRED":
+            raise SafeStop("the portal does not accept a resubmission now", step="correction")
+        self.portal_status[app_id] = "SUBMITTED"
+        self.resubmits.append((case_id, app_id))
+        return "SUBMITTED"
 
     def stage(self, case_id: str) -> str | None:
         s = self.sessions.get(case_id)

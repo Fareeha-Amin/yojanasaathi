@@ -213,6 +213,23 @@ function bind() {
 </script></body></html>"""
 
 
+def _multipart(body: bytes, content_type: str) -> tuple[str, bytes]:
+    """(document_type, file bytes) from a multipart/form-data body (no python-multipart needed)."""
+    boundary = content_type.split("boundary=")[1].strip('"').encode()
+    fields: dict[str, bytes] = {}
+    file = b""
+    crlf = bytes([13, 10])
+    for part in body.split(b"--" + boundary)[1:-1]:
+        head, _, content = part.lstrip(crlf).partition(crlf + crlf)
+        content = content.removesuffix(crlf)
+        name = head.split(b'name="')[1].split(b'"')[0].decode()
+        if b"filename=" in head:
+            file = content
+        else:
+            fields[name] = content
+    return fields["document_type"].decode(), file
+
+
 class FakePortal:
     def __init__(self) -> None:
         self.rename: dict[str, str] = {}
@@ -346,11 +363,15 @@ class FakePortal:
         @app.post("/api/applications/{number}/documents/")
         async def upload(number: str, request: Request, authorization: str | None = Header(None)):
             a = portal._find(number, portal._mobile(authorization))
-            body = await request.json()
-            data = base64.b64decode(body["content_base64"])
-            portal.uploads.append((number, body["document_type"], data))
-            a["docs"].add(body["document_type"])
-            return {"document_type": body["document_type"], "file_size": len(data)}
+            ctype = request.headers.get("content-type", "")
+            if ctype.startswith("multipart/form-data"):  # the real portal (Phase 6 corrections)
+                doc_type, data = _multipart(await request.body(), ctype)
+            else:  # the fake's own JSON form, used by the browser page's upload
+                body = await request.json()
+                doc_type, data = body["document_type"], base64.b64decode(body["content_base64"])
+            portal.uploads.append((number, doc_type, data))
+            a["docs"].add(doc_type)
+            return {"document_type": doc_type, "file_size": len(data)}
 
         @app.post("/api/applications/{number}/submit/")
         async def submit(number: str, request: Request, authorization: str | None = Header(None)):

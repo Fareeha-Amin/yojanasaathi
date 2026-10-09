@@ -4,6 +4,8 @@ Documents screen is ready). The agent must be running.
     python -m agent.upload_docs demo-case-1 pension-001            # dummy PDFs, all 5
     python -m agent.upload_docs demo-case-1 pension-001 C:\\docs   # your own files
     python -m agent.upload_docs demo-case-1 pension-001 --list     # what is stored now
+    python -m agent.upload_docs demo-case-1 pension-001 --only=identity_proof   # just the corrected one
+                                                                   # (Phase 6: after CORRECTION_REQUIRED)
 
 Your own files: a folder holding one file per document, named after the document id
 (identity_proof.pdf, age_proof.jpg, residence_proof.png, income_certificate.pdf,
@@ -82,8 +84,15 @@ def main(argv: list[str]) -> int:
             return 0
         http.put(f"/cases/{case_id}/consent", json={"documents": True}).raise_for_status()
         failed = 0
+        only = {x for a in argv if a.startswith("--only=") for x in a[7:].split(",") if x}
+        unknown = only - {d["doc"] for d in schemes[scheme_id]["documents"]}
+        if unknown:
+            print(f"unknown document(s) for {scheme_id}: {sorted(unknown)}")
+            return 2
         for d in schemes[scheme_id]["documents"]:
             doc = d["doc"]
+            if only and doc not in only:
+                continue
             if folder is None:
                 data, ctype, name = dummy_pdf(doc), "application/pdf", "dummy PDF"
             else:

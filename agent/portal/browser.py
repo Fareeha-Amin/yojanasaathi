@@ -180,6 +180,35 @@ class PlaywrightDriver:
             raise SessionGone("not logged in to the portal")
         return self.api.delegate(s.token)
 
+    # --- Phase 6: corrections (portal citizen API with this session's token) --------------------
+
+    def _token(self, case_id: str) -> str:
+        s = self._sessions.get(case_id)
+        if s is None or s.page.is_closed() or not s.token or s.stage not in ("logged_in", "review", "done"):
+            raise SessionGone("not logged in to the portal")
+        s.last_used = time.monotonic()
+        return s.token
+
+    def application_status(self, case_id: str, app_id: str) -> str | None:
+        return self.api.application_status(self._token(case_id), app_id)
+
+    def replace_document(self, case_id: str, app_id: str, doc: DocUpload) -> None:
+        ext = EXT.get(doc.content_type or "")
+        read_doc = progress.recorder().read_doc
+        if doc.doc_id is None or ext is None or read_doc is None:
+            raise SafeStop("document the portal does not take", step="correction", detail={"doc": doc.doc})
+        token = self._token(case_id)
+        data = read_doc(case_id, doc.doc_id)  # decrypted to memory only, audited as browser_agent
+        try:
+            self.api.replace_document(token, app_id, doc.name, f"{doc.doc}.{ext}", doc.content_type, data)
+        finally:
+            del data
+        progress.recorder().audit("browser_agent", "document_replaced", case_id, None,
+                                  {"doc_type": doc.doc, "app_id": app_id})
+
+    def resubmit(self, case_id: str, app_id: str) -> str:
+        return self.api.resubmit(self._token(case_id), app_id)
+
     def stage(self, case_id: str) -> str | None:
         s = self._sessions.get(case_id)
         if s is None or s.page.is_closed():

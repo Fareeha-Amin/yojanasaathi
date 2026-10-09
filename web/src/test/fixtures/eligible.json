@@ -446,6 +446,13 @@
   "progress": null,
   "form": [],
   "applications": [],
+  "updates": [],
+  "tracking": {
+    "active": false,
+    "paused": null,
+    "last_checked_at": null,
+    "access_ends": null
+  },
   "next": [
     {
       "scheme_id": "pension-001",

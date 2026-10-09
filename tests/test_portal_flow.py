@@ -7,7 +7,7 @@ import uuid
 
 import pytest
 
-from agent import sealed
+from agent import sealed, tracking
 from agent.main import app, graph, store
 from agent.portal import SafeStop
 from tests.helpers import FORM_ANSWERS, OTP, CaseClient, answer_form, dob_for, to_confirm, upload_documents
@@ -82,9 +82,12 @@ def test_full_flow_submits_once(case_id, fake_driver):
     assert out["ui"]["type"] == "submitted"
     assert fake_driver.submit_count("pension-001") == 1
     assert "close:submitted" in fake_driver.calls
+    # Phase 6: the token is sealed in Postgres (the poller's table), not in the case memory
     d = values(case_id)["delegation"]
-    assert sealed.is_sealed(d["sealed"]) and d["scopes"] == ["applications:read", "notifications:read"]
-    assert sealed.open_(case_id, "delegation", d["sealed"]).startswith("yjs_del_")
+    assert "sealed" not in d and d["scopes"] == ["applications:read", "notifications:read"]
+    row = tracking.get_store().delegation(case_id)
+    assert sealed.is_sealed(row["sealed"]) and row["scopes"] == ["applications:read", "notifications:read"]
+    assert sealed.open_(case_id, "delegation", row["sealed"]).startswith("yjs_del_")
 
     again = turn(case_id, "ಹೌದು")  # a repeated yes: the same number, never a second Submit
     assert app_id in again["reply"] and fake_driver.submit_count() == 1
