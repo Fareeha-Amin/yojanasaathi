@@ -6,14 +6,14 @@ import hashlib
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 
 from agent import config
 from agent.db import StartupError
 from agent.main import app, store, vault
 from agent.vault import VaultError, load_master_key, seal, unseal
+from tests.helpers import CaseClient
 
-client = TestClient(app)
+client = CaseClient(app)  # sends the case's session token, like the web app
 
 KEY = bytes(range(32))
 JPEG = b"\xff\xd8\xff\xe0" + b"JFIF citizen photo of an identity card 1234 5678 9012" * 20

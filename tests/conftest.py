@@ -71,3 +71,8 @@ def fake_llm() -> FakeLLM:
 @pytest.fixture
 def subprocess_env() -> dict[str, str]:
     return {**os.environ, **TEST_ENV, "PYTHONIOENCODING": "utf-8"}
+
+
+def pytest_addoption(parser):
+    parser.addoption("--regen-web-fixtures", action="store_true",
+                     help="rewrite web/src/test/fixtures/*.json from GET /summary (tests/web_fixtures.py)")

@@ -4,6 +4,7 @@
   "greeting": "Hello! Let me check which welfare schemes you qualify for.",
   "ask_age": "How old are you?",
   "ask_annual_income": "What is your family's total income in one year?",
+  "why_ask": "I ask your {field} to check: {titles}.",
 
   "match_one": "{title}: you qualify, based on your {facts}. It needs {n} documents. Shall I start the application?",
   "match_many": "You qualify for {n} schemes, based on your {facts}. The top ones are {top}. Which one shall I apply for?",

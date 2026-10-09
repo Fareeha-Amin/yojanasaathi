@@ -154,7 +154,7 @@ def test_submit_node_refuses_when_scheme_has_an_application(portal):
     # Defence in depth: even if routing ever led back to submit, it must not resubmit.
     out = submit({"selected": "pension-001",
                   "applications": {"pension-001": {"app_id": "DEMO-0001", "status": "SUBMITTED"}}})
-    assert out == {"reply": "Already submitted. Your application ID is DEMO-0001."}
+    assert out == {"reply": "Already submitted. Your application ID is DEMO-0001.", "subtitle": None}
     assert portal == []
 
 

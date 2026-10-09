@@ -28,7 +28,7 @@ def lang_of(case_id: str) -> str | None:
 def test_voice_turn_sends_detected_lang_and_follows_contract():
     case_id = f"voice-{uuid.uuid4().hex[:8]}"
     [out] = run(_turns(case_id, ("ನನಗೆ ಅರವತ್ತೆರಡು ವರ್ಷ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ", "kn")))
-    assert set(out) == {"reply", "pause", "ui"}
+    assert set(out) == {"reply", "pause", "ui", "subtitle"}
     assert out["pause"] is None and "ಆದಾಯ" in out["reply"]  # asks income, in Kannada
     assert lang_of(case_id) == "kn"
 

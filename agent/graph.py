@@ -15,8 +15,12 @@ already has an application ID gets that ID back; everything else routes normally
 Key replies come from templates (agent/replies.py), in the case's language.
 Consequential steps call audit.log_event() (case ID = the thread ID). The state is
 checkpointed in Postgres (agent/db.py), so a pause and `applications` survive restarts.
+Phase 5: every template reply also carries `subtitle`, its English rendering (shown under
+Kannada / Hindi bubbles in the web app); edits at the confirm pause (review screen or
+spoken "my income is ...") update the profile and re-confirm, never submit.
 """
 
+from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any, Literal, TypedDict
 
@@ -32,7 +36,7 @@ from agent.facts import AGE_MAX, AGE_MIN, FIELDS, NUMERIC_FIELDS, Facts, extract
 from agent.gate import parse_decision
 from agent.llm import Extraction, get_llm, usable
 from agent.numbers import tokenize
-from agent.replies import day, facts_phrase, join, readback, reason, reasons, t
+from agent.replies import day, facts_phrase, join, label, readback, reason, reasons, t
 
 # Order in which the interview asks. Must cover every required_field in rules/.
 FIELD_ORDER = ["age", "annual_income"]
@@ -51,6 +55,7 @@ class CaseState(TypedDict, total=False):
     app_id: str  # last application ID
     status: str
     reply: str  # spoken (1-3 short sentences)
+    subtitle: str | None  # the reply in English when lang != "en" (None for LLM answers)
     ui: dict[str, Any] | None  # this turn's screen payload (full reasons, sources, checklists)
     # Phase 2 bookkeeping
     intent: str
@@ -96,6 +101,24 @@ def _scope(state: CaseState) -> list[dict[str, Any]]:
 
 def _title(sid: str, lang: str) -> str:
     return rules.title(rules.load_schemes()[sid], lang)
+
+
+def _say(lang: str, build: Callable[[str], str]) -> CaseState:
+    """reply in the case's language + its English rendering as the subtitle."""
+    return {"reply": build(lang), "subtitle": None if lang == "en" else build("en")}
+
+
+def why_asking(state: CaseState, lang: str) -> str | None:
+    """The "Why I ask" note for the field the interview is asking about."""
+    field = state.get("asking")
+    if field not in FIELD_ORDER:
+        return None
+    profile = state.get("profile", {})
+    titles = [rules.title(s, lang) for s in _scope(state)
+              if rules.status(s, profile) == "unknown" and field in rules.missing_fields(s, profile)]
+    if not titles:
+        return None
+    return t("why_ask", lang, field=label(field, lang), titles=join(titles, lang))
 
 
 # --- router ----------------------------------------------------------------------------
@@ -208,6 +231,7 @@ def router(state: CaseState) -> Command[Route]:
         "docs_missing": missing_docs,
         "intent": "info" if intent == "others" else intent,
         "ui": None,
+        "subtitle": None,
         "resubmit": about if intent == "resubmit" else None,
     }
     if intent == "proceed" and about:
@@ -235,12 +259,14 @@ def interview(state: CaseState) -> Command[Literal["eligibility", "__end__"]]:
     missing = [f for f in FIELD_ORDER if f in needed]
     if not missing:
         return Command(goto="eligibility", update={"missing": []})
-    lang = _lang(state)
-    reply = t(f"ask_{missing[0]}", lang)
-    if not profile and not state.get("topics"):
-        reply = f"{t('greeting', lang)} {reply}"
-    return Command(goto=END, update={"missing": missing, "asking": missing[0], "reply": reply,
-                                     "status": "collecting"})
+    first = not profile and not state.get("topics")
+
+    def ask(lang: str) -> str:
+        reply = t(f"ask_{missing[0]}", lang)
+        return f"{t('greeting', lang)} {reply}" if first else reply
+
+    return Command(goto=END, update={"missing": missing, "asking": missing[0],
+                                     **_say(_lang(state), ask), "status": "collecting"})
 
 
 def _result(scheme: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
@@ -326,8 +352,8 @@ def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
             return Command(goto="prepare", update={**update, "selected": sel})
         if sel and status.get(sel) == "not_eligible" and sel not in applications:
             cs = [c for c in rules.clauses(schemes[sel]["rule"], profile) if c.result is False]
-            return Command(goto=END, update={**update, "asking": None, "reply": t(
-                "not_eligible_one", lang, title=_title(sel, lang), reasons=reasons(cs, lang))})
+            return Command(goto=END, update={**update, "asking": None, **_say(lang, lambda l: t(
+                "not_eligible_one", l, title=_title(sel, l), reasons=reasons(cs, l)))})
         if len(offered) == 1:
             return Command(goto="prepare", update={**update, "selected": offered[0]})
 
@@ -335,39 +361,51 @@ def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
         fields: list[str] = []
         for sid in offered:
             fields += schemes[sid]["required_fields"]
-        facts = facts_phrase(_known(fields, profile), lang)
+        known = _known(fields, profile)
         if len(offered) == 1:
             sid = offered[0]
-            if applications:
-                reply = t("match_more_one", lang, title=_title(sid, lang))
-            else:
-                reply = t("match_one", lang, title=_title(sid, lang), facts=facts,
-                          n=len(schemes[sid]["documents"]))
-            return Command(goto=END, update={**update, "reply": reply, "asking": "proceed",
+
+            def one(l: str) -> str:
+                if applications:
+                    return t("match_more_one", l, title=_title(sid, l))
+                return t("match_one", l, title=_title(sid, l), facts=facts_phrase(known, l),
+                         n=len(schemes[sid]["documents"]))
+
+            return Command(goto=END, update={**update, **_say(lang, one), "asking": "proceed",
                                              "selected": sid, "status": "eligible"})
-        top = join([_title(sid, lang) for sid in offered[:TOP_SPOKEN]], lang)
         key = "match_more_many" if applications else "match_many"
-        reply = t(key, lang, n=len(offered), facts=facts, top=top)
-        return Command(goto=END, update={**update, "reply": reply, "asking": "choose",
+
+        def many(l: str) -> str:
+            top = join([_title(sid, l) for sid in offered[:TOP_SPOKEN]], l)
+            return t(key, l, n=len(offered), facts=facts_phrase(known, l), top=top)
+
+        return Command(goto=END, update={**update, **_say(lang, many), "asking": "choose",
                                          "status": "eligible"})
     if eligible:
-        return Command(goto=END, update={**update, "reply": t("all_applied", lang), "asking": None})
+        return Command(goto=END, update={**update, **_say(lang, lambda l: t("all_applied", l)),
+                                         "asking": None})
 
     scope_ids = {s["scheme_id"] for s in _scope(state)}
-    failed: list[str] = []
-    for r in ineligible:
-        if r["scheme_id"] in scope_ids:
-            for c in r["reasons"]:
-                text = reason(rules.Clause(**c), lang)
-                if c["result"] is False and text not in failed:
-                    failed.append(text)
-    why = join(failed, lang)
+
+    def why(l: str) -> str:
+        failed: list[str] = []
+        for r in ineligible:
+            if r["scheme_id"] in scope_ids:
+                for c in r["reasons"]:
+                    text = reason(rules.Clause(**c), l)
+                    if c["result"] is False and text not in failed:
+                        failed.append(text)
+        return join(failed, l)
+
     if len(scope_ids) < len(schemes):
-        topic = join([t(f"topic_{x}", lang) for x in state.get("topics") or []], lang)
+        def topic(l: str) -> str:
+            return join([t(f"topic_{x}", l) for x in state.get("topics") or []], l)
+
         return Command(goto=END, update={**update, "asking": "others", "status": "not_eligible",
-                                         "reply": t("not_eligible_topic", lang, topic=topic, reasons=why)})
+                                         **_say(lang, lambda l: t("not_eligible_topic", l,
+                                                                   topic=topic(l), reasons=why(l)))})
     return Command(goto=END, update={**update, "asking": None, "status": "not_eligible",
-                                     "reply": t("not_eligible_all", lang, reasons=why)})
+                                     **_say(lang, lambda l: t("not_eligible_all", l, reasons=why(l)))})
 
 
 # --- free-form, status, decline, re-ask --------------------------------------------------
@@ -400,34 +438,33 @@ def respond(state: CaseState) -> CaseState:
     answer = None
     if usable(llm):
         answer = llm.answer(state.get("msg", ""), lang, _kb(), state.get("profile", {}))
-    reply = " ".join(p for p in (answer or t("llm_unavailable", lang), _reask(state, lang)) if p)
-    return {"reply": reply}
+    if answer:  # free-form LLM text: no English subtitle (we never translate with the LLM)
+        return {"reply": " ".join(p for p in (answer, _reask(state, lang)) if p), "subtitle": None}
+    return _say(lang, lambda l: " ".join(p for p in (t("llm_unavailable", l), _reask(state, l)) if p))
 
 
 def status(state: CaseState) -> CaseState:
-    lang = _lang(state)
     applications = state.get("applications") or {}
     if applications:
-        parts = [t("status_app", lang, title=_title(sid, lang), app_id=a["app_id"],
-                   status=t(f"status_{a['status']}", lang))
-                 for sid, a in list(applications.items())[-TOP_SPOKEN:]]
-        return {"reply": " ".join(parts)}
-    return {"reply": " ".join(p for p in (t("status_none", lang), _reask(state, lang)) if p)}
+        return _say(_lang(state), lambda l: " ".join(
+            t("status_app", l, title=_title(sid, l), app_id=a["app_id"], status=t(f"status_{a['status']}", l))
+            for sid, a in list(applications.items())[-TOP_SPOKEN:]))
+    return _say(_lang(state), lambda l: " ".join(p for p in (t("status_none", l), _reask(state, l)) if p))
 
 
 def declined(state: CaseState) -> CaseState:
-    return {"reply": t("proceed_declined", _lang(state)), "asking": None}
+    return {**_say(_lang(state), lambda l: t("proceed_declined", l)), "asking": None}
 
 
 def choose_reask(state: CaseState) -> CaseState:
-    return {"reply": _reask(state, _lang(state))}
+    return _say(_lang(state), lambda l: _reask(state, l))
 
 
 def already_submitted(state: CaseState) -> CaseState:
     sid = state["resubmit"]
     app = state["applications"][sid]
     _blocked(sid, app["app_id"], "router")
-    return {"reply": t("already_submitted", _lang(state), app_id=app["app_id"])}
+    return _say(_lang(state), lambda l: t("already_submitted", l, app_id=app["app_id"]))
 
 
 def _blocked(sid: str, app_id: str, where: str) -> None:
@@ -444,16 +481,12 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
     applications = state.get("applications") or {}
     if sel in applications:  # never prepare a second application for the same scheme
         _blocked(sel, applications[sel]["app_id"], "prepare")
-        return Command(goto=END, update={"reply": t("already_submitted", lang,
-                                                    app_id=applications[sel]["app_id"])})
+        return Command(goto=END, update=_say(lang, lambda l: t(
+            "already_submitted", l, app_id=applications[sel]["app_id"])))
     scheme = rules.load_schemes()[sel]
     profile = state.get("profile", {})
     fields = {f: profile[f] for f in scheme["required_fields"] if f in profile}
     unsure = [f for f in fields if f in state.get("readback", [])]
-    parts = [t("readback", lang, fields=readback(fields, lang))]
-    if unsure:
-        parts.append(t("readback_unsure", lang, fields=readback({f: fields[f] for f in unsure}, lang)))
-    parts.append(t("confirm_ask", lang, title=rules.title(scheme, lang)))
     docs = _checklist(scheme, state, lang)
     preview = {
         "scheme_id": sel,
@@ -469,15 +502,51 @@ def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
         "fields": sorted(fields), "needs_readback": unsure, "documents": [d["doc"] for d in docs]})
     return Command(goto="confirm", update={
         "preview": preview, "checklist": docs, "status": "awaiting_confirmation",
-        "asking": None, "reply": " ".join(parts)})
+        "asking": None, **_say(lang, lambda l: read_back(scheme, fields, unsure, l))})
 
 
-def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]]:
+def read_back(scheme: dict[str, Any], fields: dict[str, Any], unsure: list[str], lang: str) -> str:
+    """The spoken read-back before the confirm pause (also the review screen's read-aloud)."""
+    parts = [t("readback", lang, fields=readback(fields, lang))]
+    if unsure:
+        parts.append(t("readback_unsure", lang, fields=readback({f: fields[f] for f in unsure}, lang)))
+    parts.append(t("confirm_ask", lang, title=rules.title(scheme, lang)))
+    return " ".join(parts)
+
+
+def _edits(answer: Any, profile: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str], set[str], str]:
+    """Changes to the reviewed facts in a confirm answer: (values, sources, fields to
+    flag for read-back, via). From the review screen: {"edit": {field: value}} (validated
+    by POST /cases/{id}/edit). Spoken / typed: a new value the deterministic parsers read,
+    e.g. "no, my income is 2 lakh". Values equal to what we have are not edits."""
+    if isinstance(answer, dict):
+        edits = {f: v for f, v in (answer.get("edit") or {}).items() if f in FIELD_ORDER}
+        return edits, {f: "edited" for f in edits}, set(), "review_screen"
+    facts = extract(str(answer), None)
+    edits = {f: v for f, v in facts.values.items() if f in FIELD_ORDER and profile.get(f) != v}
+    return (edits, {f: facts.sources[f] for f in edits}, facts.readback & set(edits), "spoken")
+
+
+def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "eligibility", "__end__"]]:
     # Human gate: the graph stops here until /turn is called again. Only an explicit
-    # yes reaches submit; anything unclear asks again, never submits.
+    # yes reaches submit; anything unclear asks again, never submits. A changed value
+    # ("no, my income is ...", or an edit on the review screen) goes back through the
+    # rules and a NEW read-back + pause: an edit never submits, even with a "yes" in it.
     answer = interrupt({"type": "confirm", "preview": state.get("preview", {})})
-    decision = parse_decision(str(answer))
     lang = _lang(state)
+    profile = state.get("profile", {})
+    edits, sources, flags, via = _edits(answer, profile)
+    if edits:
+        log_event("citizen", "fields_edited", scheme_id=state.get("selected"),
+                  detail={"fields": sorted(edits), "via": via})
+        return Command(goto="eligibility", update={
+            "profile": {**profile, **edits},
+            "sources": {**state.get("sources", {}), **sources},
+            "readback": sorted((set(state.get("readback", [])) - set(edits)) | flags),
+            "intent": "proceed"})
+    if isinstance(answer, dict):  # a review-screen call without a usable edit
+        return Command(goto="confirm", update=_say(lang, lambda l: t("confirm_reask", l)))
+    decision = parse_decision(str(answer))
     detail = {"decision": decision}
     if decision != "unclear" and len(tokenize(str(answer))) <= 3:
         detail["said"] = str(answer).strip()  # the bare "ಹೌದು" / "no": evidence, nothing personal
@@ -486,8 +555,8 @@ def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]
     if decision == "yes":
         return Command(goto="submit")
     if decision == "no":
-        return Command(goto=END, update={"status": "cancelled", "reply": t("cancelled", lang)})
-    return Command(goto="confirm", update={"reply": t("confirm_reask", lang)})
+        return Command(goto=END, update={"status": "cancelled", **_say(lang, lambda l: t("cancelled", l))})
+    return Command(goto="confirm", update=_say(lang, lambda l: t("confirm_reask", l)))
 
 
 def _submit_to_portal(state: CaseState) -> str:
@@ -503,18 +572,22 @@ def submit(state: CaseState) -> CaseState:
     applications = dict(state.get("applications") or {})
     if sel in applications:
         _blocked(sel, applications[sel]["app_id"], "submit")
-        return {"reply": t("already_submitted", lang, app_id=applications[sel]["app_id"])}
+        return _say(lang, lambda l: t("already_submitted", l, app_id=applications[sel]["app_id"]))
     app_id = _submit_to_portal(state)
     applications[sel] = {"app_id": app_id, "status": "SUBMITTED"}
     log_event("agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "stub (Phase 4: Playwright)"})
     remaining = [s for s in state.get("offered") or [] if s not in applications]
-    parts = [t("submitted", lang, app_id=app_id)]
-    if remaining:
-        parts.append(t("submitted_next", lang, title=_title(remaining[0], lang)))
+
+    def done(l: str) -> str:
+        parts = [t("submitted", l, app_id=app_id)]
+        if remaining:
+            parts.append(t("submitted_next", l, title=_title(remaining[0], l)))
+        return " ".join(parts)
+
     return {
         "applications": applications, "app_id": app_id, "last_submitted": sel,
         "offered": remaining, "asking": "choose" if remaining else None, "status": "submitted",
-        "reply": " ".join(parts),
+        **_say(lang, done),
         "ui": {"type": "submitted", "scheme_id": sel, "title": _title(sel, lang), "app_id": app_id,
                "next": [{"scheme_id": s, "title": _title(s, lang)} for s in remaining]},
     }

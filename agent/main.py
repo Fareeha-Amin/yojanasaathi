@@ -1,16 +1,21 @@
 """FastAPI app: the one contract every channel uses (web, voice, phone).
 
 POST /turn/{case_id}  {"text": "...", "lang"?: "kn"|"hi"|"en"}
-  -> {"reply": "...", "pause": null | {"type": ..., ...}, "ui": null | {"type": ..., ...}}
+  -> {"reply": "...", "pause": null | {"type": ..., ...}, "ui": null | {"type": ..., ...},
+      "subtitle": null | "..."}
 "reply" is what gets spoken (short); "ui" is this turn's screen payload (full reasons,
-sources, checklists). Clients that only read reply/pause keep working.
-If the case's graph is paused at an interrupt, the text resumes it (Command(resume=text)).
-"lang" is optional (voice passes the STT-detected language); when given it updates the case.
+sources, checklists); "subtitle" is the reply in English when the case's language is kn/hi
+(null for English and for free-form LLM answers). Clients that only read reply/pause keep
+working. If the case's graph is paused at an interrupt, the text resumes it
+(Command(resume=text)). "lang" is optional (voice passes the STT-detected language); when
+given it updates the case.
 
 Phase 3: case memory is the Postgres checkpointer (one thread per case), so a pause and
 the per-scheme `applications` survive restarts. Startup fails clearly without Postgres or
 MASTER_KEY. Aadhaar numbers are masked before the graph sees the text.
-Citizen data endpoints (consent, documents, view / delete my data) are below /cases.
+Phase 5: POST /session gives the web app a case + JWT (agent/auth.py); every /cases/{id}
+endpoint (summary, edit, consent, documents, view / delete my data) needs that token.
+/turn stays keyed by case ID (voice bot, agent.cli).
 """
 
 import logging
@@ -19,13 +24,14 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.types import Command
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from agent import audit, config, db, privacy, rules
+from agent import audit, auth, config, db, privacy, rules, summary
+from agent.facts import AGE_MAX, AGE_MIN
 from agent.graph import build_graph
 from agent.llm import get_llm
 from agent.vault import Vault, load_master_key, public
@@ -39,6 +45,7 @@ if not _log.handlers:
 
 # Fails here, with a message that says what to fix, if MASTER_KEY or Postgres is not usable.
 _master_key = load_master_key(config.MASTER_KEY)
+auth.set_key(_master_key)
 store = db.open_store(config.DATABASE_URL)
 vault = Vault(store, config.VAULT_DIR, _master_key)
 audit.set_store(store)
@@ -94,15 +101,30 @@ class TurnOut(BaseModel):
     reply: str
     pause: dict | None = None
     ui: dict | None = None
+    subtitle: str | None = None
 
 
 def _cfg(case_id: str) -> dict:
     return {"configurable": {"thread_id": case_id}}
 
 
+def _pause(case_id: str) -> dict | None:
+    interrupts = graph.get_state(_cfg(case_id)).interrupts
+    return interrupts[0].value if interrupts else None
+
+
+def _run(case_id: str, inp, resumed: bool) -> TurnOut:
+    """Invoke the graph for one turn (caller holds the case lock) and record it."""
+    # durability="sync": each step's checkpoint is written before the next step runs
+    out = graph.invoke(inp, _cfg(case_id), version="v2", durability="sync")
+    pause = out.interrupts[0].value if out.interrupts else None
+    store.record_turn(case_id, out.value, pause, resumed=resumed)
+    return TurnOut(reply=out.value.get("reply", ""), pause=pause, ui=out.value.get("ui"),
+                   subtitle=out.value.get("subtitle"))
+
+
 @app.post("/turn/{case_id}", response_model=TurnOut)
 def turn(case_id: str, m: TurnIn) -> TurnOut:
-    cfg = _cfg(case_id)
     # Before anything stores or forwards the text (checkpoint, LLM, logs).
     text, aadhaar = privacy.mask_aadhaar(m.text, privacy.HIDDEN)
     with _case_locks[case_id]:
@@ -110,17 +132,14 @@ def turn(case_id: str, m: TurnIn) -> TurnOut:
         if aadhaar:
             audit.log_event("agent", "aadhaar_masked", case_id=case_id,
                             detail={"aadhaar_last4": aadhaar})
-        paused = bool(graph.get_state(cfg).interrupts)
+        paused = _pause(case_id) is not None
         update = {"docs_stored": store.document_types(case_id)}
         if m.lang:
             update["lang"] = m.lang
-        # ui is per turn: a resume skips the router, so clear the previous turn's payload here
-        inp = Command(resume=text, update={**update, "ui": None}) if paused else {"msg": text, **update}
-        # durability="sync": each step's checkpoint is written before the next step runs
-        out = graph.invoke(inp, cfg, version="v2", durability="sync")
-        pause = out.interrupts[0].value if out.interrupts else None
-        store.record_turn(case_id, out.value, pause, resumed=paused)
-    return TurnOut(reply=out.value.get("reply", ""), pause=pause, ui=out.value.get("ui"))
+        # ui/subtitle are per turn: a resume skips the router, so clear the previous turn's here
+        inp = (Command(resume=text, update={**update, "ui": None, "subtitle": None}) if paused
+               else {"msg": text, **update})
+        return _run(case_id, inp, resumed=paused)
 
 
 @app.get("/health")
@@ -135,9 +154,82 @@ def health() -> dict:
     return {"ok": dbs == "ok", "llm": get_llm().state, "db": dbs}
 
 
+# --- web app session (JWT) ----------------------------------------------------------------
+
+
+class SessionOut(BaseModel):
+    case_id: str
+    token: str
+    expires_at: int  # unix seconds
+
+
+@app.post("/session", response_model=SessionOut)
+def session(authorization: str | None = Header(None)) -> SessionOut:
+    """No token: a new random case + its token. A valid token: a fresh token for the same
+    case (the web app calls this at start-up). An invalid / expired token: 401, and the app
+    starts a new case. Nothing is stored until the case's first turn."""
+    if authorization:
+        try:
+            case_id = auth.verify(auth.bearer(authorization))
+        except auth.AuthError as e:
+            raise HTTPException(401, str(e), headers={"WWW-Authenticate": "Bearer"}) from None
+    else:
+        case_id = auth.new_case_id()
+    token, exp = auth.issue(case_id)
+    return SessionOut(case_id=case_id, token=token, expires_at=exp)
+
+
+def case_auth(case_id: str, authorization: str | None = Header(None)) -> str:
+    """Every /cases/{case_id} endpoint: a valid token for exactly this case."""
+    try:
+        sub = auth.verify(auth.bearer(authorization))
+    except auth.AuthError as e:
+        raise HTTPException(401, str(e), headers={"WWW-Authenticate": "Bearer"}) from None
+    if sub != case_id:
+        raise HTTPException(403, "this token is for another case")
+    return case_id
+
+
+CaseAuth = [Depends(case_auth)]
+
+
+# --- screens: summary + review edits -------------------------------------------------------
+
+
+@app.get("/cases/{case_id}/summary", dependencies=CaseAuth)
+def get_summary(case_id: str, lang: Literal["kn", "hi", "en"] | None = None) -> dict:
+    """What the web app's screens show (agent/summary.py). Read-only, nothing logged; no
+    case lock (reads the last checkpoint), so it never waits for a slow turn."""
+    state = graph.get_state(_cfg(case_id))
+    pause = state.interrupts[0].value if state.interrupts else None
+    return summary.build(case_id, state.values or {}, pause, store.documents(case_id),
+                         store.consent(case_id), store.case_data(case_id), lang)
+
+
+class EditIn(BaseModel):
+    field: Literal["age", "annual_income"]
+    value: int
+
+
+@app.post("/cases/{case_id}/edit", response_model=TurnOut, dependencies=CaseAuth)
+def edit(case_id: str, e: EditIn) -> TurnOut:
+    """Change one reviewed fact on the review screen. Only while the case is paused at the
+    confirm gate; resumes it with {"edit": ...}: the rules run again and a new read-back +
+    confirm pause follows (an edit never submits)."""
+    lo, hi = (AGE_MIN, AGE_MAX) if e.field == "age" else (0, 10**9)
+    if not lo <= e.value <= hi:
+        raise HTTPException(422, f"{e.field} must be between {lo} and {hi}")
+    with _case_locks[case_id]:
+        pause = _pause(case_id)
+        if not pause or pause.get("type") != "confirm":
+            raise HTTPException(409, "nothing to review: the case is not waiting for confirmation")
+        update = {"docs_stored": store.document_types(case_id), "ui": None, "subtitle": None}
+        return _run(case_id, Command(resume={"edit": {e.field: e.value}}, update=update), resumed=True)
+
+
 # --- the citizen's data: consent, documents, view / delete ------------------------------
-# Keyed by case ID like /turn (no login yet: JWT comes with the web app, Phase 5). For that
-# reason there is deliberately no endpoint that returns a document's contents.
+# Need the case's session token (Phase 5). There is deliberately no endpoint that returns a
+# document's contents: the browser only ever sees metadata (Aadhaar as last 4).
 
 
 class ConsentIn(BaseModel):
@@ -145,12 +237,12 @@ class ConsentIn(BaseModel):
     documents: bool | None = None  # keep my uploaded documents (encrypted) for the application
 
 
-@app.get("/cases/{case_id}/consent")
+@app.get("/cases/{case_id}/consent", dependencies=CaseAuth)
 def get_consent(case_id: str) -> dict:
     return store.consent(case_id)
 
 
-@app.put("/cases/{case_id}/consent")
+@app.put("/cases/{case_id}/consent", dependencies=CaseAuth)
 def put_consent(case_id: str, c: ConsentIn) -> dict:
     with _case_locks[case_id]:
         store.ensure_case(case_id)
@@ -160,7 +252,7 @@ def put_consent(case_id: str, c: ConsentIn) -> dict:
         return store.set_consent(case_id, c.profile, c.documents, profile)
 
 
-@app.put("/cases/{case_id}/documents/{doc_type}")
+@app.put("/cases/{case_id}/documents/{doc_type}", dependencies=CaseAuth)
 async def put_document(case_id: str, doc_type: str, request: Request,
                        aadhaar_last4: str | None = Query(None, pattern=r"^\d{4}$")) -> dict:
     """Raw file bytes as the body (Content-Type: image/jpeg | image/png | image/webp |
@@ -189,12 +281,12 @@ async def put_document(case_id: str, doc_type: str, request: Request,
     return await run_in_threadpool(save)
 
 
-@app.get("/cases/{case_id}/documents")
+@app.get("/cases/{case_id}/documents", dependencies=CaseAuth)
 def list_documents(case_id: str) -> list[dict]:
     return [public(r) for r in store.documents(case_id)]
 
 
-@app.delete("/cases/{case_id}/documents/{doc_id}")
+@app.delete("/cases/{case_id}/documents/{doc_id}", dependencies=CaseAuth)
 def delete_document(case_id: str, doc_id: str) -> dict:
     with _case_locks[case_id]:
         if not vault.delete(case_id, doc_id):
@@ -202,7 +294,7 @@ def delete_document(case_id: str, doc_id: str) -> dict:
     return {"deleted": doc_id}
 
 
-@app.get("/cases/{case_id}/data")
+@app.get("/cases/{case_id}/data", dependencies=CaseAuth)
 def get_data(case_id: str) -> dict:
     """Everything we hold about this case: case row, consent, saved profile, case memory
     (graph state), document metadata (never contents), timeline and audit rows."""
@@ -223,7 +315,7 @@ def get_data(case_id: str) -> dict:
     }
 
 
-@app.delete("/cases/{case_id}/data")
+@app.delete("/cases/{case_id}/data", dependencies=CaseAuth)
 def delete_data(case_id: str) -> dict:
     """Delete my data: documents (files + metadata), saved profile, case, timeline and the
     case memory. The audit log keeps its rows (append-only; no personal values in it).

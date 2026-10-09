@@ -4,13 +4,13 @@ audit log), consent before saving a profile, and the citizen's view / delete end
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 
 from agent import privacy_check
 from agent.main import app, graph, store
 from agent.privacy import mask_aadhaar, scrub
+from tests.helpers import CaseClient
 
-client = TestClient(app)
+client = CaseClient(app)  # sends the case's session token, like the web app
 
 READY = "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?"
 AADHAAR_MSG = "my aadhaar is 2345 6789 0123 and I'm 62"

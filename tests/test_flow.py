@@ -30,7 +30,7 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
     r = client.post(f"/turn/{case_id}", json=body)
     assert r.status_code == 200
     out = r.json()
-    assert set(out) == {"reply", "pause", "ui"}
+    assert set(out) == {"reply", "pause", "ui", "subtitle"}
     return out
 
 
@@ -49,7 +49,8 @@ def sentences(text: str) -> int:
 def test_golden_path_kannada_four_matches(case_id):
     # 1. The pension line: asks only the missing field (income), in Kannada.
     out = turn(case_id, "ನನಗೆ 62 ವರ್ಷ. ನನಗೆ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?", "kn")
-    assert out == {"reply": t("ask_annual_income", "kn"), "pause": None, "ui": None}
+    assert out == {"reply": t("ask_annual_income", "kn"), "pause": None, "ui": None,
+                   "subtitle": t("ask_annual_income", "en")}  # English under the Kannada bubble
     assert state(case_id)["missing"] == ["annual_income"]
 
     # 2. Income in number words -> 4 matches: short spoken reply, full detail on screen.

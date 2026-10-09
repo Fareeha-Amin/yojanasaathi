@@ -45,6 +45,9 @@ DOC_RETENTION_HOURS = float(os.getenv("DOC_RETENTION_HOURS", "24"))
 VAULT_PURGE_SECONDS = float(os.getenv("VAULT_PURGE_SECONDS", "60"))  # how often expiry is checked
 DOC_MAX_BYTES = int(os.getenv("DOC_MAX_BYTES", str(10 * 1024 * 1024)))
 
+# Web app session tokens (Phase 5, agent/auth.py; signing key derived from MASTER_KEY).
+SESSION_TTL_HOURS = float(os.getenv("SESSION_TTL_HOURS", str(24 * 30)))
+
 # Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
 MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives
 MOCK_PORTAL_API = _opt("MOCK_PORTAL_API")  # status polling API base

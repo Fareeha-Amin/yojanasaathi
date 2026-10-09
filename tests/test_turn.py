@@ -24,7 +24,7 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
     r = client.post(f"/turn/{case_id}", json=body)
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"reply", "pause", "ui"}  # contract shape (ui added 2026-10-09)
+    assert set(body) == {"reply", "pause", "ui", "subtitle"}  # contract shape (ui 2026-10-09, subtitle Phase 5)
     return body
 
 

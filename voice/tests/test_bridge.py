@@ -12,7 +12,7 @@ from pipecat.frames.frames import (
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
-from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
+from pipecat.processors.frameworks.rtvi import RTVIClientMessageFrame, RTVIServerMessageFrame
 from pipecat.tests.utils import SleepFrame, run_test
 from pipecat.transcriptions.language import Language
 
@@ -24,16 +24,18 @@ KN_REPLY = "ನಿಮ್ಮ ಅರ್ಜಿ ಸಿದ್ಧವಾಗಿದೆ. �
 
 class FakeAgent:
     def __init__(self, reply: str = KN_REPLY, pause: dict | None = None,
-                 delay: float = 0.0, fail: bool = False, ui: dict | None = None) -> None:
+                 delay: float = 0.0, fail: bool = False, ui: dict | None = None,
+                 subtitle: str | None = None) -> None:
         self.calls: list[tuple[str, str, str | None]] = []
         self.reply, self.pause, self.delay, self.fail, self.ui = reply, pause, delay, fail, ui
+        self.subtitle = subtitle
 
     async def turn(self, case_id: str, text: str, lang: str | None) -> dict:
         self.calls.append((case_id, text, lang))
         await asyncio.sleep(self.delay)
         if self.fail:
             raise ConnectionError("agent down")
-        return {"reply": self.reply, "pause": self.pause, "ui": self.ui}
+        return {"reply": self.reply, "pause": self.pause, "ui": self.ui, "subtitle": self.subtitle}
 
 
 def said(frames) -> list[tuple[str, str]]:
@@ -121,3 +123,28 @@ def test_agent_down_speaks_fallback_in_turn_language():
     agent = FakeAgent(fail=True)
     down = run(agent, transcript("मुझे पेंशन चाहिए", Language.HI_IN), *end_of_turn())
     assert said(down) == [(Language.HI_IN, AGENT_UNREACHABLE["hi"])]
+
+
+def test_subtitle_passed_to_the_web_app():
+    agent = FakeAgent(subtitle="Your application is ready. Shall I submit?")
+    down = run(agent, transcript("ನನಗೆ ಪಿಂಚಣಿ ಬೇಕು ದಯವಿಟ್ಟು", Language.KN_IN), *end_of_turn())
+    [msg] = [f for f in down if isinstance(f, RTVIServerMessageFrame)]
+    assert msg.data["subtitle"] == "Your application is ready. Shall I submit?"
+    assert msg.data["reply"] == KN_REPLY
+
+
+def test_speak_message_from_web_app_is_spoken_without_a_turn():
+    agent = FakeAgent()
+    down = run(agent, RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": KN_REPLY}))
+    assert agent.calls == []  # speak never calls /turn
+    assert said(down) == [(Language.KN_IN, KN_REPLY)]
+
+
+def test_speak_ignores_empty_other_types_and_caps_length():
+    agent = FakeAgent()
+    down = run(agent,
+               RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": "  "}),
+               RTVIClientMessageFrame(msg_id="2", type="other", data={"text": "hello"}),
+               RTVIClientMessageFrame(msg_id="3", type="speak", data="not a dict"),
+               RTVIClientMessageFrame(msg_id="4", type="speak", data={"text": "a" * 1000}))
+    assert said(down) == [(Language.EN_IN, "a" * 600)]
