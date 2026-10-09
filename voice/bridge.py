@@ -41,7 +41,7 @@ from pipecat.processors.frameworks.rtvi import RTVIClientMessageFrame, RTVIServe
 from pipecat.services.settings import TTSSettings
 from pipecat.transcriptions.language import Language
 
-from voice.lang import (AGENT_UNREACHABLE, TurnLang, mask_for_log, tts_language, turn_lang,
+from voice.lang import (AGENT_UNREACHABLE, FILLER, FILLER_AFTER_S, TurnLang, mask_for_log, tts_language, turn_lang,
                         turn_lang_for)
 
 SendTurn = Callable[[str, str, TurnLang | None], Awaitable[dict]]
@@ -111,6 +111,10 @@ class AgentBridge(FrameProcessor):
     ) -> None:
         shown = mask_for_log(text)  # Aadhaar: last 4 digits only, in logs and on screen
         logger.info(f"case {self._case_id} <- [{lang or '-'}, heard {heard or '?'}] {shown}")
+        # A slow turn (the browser is filling the portal) gets one short spoken filler.
+        filler = asyncio.get_running_loop().call_later(
+            FILLER_AFTER_S, lambda: self.create_task(self._filler(lang or self._last_lang or heard, turn_no),
+                                                     "agent_filler"))
         try:
             out = await self._send_turn(self._case_id, text, lang)
             reply, pause, ui = out["reply"], out.get("pause"), out.get("ui")
@@ -119,6 +123,8 @@ class AgentBridge(FrameProcessor):
             logger.error(f"/turn failed for case {self._case_id}: {e!r}")
             reply, pause, ui = AGENT_UNREACHABLE[lang or self._last_lang or heard or "kn"], None, None
             subtitle = None
+        finally:
+            filler.cancel()
 
         if turn_no != self._turn_no:
             logger.info(f"case {self._case_id}: dropped reply, citizen spoke again: {reply!r}")
@@ -134,6 +140,10 @@ class AgentBridge(FrameProcessor):
         )
         if reply:
             await self.say(reply)
+
+    async def _filler(self, lang: TurnLang | None, turn_no: int) -> None:
+        if turn_no == self._turn_no:  # the citizen has not started speaking again
+            await self.say(FILLER[lang or "kn"])
 
     async def _cancel_tasks(self) -> None:
         for task in list(self._tasks):

@@ -1,8 +1,8 @@
 {
-  "case_id": "web-submitted",
+  "case_id": "web-otp",
   "lang": "kn",
   "case_lang": "kn",
-  "status": "submitted",
+  "status": "awaiting_otp",
   "selected": "pension-001",
   "profile": [
     {
@@ -26,13 +26,7 @@
       "unsure": false
     }
   ],
-  "asking": {
-    "kind": "choose",
-    "question": "ದಯವಿಟ್ಟು ಯೋಜನೆಯ ಹೆಸರು ಹೇಳಿ, ಉದಾಹರಣೆಗೆ ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ.",
-    "question_en": "Please tell me the scheme's name, for example Social Security Pension Assistance.",
-    "why": null,
-    "why_en": null
-  },
+  "asking": null,
   "schemes": [
     {
       "scheme_id": "pension-001",
@@ -99,7 +93,7 @@
           "label_en": "Bank Account Details"
         }
       ],
-      "app_id": "YJS-0000000001",
+      "app_id": null,
       "title_en": "Senior Citizen Pension Scheme",
       "reasons_en": [
         "age 62, at least 60 needed",
@@ -304,13 +298,118 @@
   ],
   "checklist": {
     "scheme_ids": [
-      "pension-002",
-      "health-001",
-      "health-002"
+      "pension-001"
     ],
-    "title": null,
-    "title_en": null,
+    "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+    "title_en": "Senior Citizen Pension Scheme",
     "items": [
+      {
+        "doc": "identity_proof",
+        "status": "uploaded",
+        "label": "ಗುರುತಿನ ಪುರಾವೆ",
+        "label_en": "Identity Proof",
+        "document": {
+          "id": "f291a6e3-3276-42e3-8c96-3a76088d8369",
+          "doc_type": "identity_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 28,
+          "aadhaar": null,
+          "created_at": "2026-10-09T19:56:17.894116+05:30",
+          "expires_at": null
+        },
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "age_proof",
+        "status": "uploaded",
+        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+        "label_en": "Age Proof",
+        "document": {
+          "id": "7f5f3a91-c42b-4695-ae8e-50df7f725e0e",
+          "doc_type": "age_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 23,
+          "aadhaar": null,
+          "created_at": "2026-10-09T19:56:17.901793+05:30",
+          "expires_at": null
+        },
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "residence_proof",
+        "status": "uploaded",
+        "label": "ನಿವಾಸ ಪುರಾವೆ",
+        "label_en": "Residence Proof",
+        "document": {
+          "id": "23a5d17b-e04a-4a08-9304-f4995f1404ab",
+          "doc_type": "residence_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 29,
+          "aadhaar": null,
+          "created_at": "2026-10-09T19:56:17.908648+05:30",
+          "expires_at": null
+        },
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "income_certificate",
+        "status": "uploaded",
+        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "label_en": "Income Certificate",
+        "document": {
+          "id": "e1220dbc-8b95-4b52-8aa9-1f41fa503aaf",
+          "doc_type": "income_certificate",
+          "content_type": "application/pdf",
+          "size_bytes": 32,
+          "aadhaar": null,
+          "created_at": "2026-10-09T19:56:17.914687+05:30",
+          "expires_at": null
+        },
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      },
+      {
+        "doc": "bank_account_details",
+        "status": "uploaded",
+        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "label_en": "Bank Account Details",
+        "document": {
+          "id": "1cad28a0-af3e-422f-9409-31e43b69479d",
+          "doc_type": "bank_account_details",
+          "content_type": "application/pdf",
+          "size_bytes": 34,
+          "aadhaar": null,
+          "created_at": "2026-10-09T19:56:17.921361+05:30",
+          "expires_at": null
+        },
+        "schemes": [
+          "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Senior Citizen Pension Scheme"
+        ]
+      }
+    ],
+    "others": [
       {
         "doc": "medical_documents",
         "status": "needed",
@@ -336,187 +435,70 @@
         "schemes_en": [
           "Family Healthcare Assistance"
         ]
-      },
-      {
-        "doc": "identity_proof",
-        "status": "uploaded",
-        "label": "ಗುರುತಿನ ಪುರಾವೆ",
-        "label_en": "Identity Proof",
-        "document": {
-          "id": "b878bc03-a36f-4c81-8aff-8301c617aa66",
-          "doc_type": "identity_proof",
-          "content_type": "application/pdf",
-          "size_bytes": 28,
-          "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.513091+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
-        },
-        "schemes": [
-          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
-          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
-          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
-        ],
-        "schemes_en": [
-          "Social Security Pension Assistance",
-          "National Health Support Scheme",
-          "Family Healthcare Assistance"
-        ]
-      },
-      {
-        "doc": "residence_proof",
-        "status": "uploaded",
-        "label": "ನಿವಾಸ ಪುರಾವೆ",
-        "label_en": "Residence Proof",
-        "document": {
-          "id": "294d690a-4bf0-4e78-8a7c-6a2d4c637451",
-          "doc_type": "residence_proof",
-          "content_type": "application/pdf",
-          "size_bytes": 29,
-          "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.524388+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
-        },
-        "schemes": [
-          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
-          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
-          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
-        ],
-        "schemes_en": [
-          "Social Security Pension Assistance",
-          "National Health Support Scheme",
-          "Family Healthcare Assistance"
-        ]
-      },
-      {
-        "doc": "income_certificate",
-        "status": "uploaded",
-        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
-        "label_en": "Income Certificate",
-        "document": {
-          "id": "743b6dce-cf93-4168-86fc-ba9767c89174",
-          "doc_type": "income_certificate",
-          "content_type": "application/pdf",
-          "size_bytes": 32,
-          "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.531333+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
-        },
-        "schemes": [
-          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
-          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
-          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
-        ],
-        "schemes_en": [
-          "Social Security Pension Assistance",
-          "National Health Support Scheme",
-          "Family Healthcare Assistance"
-        ]
-      },
-      {
-        "doc": "bank_account_details",
-        "status": "uploaded",
-        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
-        "label_en": "Bank Account Details",
-        "document": {
-          "id": "e7ef598b-15e9-4eda-9374-cc858cfc7620",
-          "doc_type": "bank_account_details",
-          "content_type": "application/pdf",
-          "size_bytes": 34,
-          "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.537873+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
-        },
-        "schemes": [
-          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
-          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
-          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
-        ],
-        "schemes_en": [
-          "Social Security Pension Assistance",
-          "National Health Support Scheme",
-          "Family Healthcare Assistance"
-        ]
-      },
-      {
-        "doc": "age_proof",
-        "status": "uploaded",
-        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
-        "label_en": "Age Proof, where applicable",
-        "document": {
-          "id": "b6aa0354-16fc-4b35-bfe9-00eb99c317dc",
-          "doc_type": "age_proof",
-          "content_type": "application/pdf",
-          "size_bytes": 23,
-          "aadhaar": null,
-          "created_at": "2026-10-09T19:56:18.518695+05:30",
-          "expires_at": "2026-10-10T19:56:18.871812+05:30"
-        },
-        "schemes": [
-          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
-        ],
-        "schemes_en": [
-          "Social Security Pension Assistance"
-        ]
       }
     ],
-    "others": [],
     "ready": 5,
-    "total": 7,
-    "missing": 2
+    "total": 5,
+    "missing": 0
   },
   "documents": [
     {
-      "id": "b878bc03-a36f-4c81-8aff-8301c617aa66",
+      "id": "f291a6e3-3276-42e3-8c96-3a76088d8369",
       "doc_type": "identity_proof",
       "content_type": "application/pdf",
       "size_bytes": 28,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.513091+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-09T19:56:17.894116+05:30",
+      "expires_at": null
     },
     {
-      "id": "b6aa0354-16fc-4b35-bfe9-00eb99c317dc",
+      "id": "7f5f3a91-c42b-4695-ae8e-50df7f725e0e",
       "doc_type": "age_proof",
       "content_type": "application/pdf",
       "size_bytes": 23,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.518695+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-09T19:56:17.901793+05:30",
+      "expires_at": null
     },
     {
-      "id": "294d690a-4bf0-4e78-8a7c-6a2d4c637451",
+      "id": "23a5d17b-e04a-4a08-9304-f4995f1404ab",
       "doc_type": "residence_proof",
       "content_type": "application/pdf",
       "size_bytes": 29,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.524388+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-09T19:56:17.908648+05:30",
+      "expires_at": null
     },
     {
-      "id": "743b6dce-cf93-4168-86fc-ba9767c89174",
+      "id": "e1220dbc-8b95-4b52-8aa9-1f41fa503aaf",
       "doc_type": "income_certificate",
       "content_type": "application/pdf",
       "size_bytes": 32,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.531333+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-09T19:56:17.914687+05:30",
+      "expires_at": null
     },
     {
-      "id": "e7ef598b-15e9-4eda-9374-cc858cfc7620",
+      "id": "1cad28a0-af3e-422f-9409-31e43b69479d",
       "doc_type": "bank_account_details",
       "content_type": "application/pdf",
       "size_bytes": 34,
       "aadhaar": null,
-      "created_at": "2026-10-09T19:56:18.537873+05:30",
-      "expires_at": "2026-10-10T19:56:18.871812+05:30"
+      "created_at": "2026-10-09T19:56:17.921361+05:30",
+      "expires_at": null
     }
   ],
   "consent": {
     "profile": false,
     "documents": true,
-    "at": "2026-10-09T19:56:18.507214+05:30"
+    "at": "2026-10-09T19:56:17.884362+05:30"
   },
-  "pause": null,
+  "pause": {
+    "type": "otp",
+    "masked_mobile": "XXXXXX3210",
+    "scheme_id": "pension-001",
+    "attempts_left": 3
+  },
   "review": null,
   "progress": {
     "scheme_id": "pension-001",
@@ -526,49 +508,49 @@
         "label": "ಲಾಗಿನ್",
         "label_en": "Log in",
         "status": "done",
-        "screenshot": "668849f0-8b88-4421-b9d5-be16fb4a6959"
+        "screenshot": "2cd59f7c-e795-4549-803a-4cdd62029a3c"
       },
       {
         "key": "otp",
         "label": "OTP",
         "label_en": "OTP",
-        "status": "done",
-        "screenshot": "c1765103-8641-4dd0-89e2-e5b678918349"
+        "status": "waiting",
+        "screenshot": null
       },
       {
         "key": "applicant",
         "label": "ಅರ್ಜಿದಾರರ ವಿವರ",
         "label_en": "Applicant details",
-        "status": "done",
-        "screenshot": "8d12715c-b183-4de7-b550-2acd8f4e1741"
+        "status": "waiting",
+        "screenshot": null
       },
       {
         "key": "details",
         "label": "ಯೋಜನೆಯ ವಿವರ",
         "label_en": "Scheme details",
-        "status": "done",
-        "screenshot": "72379780-5e24-4b83-ba73-e82829bd86e2"
+        "status": "waiting",
+        "screenshot": null
       },
       {
         "key": "documents",
         "label": "ದಾಖಲೆಗಳು",
         "label_en": "Documents",
-        "status": "done",
-        "screenshot": "a63cbd6e-1744-45fe-9def-0657541fa54a"
+        "status": "waiting",
+        "screenshot": null
       },
       {
         "key": "review",
         "label": "ಪರಿಶೀಲನೆ (ನಿಮ್ಮ ಹೌದುಗಾಗಿ ಇಲ್ಲಿ ನಿಲ್ಲುತ್ತದೆ)",
         "label_en": "Review (stop here for your yes)",
-        "status": "done",
-        "screenshot": "c78fcd32-bd15-48d4-ae4a-1595da53c2da"
+        "status": "waiting",
+        "screenshot": null
       },
       {
         "key": "submit",
         "label": "ಸಲ್ಲಿಕೆ",
         "label_en": "Submit",
-        "status": "done",
-        "screenshot": "85fb9b47-5e86-49a1-8ed9-c2a52c33d74e"
+        "status": "waiting",
+        "screenshot": null
       }
     ]
   },
@@ -644,39 +626,13 @@
       "sensitive": true
     }
   ],
-  "applications": [
+  "applications": [],
+  "next": [
     {
       "scheme_id": "pension-001",
       "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
-      "title_en": "Senior Citizen Pension Scheme",
-      "app_id": "YJS-0000000001",
-      "status": "SUBMITTED",
-      "status_text": "ಸಲ್ಲಿಸಲಾಗಿದೆ",
-      "status_text_en": "Submitted",
-      "timeline": [
-        {
-          "at": "2026-10-09T19:56:18.568039+05:30",
-          "kind": "eligibility_decided"
-        },
-        {
-          "at": "2026-10-09T19:56:18.847082+05:30",
-          "kind": "confirm_requested"
-        },
-        {
-          "at": "2026-10-09T19:56:18.861293+05:30",
-          "kind": "citizen_approved"
-        },
-        {
-          "at": "2026-10-09T19:56:18.866297+05:30",
-          "kind": "submitted",
-          "app_id": "YJS-0000000001"
-        }
-      ],
-      "missing_documents": [],
-      "checked_at": null
-    }
-  ],
-  "next": [
+      "title_en": "Senior Citizen Pension Scheme"
+    },
     {
       "scheme_id": "pension-002",
       "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
@@ -694,8 +650,8 @@
     }
   ],
   "last_reply": {
-    "text": "ಸಲ್ಲಿಸಲಾಗಿದೆ! ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ YJS-0000000001. ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ: ಇದಕ್ಕೂ ನೀವು ಅರ್ಹರು; ಅರ್ಜಿ ಹಾಕಲು ಅದರ ಹೆಸರು ಹೇಳಿ.",
-    "en": "Submitted! Your application ID is YJS-0000000001. You also qualify for Social Security Pension Assistance; to apply, say its name."
+    "text": "ಪೋರ್ಟಲ್ ತೆರೆದು, 3210 ರಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ನಿಮ್ಮ ಮೊಬೈಲ್‌ಗೆ ಕೋಡ್ ಕಳುಹಿಸಿದ್ದೇನೆ. ದಯವಿಟ್ಟು 6 ಅಂಕಿಯ ಕೋಡ್ ಹೇಳಿ.",
+    "en": "I've opened the portal and sent a code to your mobile ending 3210. Please tell me the 6-digit code."
   },
   "limits": {
     "doc_retention_hours": 24.0,

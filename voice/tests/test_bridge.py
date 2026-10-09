@@ -17,7 +17,8 @@ from pipecat.tests.utils import SleepFrame, run_test
 from pipecat.transcriptions.language import Language
 
 from voice.bridge import AgentBridge
-from voice.lang import AGENT_UNREACHABLE
+from voice import bridge as bridge_mod
+from voice.lang import AGENT_UNREACHABLE, FILLER
 
 KN_REPLY = "ನಿಮ್ಮ ಅರ್ಜಿ ಸಿದ್ಧವಾಗಿದೆ. ಸಲ್ಲಿಸಲೇ?"
 
@@ -176,3 +177,17 @@ def test_plain_say_sends_no_ui_message():
     agent = FakeAgent()
     down = run(agent, RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": KN_REPLY}))
     assert [f for f in down if isinstance(f, RTVIServerMessageFrame)] == []
+
+
+def test_slow_turn_speaks_one_filler_then_the_reply(monkeypatch):
+    monkeypatch.setattr(bridge_mod, "FILLER_AFTER_S", 0.05)
+    agent = FakeAgent(reply="Done.", delay=0.15)
+    down = run(agent, transcript("I need a pension please now", Language.EN_IN), *end_of_turn())
+    assert [t for _, t in said(down)] == [FILLER["en"], "Done."]
+
+
+def test_fast_turn_has_no_filler(monkeypatch):
+    monkeypatch.setattr(bridge_mod, "FILLER_AFTER_S", 0.2)
+    agent = FakeAgent(reply="Done.", delay=0.0)
+    down = run(agent, transcript("I need a pension please now", Language.EN_IN), *end_of_turn())
+    assert [t for _, t in said(down)] == ["Done."]

@@ -144,12 +144,17 @@ class Store:
             if new:
                 from agent import config  # late: tests change the retention
 
+                secs = config.DOC_RETENTION_HOURS * 3600
                 n = conn.execute(
                     "UPDATE documents SET expires_at = now() + make_interval(secs => %s) "
-                    "WHERE case_id = %s", (config.DOC_RETENTION_HOURS * 3600, case_id)).rowcount
-                if n:
+                    "WHERE case_id = %s", (secs, case_id)).rowcount
+                shots = conn.execute(  # screenshots show the form: they go with the documents
+                    "UPDATE screenshots SET expires_at = now() + make_interval(secs => %s) "
+                    "WHERE case_id = %s", (secs, case_id)).rowcount
+                if n or shots:
                     self._audit(conn, "system", "documents_expiry_set", case_id, None,
-                                {"documents": n, "hours_after_submission": config.DOC_RETENTION_HOURS})
+                                {"documents": n, "screenshots": shots,
+                                 "hours_after_submission": config.DOC_RETENTION_HOURS})
             profile = values.get("profile") or {}
             if row["consent_profile"] and profile != (row["data"] or {}):
                 conn.execute("UPDATE profiles SET data = %s, updated_at = now() WHERE citizen_id = %s",
@@ -238,8 +243,48 @@ class Store:
             return conn.execute("SELECT * FROM documents WHERE expires_at <= now()").fetchall()
 
     def storage_keys(self) -> set[str]:
+        """Every vault file that has a metadata row (documents and screenshots)."""
         with self.pool.connection() as conn:
-            return {r["storage_key"] for r in conn.execute("SELECT storage_key FROM documents")}
+            return {r["storage_key"] for r in conn.execute(
+                "SELECT storage_key FROM documents UNION ALL SELECT storage_key FROM screenshots")}
+
+    # --- browser-agent screenshots (metadata; agent/vault.py owns the files) ------------
+
+    def add_screenshot(self, case_id: str, step: str, storage_key: str, size: int) -> str:
+        with self.pool.connection() as conn:
+            return str(conn.execute(
+                "INSERT INTO screenshots (case_id, step, storage_key, size_bytes) VALUES (%s, %s, %s, %s) "
+                "RETURNING id", (case_id, step, storage_key, size)).fetchone()["id"])
+
+    def screenshots(self, case_id: str) -> list[dict[str, Any]]:
+        with self.pool.connection() as conn:
+            return conn.execute("SELECT * FROM screenshots WHERE case_id = %s ORDER BY created_at",
+                                (case_id,)).fetchall()
+
+    def screenshot(self, case_id: str, shot_id: str) -> dict[str, Any] | None:
+        with self.pool.connection() as conn:
+            return conn.execute("SELECT * FROM screenshots WHERE case_id = %s AND id::text = %s",
+                                (case_id, shot_id)).fetchone()
+
+    def delete_screenshot_rows(self, case_id: str | None = None, expired: bool = False) -> list[str]:
+        """Delete a case's screenshot rows (or all expired ones); returns their storage keys."""
+        with self.pool.connection() as conn:
+            if expired:
+                rows = conn.execute("DELETE FROM screenshots WHERE expires_at <= now() "
+                                    "RETURNING storage_key").fetchall()
+            else:
+                rows = conn.execute("DELETE FROM screenshots WHERE case_id = %s RETURNING storage_key",
+                                    (case_id,)).fetchall()
+        return [r["storage_key"] for r in rows]
+
+    # --- timeline ---------------------------------------------------------------------
+
+    def add_event(self, case_id: str, kind: str, scheme_id: str | None, detail: dict[str, Any]) -> None:
+        """One case_events row (no values: step names, statuses, IDs)."""
+        with self.pool.connection() as conn:
+            conn.execute("INSERT INTO case_events (case_id, kind, scheme_id, detail) "
+                         "SELECT %s, %s, %s, %s WHERE EXISTS (SELECT 1 FROM cases WHERE case_id = %s)",
+                         (case_id, kind, scheme_id, Jsonb(scrub(detail)), case_id))
 
     # --- the citizen's own data ----------------------------------------------------------
 
@@ -270,6 +315,7 @@ class Store:
                 counts["case_events"] = conn.execute("DELETE FROM case_events WHERE case_id = %s",
                                                      (case_id,)).rowcount
                 conn.execute("DELETE FROM documents WHERE case_id = %s", (case_id,))
+                conn.execute("DELETE FROM screenshots WHERE case_id = %s", (case_id,))
                 counts["cases"] = conn.execute("DELETE FROM cases WHERE case_id = %s", (case_id,)).rowcount
                 counts["profiles"] = conn.execute("DELETE FROM profiles WHERE citizen_id = %s",
                                                   (cid,)).rowcount

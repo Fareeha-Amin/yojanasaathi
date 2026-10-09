@@ -17,9 +17,16 @@ import pytest
 
 from agent import config, db
 from agent import llm as llm_mod
+from agent import portal
+from tests.fake_driver import FakeDriver
 from tests.helpers import FakeLLM
 
 TEST_MASTER_KEY = base64.b64encode(bytes(range(32))).decode()  # tests only
+# Never the real portal: every test gets a FakeDriver (in-process); the browser tests point
+# these at tests/fake_portal.py on 127.0.0.1.
+TEST_PORTAL = {"MOCK_PORTAL_URL": "https://mock-portal.invalid",  # .invalid never resolves
+               "MOCK_PORTAL_API": "https://mock-portal.invalid/api",
+               "MOCK_PORTAL_AGENT_KEY": "yjs_ag_test_key_not_a_secret"}
 
 
 def _test_env() -> dict[str, str]:
@@ -28,13 +35,17 @@ def _test_env() -> dict[str, str]:
     return {"DATABASE_URL": url, "MASTER_KEY": TEST_MASTER_KEY,
             "VAULT_DIR": tempfile.mkdtemp(prefix="ys-vault-test-"),
             "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0",
-            "SARVAM_API_KEY": ""}  # no Sarvam calls from tests (also in subprocesses)
+            "SARVAM_API_KEY": "",  # no Sarvam calls from tests (also in subprocesses)
+            "BROWSER_HEADLESS": "true", "BROWSER_SLOWMO_MS": "0", **TEST_PORTAL}
 
 
 TEST_ENV = _test_env()
 config.DATABASE_URL = TEST_ENV["DATABASE_URL"] or None
 config.MASTER_KEY = TEST_MASTER_KEY
 config.VAULT_DIR = Path(TEST_ENV["VAULT_DIR"])
+config.BROWSER_HEADLESS, config.BROWSER_SLOWMO_MS = True, 0.0
+for _k, _v in TEST_PORTAL.items():
+    setattr(config, _k, _v)
 if config.DATABASE_URL:
     try:
         db.recreate_database(config.DATABASE_URL)
@@ -48,6 +59,16 @@ def fake_llm() -> FakeLLM:
     llm_mod.set_llm(fake)
     yield fake
     llm_mod.set_llm(None)
+
+
+@pytest.fixture(autouse=True)
+def fake_driver() -> FakeDriver:
+    """The portal, in-process (OTP 123456). Browser tests swap in the real driver."""
+    previous = portal._driver
+    fake = FakeDriver()
+    portal.set_driver(fake)
+    yield fake
+    portal.set_driver(previous)
 
 
 @pytest.fixture

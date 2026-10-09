@@ -7,9 +7,11 @@ import pytest
 
 from agent.main import app, graph
 from agent.replies import t
+from tests import helpers
 from tests.helpers import CaseClient
 
 client = CaseClient(app)
+FIRST = "YJS-0000000001"  # the FakeDriver's first application number
 
 EN_READY = "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?"
 KN_READY = "ನನಗೆ 62 ವರ್ಷ, ಆದಾಯ ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ. ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?"
@@ -39,10 +41,12 @@ def edit(case_id: str, field: str, value: int):
 
 
 def to_confirm(case_id: str) -> dict:
+    """Documents uploaded -> 4 matches -> pension-001 -> form questions -> OTP -> the
+    confirm pause (the portal's review step, FakeDriver)."""
+    helpers.upload_documents(client, case_id, "pension-001")
     turn(case_id, EN_READY)
     out = turn(case_id, "senior citizen pension")
-    assert out["pause"]["type"] == "confirm"
-    return out
+    return helpers.to_confirm(lambda m: turn(case_id, m), out)
 
 
 def audit_actions(case_id: str) -> list[str]:
@@ -130,18 +134,19 @@ def test_review_from_the_confirm_pause(case_id):
     assert r["scheme_id"] == "pension-001" and r["title"] == KN_PENSION
     assert [(f["field"], f["text"], f["editable"]) for f in r["fields"]] == [
         ("age", "62", True), ("annual_income", "₹1,20,000", True)]
-    assert "₹1,20,000" in r["readback_en"]
-    # documents are missing: said before the yes is asked for (not blocked)
-    assert "5 documents for Senior Citizen Pension Scheme are still missing" in r["readback_en"]
-    assert r["documents_missing"] == 5
-    # the portal's own form fields, values filled in Phase 4
+    assert "₹1,20,000" in r["readback_en"] and "Ramesh Kumar" in r["readback_en"]
+    assert "24 hours" in r["readback_en"] and "not drawing any other" in r["readback_en"]
+    assert r["documents_missing"] == 0  # Phase 4: all documents are in before the browser opens
+    # the portal's own form fields, with the values the page shows (sensitive ones masked)
     assert len(r["form_fields"]) == 11
-    # already answered -> pre-filled "from your answers"; the rest waits for Phase 4's pre-fill
-    known = {f["name"]: f for f in r["form_fields"] if f["from_answers"]}
-    assert list(known) == ["annual_income"] and known["annual_income"]["text"] == "₹1,20,000"
-    assert all(f["value"] is None for f in r["form_fields"] if f["name"] != "annual_income")
+    page = {f["name"]: f for f in r["form_fields"]}
+    assert all(f["from_page"] for f in r["form_fields"])
+    assert page["annual_income"]["text"] == "₹1,20,000"
+    assert page["marital_status"]["text"] == "ವಿವಾಹಿತ" and page["marital_status"]["text_en"] == "Married"
+    assert page["bank_account_number"]["text"] == "XXXXXX0123" and page["bank_account_number"]["sensitive"]
     assert r["form_fields"][-1]["name"] == "declaration_consent"
-    assert len(r["documents"]) == 5
+    assert r["declaration"]["text"].startswith("ನಾನು ಯಾವುದೇ")
+    assert len(r["documents"]) == 5 and len(r["screenshots"]) >= 4
 
 
 def test_applications_timeline_and_next(case_id):
@@ -149,11 +154,11 @@ def test_applications_timeline_and_next(case_id):
     turn(case_id, "yes")
     out = summary(case_id)
     [app_] = out["applications"]
-    assert app_["app_id"] == "DEMO-0001" and app_["status"] == "SUBMITTED"
+    assert app_["app_id"] == FIRST and app_["status"] == "SUBMITTED"
     assert app_["status_text_en"] == "Submitted"  # badge, title case
     kinds = [e["kind"] for e in app_["timeline"]]
     assert kinds == ["eligibility_decided", "confirm_requested", "citizen_approved", "submitted"]
-    assert app_["timeline"][-1]["app_id"] == "DEMO-0001"
+    assert app_["timeline"][-1]["app_id"] == FIRST
     assert [n["scheme_id"] for n in out["next"]] == ["pension-002", "health-001", "health-002"]
     assert out["review"] is None and out["pause"] is None
 
@@ -189,11 +194,14 @@ def test_subtitle_is_english_for_kannada_and_none_for_english(case_id):
 
 
 def test_subtitle_follows_resume(case_id):
+    helpers.upload_documents(client, case_id, "pension-001")
     turn(case_id, KN_READY, "kn")
-    paused = turn(case_id, KN_PENSION)
-    assert "Senior Citizen Pension Scheme are still missing: say yes to submit anyway" in paused["subtitle"]
+    first = turn(case_id, KN_PENSION)
+    assert first["subtitle"].startswith("To apply for Senior Citizen Pension Scheme on the portal")
+    paused = helpers.to_confirm(lambda m: turn(case_id, m), first)
+    assert "By saying yes you also affirm" in paused["subtitle"]
     done = turn(case_id, "ಹೌದು")
-    assert done["subtitle"].startswith("Submitted! Your application ID is DEMO-0001.")
+    assert done["subtitle"].startswith(f"Submitted! Your application ID is {FIRST}.")
 
 
 def test_llm_answer_has_no_subtitle(case_id, fake_llm):
@@ -216,12 +224,12 @@ def test_review_edit_reconfirms_never_submits(case_id, ):
     out = r.json()
     assert out["pause"]["type"] == "confirm"  # a NEW read-back and pause
     assert out["pause"]["preview"]["fields"]["annual_income"] == 150000
-    assert "₹1,50,000" in out["reply"] and "DEMO" not in out["reply"]
+    assert "₹1,50,000" in out["reply"] and "YJS-" not in out["reply"]
     assert "fields_edited" in audit_actions(case_id) and "submitted" not in audit_actions(case_id)
     state = graph.get_state({"configurable": {"thread_id": case_id}}).values
     assert state["sources"]["annual_income"] == "edited" and not state.get("applications")
     done = turn(case_id, "yes")
-    assert "DEMO-0001" in done["reply"]
+    assert FIRST in done["reply"]
 
 
 def test_review_edit_that_breaks_eligibility_stops(case_id):
@@ -262,13 +270,13 @@ def test_spoken_edit_at_confirm_reconfirms(case_id, said):
     assert out["pause"]["type"] == "confirm"  # even with "yes": a changed value is re-read first
     assert out["pause"]["preview"]["fields"]["annual_income"] == 200000
     assert "submitted" not in audit_actions(case_id)
-    assert "DEMO-0001" in turn(case_id, "ಹೌದು")["reply"]
+    assert FIRST in turn(case_id, "ಹೌದು")["reply"]
 
 
 def test_same_value_is_not_an_edit(case_id):
     to_confirm(case_id)
     out = turn(case_id, "yes, I'm 62")
-    assert out["pause"] is None and "DEMO-0001" in out["reply"]
+    assert out["pause"] is None and FIRST in out["reply"]
 
 
 # --- Phase 5 fix-up, part C ------------------------------------------------------------
@@ -289,21 +297,22 @@ def test_why_i_ask_names_two_schemes_then_n_more(case_id):
                    "National Health Support Scheme and 1 more.")
 
 
-def test_readback_names_missing_documents_and_counts_uploads(case_id):
+def test_readback_ends_with_the_question(case_id):
     to_confirm(case_id)
-    upload(case_id, "identity_proof", "age_proof", "residence_proof", "income_certificate")
     r = summary(case_id)["review"]
-    assert r["documents_missing"] == 1
-    assert "1 document for Senior Citizen Pension Scheme is still missing: say yes to submit anyway" in r["readback_en"]
-    upload(case_id, "bank_account_details")
-    r = summary(case_id)["review"]
-    assert r["documents_missing"] == 0
     assert r["readback_en"].endswith("Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit.")
+    assert "**/**/" in r["readback_en"]  # the date of birth, masked on the screen
 
 
-def test_missing_documents_do_not_block_submit(case_id):
-    to_confirm(case_id)
-    assert "DEMO-0001" in turn(case_id, "yes")["reply"]  # Phase 4 decides what the portal needs
+def test_missing_documents_block_before_the_portal(case_id, fake_driver):
+    # Phase 4 (changed from Phase 5's "submit anyway"): the portal requires every document,
+    # so the agent lists what is missing and never opens the browser without them.
+    upload(case_id, "identity_proof", "age_proof", "residence_proof", "income_certificate")
+    turn(case_id, EN_READY)
+    out = turn(case_id, "senior citizen pension")
+    assert "Bank Account Details" in out["reply"] and out["pause"] is None
+    assert summary(case_id)["status"] == "needs_documents"
+    assert "login" not in fake_driver.calls
 
 
 def test_documents_for_the_chosen_scheme_others_collapsed(case_id):
@@ -313,7 +322,7 @@ def test_documents_for_the_chosen_scheme_others_collapsed(case_id):
     assert [i["doc"] for i in c["items"]] == [
         "identity_proof", "age_proof", "residence_proof", "income_certificate", "bank_account_details"]
     assert {i["doc"] for i in c["others"]} == {"medical_documents", "family_details"}
-    assert (c["total"], c["missing"], c["ready"]) == (5, 5, 0)
+    assert (c["total"], c["missing"], c["ready"]) == (5, 0, 5)
 
 
 def test_no_scheme_chosen_lists_all_qualifying_documents(case_id):
@@ -324,11 +333,13 @@ def test_no_scheme_chosen_lists_all_qualifying_documents(case_id):
 
 def test_application_what_to_do_lists_missing_documents(case_id):
     to_confirm(case_id)
-    upload(case_id, "identity_proof")
     turn(case_id, "yes")
     [a] = summary(case_id)["applications"]
-    assert [d["label_en"] for d in a["missing_documents"]] == [
-        "Age Proof", "Residence Proof", "Income Certificate", "Bank Account Details"]
+    assert a["missing_documents"] == []
+    doc = next(d for d in client.get(f"/cases/{case_id}/documents").json() if d["doc_type"] == "age_proof")
+    client.delete(f"/cases/{case_id}/documents/{doc['id']}").raise_for_status()
+    [a] = summary(case_id)["applications"]
+    assert [d["label_en"] for d in a["missing_documents"]] == ["Age Proof"]
 
 
 def test_category_tag_from_the_rules(case_id):

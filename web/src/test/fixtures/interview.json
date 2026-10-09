@@ -63,7 +63,7 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+      "source_url": "https://mock-portal.invalid/schemes/pension-001",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
@@ -127,7 +127,7 @@
           "label_en": "Age"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
+      "source_url": "https://mock-portal.invalid/schemes/pension-002",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
@@ -197,7 +197,7 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
+      "source_url": "https://mock-portal.invalid/schemes/health-001",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
@@ -265,7 +265,7 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
+      "source_url": "https://mock-portal.invalid/schemes/health-002",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
@@ -396,6 +396,7 @@
   "pause": null,
   "review": null,
   "progress": null,
+  "form": [],
   "applications": [],
   "next": [],
   "last_reply": {

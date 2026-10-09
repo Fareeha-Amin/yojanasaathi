@@ -3,11 +3,12 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 
 from agent.main import app, graph
+from tests import helpers
+from tests.helpers import CaseClient
 
-client = TestClient(app)
+client = CaseClient(app)  # plain /turn calls; the token only goes to /cases/... (document uploads)
 
 # One message with age + income: the citizen qualifies for all 4 portal schemes.
 EN_READY = "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?"
@@ -29,11 +30,16 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
 
 
 def to_confirm(case_id: str, ready: str = EN_READY, lang: str | None = None) -> dict:
-    """Interview -> 4 matches -> pick pension-001 -> the confirm pause."""
+    """Interview -> 4 matches -> pick pension-001 -> form questions -> OTP -> the confirm
+    pause (Phase 4: the portal's review step; FakeDriver, tests/fake_driver.py)."""
+    helpers.upload_documents(client, case_id, "pension-001")
     assert turn(case_id, ready, lang)["pause"] is None
     out = turn(case_id, "senior citizen pension")
-    assert out["pause"]["type"] == "confirm"
-    return out
+    return helpers.to_confirm(lambda t: turn(case_id, t), out)
+
+
+def submitted_id(out: dict) -> bool:
+    return "YJS-" in out["reply"]
 
 
 def test_health():
@@ -47,7 +53,7 @@ def test_pause_then_yes_submits(case_id):
 
     second = turn(case_id, "ಹೌದು")
     assert second["pause"] is None
-    assert "DEMO-0001" in second["reply"]
+    assert submitted_id(second)
 
 
 def test_no_submits_nothing(case_id):
@@ -74,7 +80,7 @@ def test_yes_in_any_language_after_reask(case_id, yes):
     turn(case_id, "what?")
     out = turn(case_id, yes)
     assert out["pause"] is None
-    assert "DEMO-0001" in out["reply"]
+    assert submitted_id(out)
 
 
 def test_cases_are_isolated(case_id):
@@ -102,7 +108,7 @@ def test_lang_stored_on_new_turn(case_id):
 def test_lang_updates_while_paused(case_id):
     to_confirm(case_id, KN_READY, lang="kn")
     out = turn(case_id, "हाँ", lang="hi")
-    assert "DEMO-0001" in out["reply"]
+    assert submitted_id(out)
     assert case_lang(case_id) == "hi"
 
 
@@ -121,5 +127,7 @@ def test_cancelled_case_can_start_again(case_id):
     to_confirm(case_id)
     turn(case_id, "no")
     out = turn(case_id, "senior citizen pension")
-    assert out["pause"]["type"] == "confirm"  # nothing was submitted, so the form can be redone
+    # nothing was submitted, so the form can be redone: the answers are kept, log in again
+    assert out["pause"]["type"] == "otp"
+    assert turn(case_id, helpers.OTP)["pause"]["type"] == "confirm"
     # A submitted case does not restart: see test_idempotent_submit.py

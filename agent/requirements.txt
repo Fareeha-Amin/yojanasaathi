@@ -22,6 +22,7 @@ psycopg[binary]==3.3.6
 psycopg-pool==3.3.3
 cryptography==50.0.2
 # added in later phases (pin when added):
-# playwright                                       Phase 4
+# Phase 4: the browser agent (then once: python -m playwright install chromium)
+playwright==1.63.0
 # apscheduler                                      Phase 6
 # (voice has its own venv and pins: voice/requirements.txt)

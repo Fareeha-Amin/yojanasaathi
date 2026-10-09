@@ -8,10 +8,14 @@ START -> router: deterministic facts (agent/facts.py) + one LLM extraction -> in
                source and checklists go to the screen in `ui`
   respond      LLM free-form answer to a general question (the only LLM-written reply)
   status / declined / choose_reask / already_submitted
-  proceed:     prepare (read-back preview; Phase 4: planner + browser) -> confirm
-               (interrupt, deterministic gate) -> submit
+  proceed:     prepare (documents, form questions; agent/portal/nodes.py) -> collect ...
+               -> portal_login -> otp (interrupt) -> portal_fill (Playwright, stops at the
+               portal's review step) -> confirm (interrupt, deterministic gate) -> submit
+               (the portal's Submit) ; safe_stop (interrupt) when the portal looks wrong
 Submission is idempotent PER SCHEME (`applications`): a request to submit a scheme that
 already has an application ID gets that ID back; everything else routes normally.
+Phase 4: the browser agent on the mock portal; sensitive answers and the OTP are kept out
+of the state as text (agent/portal/edge.py, agent/sealed.py).
 Key replies come from templates (agent/replies.py), in the case's language.
 Consequential steps call audit.log_event() (case ID = the thread ID). The state is
 checkpointed in Postgres (agent/db.py), so a pause and `applications` survive restarts.
@@ -36,6 +40,9 @@ from agent.facts import AGE_MAX, AGE_MIN, FIELDS, NUMERIC_FIELDS, Facts, extract
 from agent.gate import parse_decision
 from agent.llm import Extraction, get_llm, usable
 from agent.numbers import tokenize
+from agent.portal import fields as form_fields
+from agent.portal import get_driver, PortalError
+from agent.portal import nodes as portal
 from agent.replies import day, facts_phrase, join, label, readback, reason, reasons, t
 
 # Order in which the interview asks. Must cover every required_field in rules/.
@@ -73,6 +80,19 @@ class CaseState(TypedDict, total=False):
     applications: dict[str, dict[str, Any]]  # scheme_id -> {"app_id", "status"}
     last_submitted: str | None
     resubmit: str | None  # scheme the citizen asked to submit again
+    # Phase 4: the portal application form + browser agent (agent/portal/)
+    form: dict[str, str]  # portal field (+ "mobile") -> SEALED value (agent/sealed.py)
+    form_shown: dict[str, str]  # field -> display text, masked when sensitive
+    form_input: dict[str, Any] | None  # this turn's answer: {"field", "sealed", "shown"} etc.
+    declared: list[str]  # schemes whose declaration the citizen affirmed (explicit yes)
+    last_field: str | None  # the answer just stored ("no" next turn = ask it again)
+    ack_field: str | None  # answer to acknowledge in the next question
+    otp: dict[str, Any]  # attempts, sent_at, masked mobile (never the code)
+    progress: list[dict[str, Any]] | None  # browser steps for the Pre-fill screen
+    stop: dict[str, Any] | None  # why the browser safe-stopped
+    portal_note: str | None  # template key said before the OTP prompt (session restart)
+    portal_told_slow: bool
+    delegation: dict[str, Any] | None  # read-only portal access for status tracking (sealed)
 
 
 def _lang(state: CaseState) -> str:
@@ -199,13 +219,19 @@ def _intent(state: CaseState, facts: Facts, ext: Extraction | None, msg: str,
     return "info", None
 
 
-Route = Literal["interview", "respond", "status", "declined", "choose_reask", "already_submitted"]
+Route = Literal["interview", "respond", "status", "declined", "choose_reask", "already_submitted",
+                "collect"]
 
 
 def router(state: CaseState) -> Command[Route]:
     msg = state.get("msg", "")
     lang = state.get("lang") or _script_lang(msg)
     asking = state.get("asking")
+    if asking and asking.startswith("form:"):  # an answer to an application-form question
+        routed = portal.route_form(state, msg, lang)
+        if routed is not None:
+            return routed
+        asking = None
     facts = extract(msg, asking)
 
     ext = None
@@ -433,6 +459,8 @@ def _reask(state: CaseState, lang: str) -> str:
         return t("choose_reask", lang, title=_title(offered[0], lang))
     if asking == "others":
         return t("ask_others", lang)
+    if asking and asking.startswith("form:") and state.get("selected"):
+        return portal.question(asking[5:], rules.load_schemes()[state["selected"]], lang)
     return t(f"ask_{asking}", lang) if asking in FIELD_ORDER else ""
 
 
@@ -457,7 +485,18 @@ def status(state: CaseState) -> CaseState:
 
 
 def declined(state: CaseState) -> CaseState:
+    _close_browser("declined")
     return {**_say(_lang(state), lambda l: t("proceed_declined", l)), "asking": None}
+
+
+def _close_browser(reason: str) -> None:
+    """Close this case's portal session, if one is open (cancel / decline)."""
+    from agent.portal.nodes import _case_id
+
+    try:
+        get_driver().close(_case_id(), reason)
+    except PortalError:
+        pass
 
 
 def choose_reask(state: CaseState) -> CaseState:
@@ -478,37 +517,19 @@ def _blocked(sid: str, app_id: str, where: str) -> None:
 # --- proceed: prepare -> confirm (human gate) -> submit ------------------------------
 
 
-def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
-    # TODO (Phase 4): planner + Playwright pre-fill on the mock portal (with OTP pause)
-    lang = _lang(state)
+def prepare(state: CaseState) -> Command[Literal["portal_login", "portal_fill", "__end__"]]:
+    """Proceed with the selected scheme: documents, the form questions, then the browser
+    (agent/portal/nodes.py)."""
     sel = state["selected"]
     applications = state.get("applications") or {}
     if sel in applications:  # never prepare a second application for the same scheme
         _blocked(sel, applications[sel]["app_id"], "prepare")
-        return Command(goto=END, update=_say(lang, lambda l: t(
+        return Command(goto=END, update=_say(_lang(state), lambda l: t(
             "already_submitted", l, app_id=applications[sel]["app_id"])))
     scheme = rules.load_schemes()[sel]
-    profile = state.get("profile", {})
-    fields = {f: profile[f] for f in scheme["required_fields"] if f in profile}
-    unsure = [f for f in fields if f in state.get("readback", [])]
-    docs = _checklist(scheme, state, lang)
-    n_missing = sum(d["status"] in MISSING_DOCS for d in docs)
-    preview = {
-        "scheme_id": sel,
-        "title": rules.title(scheme, lang),
-        "fields": fields,
-        "needs_readback": unsure,
-        "documents": docs,
-        "documents_missing": n_missing,
-        "source_url": scheme["source_url"],
-        "effective_date": scheme["effective_date"],
-    }
-    # Logged here, not in confirm: an interrupted node re-runs from the top on resume.
-    log_event("agent", "confirm_requested", scheme_id=sel, detail={
-        "fields": sorted(fields), "needs_readback": unsure, "documents": [d["doc"] for d in docs]})
-    return Command(goto="confirm", update={
-        "preview": preview, "checklist": docs, "status": "awaiting_confirmation",
-        "asking": None, **_say(lang, lambda l: read_back(scheme, fields, unsure, l, n_missing))})
+    cmd = portal.prepare(state)
+    return Command(goto=cmd.goto, update={"checklist": _checklist(scheme, state, _lang(state)),
+                                          **(cmd.update or {})})
 
 
 def read_back(scheme: dict[str, Any], fields: dict[str, Any], unsure: list[str], lang: str,
@@ -542,14 +563,29 @@ def _edits(answer: Any, profile: dict[str, Any]) -> tuple[dict[str, Any], dict[s
     return (edits, {f: facts.sources[f] for f in edits}, facts.readback & set(edits), "spoken")
 
 
-def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "eligibility", "__end__"]]:
+def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "eligibility", "collect", "__end__"]]:
     # Human gate: the graph stops here until /turn is called again. Only an explicit
     # yes reaches submit; anything unclear asks again, never submits. A changed value
     # ("no, my income is ...", or an edit on the review screen) goes back through the
     # rules and a NEW read-back + pause: an edit never submits, even with a "yes" in it.
-    answer = interrupt({"type": "confirm", "preview": state.get("preview", {})})
+    # Phase 4: the browser waits on the portal's review step meanwhile (declaration unticked).
+    preview = state.get("preview") or {}
+    answer = interrupt({"type": "confirm", "preview": preview, "screenshots": preview.get("screenshots", []),
+                        "declaration_text": preview.get("declaration")})
     lang = _lang(state)
     profile = state.get("profile", {})
+    scheme = rules.load_schemes().get(state.get("selected") or "")
+    fi = state.get("form_input")
+    if fi and fi.get("field"):  # a sensitive value corrected ("no, the account number is ...")
+        log_event("citizen", "fields_edited", scheme_id=state.get("selected"),
+                  detail={"fields": [fi["field"]], "via": "spoken"})
+        return Command(goto="collect")
+    if not isinstance(answer, dict) and scheme is not None:
+        named = form_fields.mentioned(str(answer), [*form_fields.form_fields(scheme), "mobile"])
+        if named:  # "no, the name is wrong": ask it again, then fill the page again
+            log_event("citizen", "edit_requested", scheme_id=scheme["scheme_id"], detail={"field": named})
+            return Command(goto=END, update={"asking": f"form:{named}", "status": "editing", **_say(
+                lang, lambda l: f"{t('form_edit', l)} {portal.question(named, scheme, l)}")})
     edits, sources, flags, via = _edits(answer, profile)
     if edits:
         log_event("citizen", "fields_edited", scheme_id=state.get("selected"),
@@ -570,27 +606,32 @@ def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "eligibili
     if decision == "yes":
         return Command(goto="submit")
     if decision == "no":
+        _close_browser("cancelled")
         return Command(goto=END, update={"status": "cancelled", **_say(lang, lambda l: t("cancelled", l))})
     return Command(goto="confirm", update=_say(lang, lambda l: t("confirm_reask", l)))
 
 
-def _submit_to_portal(state: CaseState) -> str:
-    # TODO (Phase 4): click the portal's final Submit via Playwright, return the real
-    # application number (portal format YJS-XXXXXXXXXX)
-    return f"DEMO-{len(state.get('applications') or {}) + 1:04d}"
+def _submit_to_portal(state: CaseState) -> tuple[str | None, Command | None]:
+    """The portal's final Submit (Playwright; agent/portal/nodes.py). Only reached through
+    the confirm gate's explicit yes. (app number, None) or (None, where to go instead)."""
+    return portal.submit_to_portal(state)
 
 
-def submit(state: CaseState) -> CaseState:
+def submit(state: CaseState) -> Command[Literal["portal_login", "safe_stop", "__end__"]]:
     # Last line of defence right before the portal: never submit a scheme twice.
     lang = _lang(state)
     sel = state["selected"]
     applications = dict(state.get("applications") or {})
     if sel in applications:
         _blocked(sel, applications[sel]["app_id"], "submit")
-        return _say(lang, lambda l: t("already_submitted", l, app_id=applications[sel]["app_id"]))
-    app_id = _submit_to_portal(state)
+        return Command(goto=END, update=_say(lang, lambda l: t(
+            "already_submitted", l, app_id=applications[sel]["app_id"])))
+    app_id, instead = _submit_to_portal(state)
+    if instead is not None:
+        return instead
     applications[sel] = {"app_id": app_id, "status": "SUBMITTED"}
-    log_event("agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "stub (Phase 4: Playwright)"})
+    log_event("browser_agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "mock portal (Playwright)"})
+    after = portal.after_submit(state, app_id)
     remaining = [s for s in state.get("offered") or [] if s not in applications]
 
     def done(l: str) -> str:
@@ -599,13 +640,14 @@ def submit(state: CaseState) -> CaseState:
             parts.append(t("submitted_next", l, title=_title(remaining[0], l)))
         return " ".join(parts)
 
-    return {
-        "applications": applications, "app_id": app_id, "last_submitted": sel,
+    return Command(goto=END, update={
+        **after,
+        "applications": applications, "app_id": app_id, "last_submitted": sel, "preview": None,
         "offered": remaining, "asking": "choose" if remaining else None, "status": "submitted",
         **_say(lang, done),
         "ui": {"type": "submitted", "scheme_id": sel, "title": _title(sel, lang), "app_id": app_id,
                "next": [{"scheme_id": s, "title": _title(s, lang)} for s in remaining]},
-    }
+    })
 
 
 def build_graph(checkpointer: BaseCheckpointSaver):
@@ -613,9 +655,11 @@ def build_graph(checkpointer: BaseCheckpointSaver):
     for name, fn in [("router", router), ("interview", interview), ("eligibility", eligibility),
                      ("respond", respond), ("status", status), ("declined", declined),
                      ("choose_reask", choose_reask), ("already_submitted", already_submitted),
-                     ("prepare", prepare), ("confirm", confirm), ("submit", submit)]:
+                     ("prepare", prepare), ("collect", portal.collect), ("portal_login", portal.portal_login),
+                     ("otp", portal.otp), ("portal_fill", portal.portal_fill), ("confirm", confirm),
+                     ("submit", submit), ("safe_stop", portal.safe_stop)]:
         g.add_node(name, fn)
     g.add_edge(START, "router")
-    for name in ("respond", "status", "declined", "choose_reask", "already_submitted", "submit"):
+    for name in ("respond", "status", "declined", "choose_reask", "already_submitted"):
         g.add_edge(name, END)
     return g.compile(checkpointer=checkpointer)

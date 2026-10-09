@@ -8,8 +8,11 @@ is only this turn's).
 
 Labels on screen are display labels (`field_*`: "Annual income"), not the lowercase ones the
 spoken sentences use. Never in here: document contents (metadata only, Aadhaar as last 4),
-tokens, message text. Phase 4 fills the rest of `review.form_fields[*].value` and
-`progress`; Phase 6 adds status checks to `applications[*].timeline` and `checked_at`.
+tokens, message text, the full date of birth / mobile / account number / IFSC (masked).
+Phase 4: `progress` (browser steps, live while a turn is filling the form), the portal's
+form on Review with the values the page showed, screenshot IDs (GET
+/cases/{id}/screenshots/{shot_id}), the declaration. Phase 6 adds status checks to
+`applications[*].timeline` and `checked_at`.
 """
 
 from typing import Any
@@ -18,6 +21,8 @@ from agent import config, rules
 from agent.facts import FIELDS
 from agent.graph import (FIELD_ORDER, MISSING_DOCS, _checklist, _ordered, _reask, _screen, read_back,
                          why_asking)
+from agent.portal import edge, progress
+from agent.portal import fields as form_fields
 from agent.replies import day, strings, t, value
 from agent.vault import public
 
@@ -83,7 +88,32 @@ def _asking(state: dict[str, Any], lang: str) -> dict[str, Any] | None:
     if asking in ("choose", "proceed", "others"):
         q, q_en = _two(lang, lambda l: _reask(state, l))
         return {"kind": asking, "question": q, "question_en": q_en, "why": None, "why_en": None}
+    if asking and asking.startswith("form:") and state.get("selected"):
+        f = asking[5:]
+        scheme = rules.load_schemes()[state["selected"]]
+        q, q_en = _two(lang, lambda l: _reask(state, l))
+        return {"kind": "form", "field": f, "label": form_fields.label(scheme, f, lang),
+                "label_en": form_fields.label(scheme, f, "en"), "sensitive": f in form_fields.SENSITIVE,
+                "question": q, "question_en": q_en, "why": None, "why_en": None}
     return None
+
+
+def _progress(case_id: str, state: dict[str, Any], lang: str) -> dict[str, Any] | None:
+    """The Pre-fill screen: live while the browser works, else the last turn's steps."""
+    steps = progress.get(case_id) or state.get("progress")
+    if not steps:
+        return None
+    return {"scheme_id": state.get("selected"),
+            "steps": [{"key": s["key"], "label": t(f"step_{s['key']}", lang), "label_en": t(f"step_{s['key']}", "en"),
+                       "status": s["status"], "screenshot": s.get("screenshot")} for s in steps]}
+
+
+def _form(state: dict[str, Any], lang: str) -> list[dict[str, Any]]:
+    """The application-form answers so far (sensitive ones masked), for the screens."""
+    scheme = rules.load_schemes().get(state.get("selected") or "")
+    shown = state.get("form_shown") or {}
+    return [{"field": f, "label": form_fields.label(scheme, f, lang), "label_en": form_fields.label(scheme, f, "en"),
+             "text": text, "sensitive": f in form_fields.SENSITIVE} for f, text in shown.items()]
 
 
 def _doc_items(scheme: dict[str, Any], state: dict[str, Any], lang: str,
@@ -133,7 +163,7 @@ def _checklist_screen(state: dict[str, Any], lang: str, docs: dict[str, dict[str
             "missing": len(_missing(items))}
 
 
-def _review(state: dict[str, Any], pause: dict[str, Any] | None, lang: str,
+def _review(case_id: str, state: dict[str, Any], pause: dict[str, Any] | None, lang: str,
             docs: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
     if not pause or pause.get("type") != "confirm":
         return None
@@ -147,19 +177,29 @@ def _review(state: dict[str, Any], pause: dict[str, Any] | None, lang: str,
     documents = _doc_items(scheme, state, lang, docs)  # now, so an upload counts at once
     missing = _missing(documents)
     title, title_en = _two(lang, lambda l: rules.title(scheme, l))
-    text, text_en = _two(lang, lambda l: read_back(scheme, fields, unsure, l, len(missing)))
+    if preview.get("readback"):  # the portal read-back: name, date of birth (masked here), ...
+        text = edge.expand(case_id, state, preview["readback"], lang, masked=True)
+        text_en = edge.expand(case_id, state, preview.get("readback_en"), "en", masked=True)
+    else:
+        text, text_en = _two(lang, lambda l: read_back(scheme, fields, unsure, l, len(missing)))
     profile = state.get("profile") or {}
+    page = {f["field"]: f for f in preview.get("form") or []}
     return {
         "scheme_id": sid, "title": title, "title_en": title_en,
         "readback": text, "readback_en": text_en,
         "fields": [{"field": f, "label": label(f, lang), "label_en": label(f, "en"), "value": v,
                     "text": value(f, v, lang), "text_en": value(f, v, "en"),
                     "unsure": f in unsure, "editable": f in FIELD_ORDER} for f, v in fields.items()],
-        # The portal's own application form (labels from the seed). A field the citizen
-        # already answered (annual_income) is pre-filled "from your answers"; the rest come
-        # from the browser agent's pre-fill in Phase 4 (null until then: placeholder).
-        "form_fields": [_form_field(f, profile, lang) for f in scheme.get("application_fields", [])],
-        "screenshots": [],  # Phase 4: one per browser step
+        # The portal's own application form (labels from the seed), with the values the
+        # browser agent read back from the page (sensitive ones masked). Before the page is
+        # filled, a field the citizen already answered (annual_income) is "from your answers".
+        "form_fields": [_form_field(f, profile, lang, page.get(f["name"]), scheme)
+                        for f in scheme.get("application_fields", [])],
+        "screenshots": list(preview.get("screenshots") or []),  # GET /cases/{id}/screenshots/{shot_id}
+        "declaration": {"text": form_fields.label(scheme, "declaration_consent", lang),
+                        "text_en": form_fields.label(scheme, "declaration_consent", "en")}
+        if preview.get("declaration") else None,
+        "delegation": preview.get("delegation"),
         "documents": documents,
         "documents_missing": len(missing),
         "source_url": scheme["source_url"], "effective_date": scheme["effective_date"],
@@ -168,12 +208,21 @@ def _review(state: dict[str, Any], pause: dict[str, Any] | None, lang: str,
     }
 
 
-def _form_field(f: dict[str, Any], profile: dict[str, Any], lang: str) -> dict[str, Any]:
+def _form_field(f: dict[str, Any], profile: dict[str, Any], lang: str,
+                page: dict[str, Any] | None = None, scheme: dict[str, Any] | None = None) -> dict[str, Any]:
+    base = {"name": f["name"], "type": f["type"], "required": f["required"],
+            "label": f["label"].get(lang) or f["label"]["en"], "label_en": f["label"]["en"]}
+    if page is not None:  # what the portal page shows (filled by the browser agent)
+        if page.get("sensitive") or page.get("value") is None:  # masked text only
+            text, text_en = page.get("text"), page.get("text_en")
+        else:
+            text = form_fields.shown(scheme, f["name"], page["value"], lang)
+            text_en = form_fields.shown(scheme, f["name"], page["value"], "en")
+        return {**base, "value": text, "text": text, "text_en": text_en,
+                "from_answers": True, "from_page": True, "sensitive": bool(page.get("sensitive"))}
     v = profile.get(f["name"])
-    return {"name": f["name"], "type": f["type"], "required": f["required"],
-            "label": f["label"].get(lang) or f["label"]["en"], "label_en": f["label"]["en"],
-            "value": v, "text": None if v is None else value(f["name"], v, lang),
-            "from_answers": v is not None}
+    return {**base, "value": v, "text": None if v is None else value(f["name"], v, lang),
+            "from_answers": v is not None, "from_page": False, "sensitive": f["name"] in form_fields.SENSITIVE}
 
 
 def _timeline(sid: str, audit_rows: list[dict[str, Any]], events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -243,12 +292,14 @@ def build(case_id: str, state: dict[str, Any], pause: dict[str, Any] | None,
         "documents": list(stored.values()),
         "consent": consent,
         "pause": pause,
-        "review": _review(state, pause, lang, stored),
-        "progress": None,  # Phase 4: browser-agent steps (pre-fill screen)
+        "review": _review(case_id, state, pause, lang, stored),
+        "progress": _progress(case_id, state, lang),  # browser-agent steps (Pre-fill screen)
+        "form": _form(state, lang),
         "applications": _applications(state, lang, data, stored),
         "next": [{"scheme_id": s, "title": rules.title(schemes[s], lang),
                   "title_en": rules.title(schemes[s], "en")} for s in offered],
-        "last_reply": {"text": reply, "en": state.get("subtitle")} if reply else None,
+        "last_reply": {"text": edge.expand(case_id, state, reply, lang, masked=True),
+                       "en": edge.expand(case_id, state, state.get("subtitle"), "en", masked=True)} if reply else None,
         "limits": {"doc_retention_hours": config.DOC_RETENTION_HOURS,
                    "doc_max_bytes": config.DOC_MAX_BYTES},
     }

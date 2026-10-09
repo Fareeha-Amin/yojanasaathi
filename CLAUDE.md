@@ -145,6 +145,11 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
   llm.py     provider factory (.env), structured extraction, free-form answers, warm-up
   portal_seed.py  reads the mock portal's seed_schemes.py (ast, never executed)
   config.py  env settings (loads repo-root .env)
+  sealed.py  AES-GCM sealing of form answers / delegation token kept in case memory (Phase 4)
+  portal/    Phase 4 browser agent on the mock portal: browser.py (PlaywrightDriver, own thread),
+             api.py (portal API + warm-up), drift.py, fields.py (form parsers, masking), edge.py
+             (OTP + sensitive answers kept out of the graph), nodes.py (graph nodes), progress.py,
+             smoke.py (python -m agent.portal.smoke)
   cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl); [case] [lang]
 rules/   one JSON file per mock-portal scheme (portal IDs): rule, required_fields, documents
          (portal labels kn/hi/en), application_fields, titles, topic, priority, aliases,
@@ -229,7 +234,7 @@ Env vars (all loaded in `agent/config.py`):
 | `LLM_TIMEOUT` | agent | seconds per LLM call (default 20), then deterministic fallback |
 | `LLM_WARMUP`, `LLM_KEEPWARM` | agent | load model at startup (1); 1-token ping every N s (2 for ollama, 0 = off) |
 | `MOCK_PORTAL_URL` | agent, Phase 4 | site Playwright drives (public URL); fills `{MOCK_PORTAL_URL}` in rules' `source_url` |
-| `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
+| `MOCK_PORTAL_API` | agent | portal API base, **must end with `/api`** (checked at startup) |
 | `MOCK_PORTAL_REPO` | tests | optional local clone of the portal; seed-sync test also checks it |
 | `DATABASE_URL` | agent | required; startup fails clearly without it (no in-memory fallback) |
 | `TEST_DATABASE_URL` | tests | default: `DATABASE_URL` db name + `_test` (dropped + created per run) |
@@ -237,6 +242,10 @@ Env vars (all loaded in `agent/config.py`):
 | `VAULT_DIR` | agent | encrypted files, default `data/vault` |
 | `DOC_RETENTION_HOURS`, `VAULT_PURGE_SECONDS` | agent | documents deleted N h after the case's latest submission (24); purge every 60 s |
 | `DOC_MAX_BYTES` | agent | upload limit (10 MB) |
+| `MOCK_PORTAL_AGENT_KEY` | agent | `yjs_ag_...` secret: reads the portal's form requirements (never logged) |
+| `PORTAL_FIRST_TIMEOUT`, `PORTAL_TIMEOUT` | agent | portal API timeouts, 90 s for the first call (Render sleeps), 20 s |
+| `BROWSER_HEADLESS`, `BROWSER_SLOWMO_MS` | agent | demo: `false` and `250` so the form is seen being filled |
+| `BROWSER_IDLE_SECONDS`, `OTP_TTL_SECONDS` | agent | a case's browser session closes when idle (900); code lifetime (600) |
 | `TWILIO_*` | Phase 7 | |
 
 ## Team decisions (2026-10-08)
@@ -570,7 +579,54 @@ dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
   Kannada line -> bubble + reply + subtitle + chip on the page in ~9 s incl. connect + greeting;
   a typed turn while voice is on was spoken by the bot.
 
-## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); not built yet
+## Implementation decisions (Phase 4, browser agent)
+- **Flow (contract unchanged):** pick a scheme -> `prepare`: every document of the scheme must be in the vault
+  (else list what's missing, no browser) -> one form question per turn (portal field labels / choices in
+  kn/hi/en; `ui {"type": "form"}`; the portal-registered mobile; the declaration read out, explicit yes) ->
+  `portal_login` (drift check, open `/citizen-access`, send OTP) -> `otp` `interrupt({"type":"otp",
+  "masked_mobile"})` -> `portal_fill` (drift check, already submitted on the portal?, steps 1-3, documents
+  uploaded from memory, stop at step 4 with the declaration UNticked) -> `confirm` (preview from the values
+  the PAGE shows + screenshot IDs + declaration text) -> explicit yes only -> `submit` (tick, Submit, store
+  `YJS-...`, `POST /auth/agent-delegation/` read-only 24 h, sealed for Phase 6, close session). Idempotency
+  per scheme is unchanged (router, `prepare`, `submit` guards); the portal's `applications/mine/` is also
+  checked before filling, so a "delete my data" case can't apply twice.
+- **Missing documents now block** (Phase 5's "submit anyway" is gone): the portal requires them.
+- **Browser worker:** `agent/portal/browser.py`, one thread with its own Proactor loop; one context per case
+  kept between turns (idle 15 min); requests to any host except MOCK_PORTAL_URL / _API are aborted and
+  audited (`offhost_blocked`); `data-testid` only; every typed value read back from the page; a missing
+  element, unexpected URL, any dialog -> `SafeStop` -> `interrupt({"type":"safe_stop"})` ("try again"
+  restarts from the login). A session lost before the yes (idle, restart) -> log in again, NEW preview, NEW
+  yes; `submit` checks the preview fingerprint against the open page (`submit_blocked_stale`).
+- **Secrets never in the graph as text:** `agent/portal/edge.py` runs on the raw /turn text. OTP -> in-memory
+  inbox for the `otp` node (checkpoint sees `[code given]`). dob / mobile / account / IFSC -> parsed
+  deterministically, sealed (`agent/sealed.py`, key from MASTER_KEY, bound to case + field); state keeps
+  `form` (ciphertext) and `form_shown` (masked). The spoken digit read-back is a `⟦field⟧` marker expanded
+  only in the /turn response (`edge.expand`); screens get it masked. IFSC mask uses `*` (X would look like a code).
+- **Screenshots:** every step, encrypted in the vault (`screenshots` table = metadata), served only by
+  `GET /cases/{id}/screenshots/{shot_id}` (case token), deleted with the documents (expiry, consent
+  withdrawn, delete my data). Steps -> `case_events` `portal_step`; actions -> `log_event`
+  (`browser_agent`: otp_requested, document_uploaded, form_filled, submit_clicked, submitted,
+  delegation_granted, safe_stop, portal_drift, offhost_blocked ...; field names / last 4 only).
+- **Summary:** `progress.steps` (live while a turn fills the form), `review.form_fields` with the page's
+  values (sensitive masked), `review.screenshots`, `review.declaration`, `asking.kind == "form"`.
+- **Drift:** `GET /agent/v1/schemes/{id}/requirements/` fresh before the login and each fill, compared
+  with rules/ + the field map (`FIELD_KINDS`); any difference -> safe-stop. `rules/*.json` gained
+  `option_labels` (the seed's own kn/hi option texts); seed drift test unchanged.
+- **Voice bridge:** one short spoken filler if `/turn` takes > 2.5 s (`voice/lang.py` FILLER).
+- **Tests:** `tests/fake_driver.py` (in-process, every test), `tests/fake_portal.py` (local portal, same
+  testids, OTP 123456) + `tests/test_portal_browser.py` (real Chromium), `test_portal_flow.py`,
+  `test_portal_fields.py`; `agent.privacy_check` also looks for mobiles / IFSC / portal tokens in clear text.
+- **Acceptance VERIFIED 2026-10-09** by Fareeha (Pipecat page, Kannada, real portal + SMS OTP): documents
+  uploaded, form questions, OTP, visible fill, read-back, "ಹೌದು" -> real YJS-... number. Before it: the
+  portal's Netlify site gave 401 and its agent key was refused (Ayush fixed both); `.env`'s `MOCK_PORTAL_API`
+  lacked `/api`. Settings are read at agent start: restart the agent after editing `.env` (no `--reload`).
+- **Documents without the web app:** `python -m agent.upload_docs <case> <scheme> [folder]` (dummy PDFs or
+  your files; `--list`). Voice default case is `demo-case-1`.
+- **Web app:** only kept readable (fixtures regenerated; `otp.json` added). 44 vitest tests already fail
+  on the Phase 5 branch (UI is Kannada, tests expect English); the Playwright e2e text path still assumes the
+  old stub flow. Both are web-side work, on hold.
+
+## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); Phase 4 now built, kept for reference
 - **OTP through /turn (Phase 4):** the code typed or said resumes the graph as text, so it
   lands in the checkpoint's `msg`. Clear it (or keep only "otp given") before the next
   checkpoint; never log it.
@@ -618,7 +674,7 @@ built + commands + a hand acceptance test, update this file, and stop.
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09, voice + text acceptance verified; then changed to the 4 portal schemes, multiple matches, per-scheme idempotency, short replies + `ui`)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (DONE 2026-10-09, voice acceptance verified)
-4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
+4. Browser agent + human gate: Playwright against the mock portal, OTP, safe-stop (DONE 2026-10-09 on branch `phase-4-portal`, live acceptance VERIFIED by Fareeha, see "Implementation decisions (Phase 4)")
 5. Web app: the 6 screens + landing page + privacy, voice via Pipecat JS client, JWT, summary + edits (BUILT 2026-10-09, before Phase 4; hand acceptance pending)
 6. Follow-up: APScheduler polling, follow-up agent, web push, reminders
 7. Phone line: Twilio -> Pipecat -> `/turn`; caller number maps to case

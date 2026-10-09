@@ -16,6 +16,10 @@ MASTER_KEY. Aadhaar numbers are masked before the graph sees the text.
 Phase 5: POST /session gives the web app a case + JWT (agent/auth.py); every /cases/{id}
 endpoint (summary, edit, consent, documents, view / delete my data) needs that token.
 /turn stays keyed by case ID (voice bot, agent.cli).
+Phase 4: the browser agent (agent/portal/). Before the graph sees a message, the OTP and
+sensitive form answers are taken out of it (agent/portal/edge.py); the spoken read-back
+of those values is put into the reply only here, on the way out. Screenshots are served
+only to the case's token holder (GET /cases/{id}/screenshots/{shot_id}).
 """
 
 import logging
@@ -30,11 +34,14 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from agent import audit, auth, config, db, privacy, rules, summary, tts
+from agent import audit, auth, config, db, privacy, rules, sealed, summary, tts
+from agent import portal
 from agent.facts import AGE_MAX, AGE_MIN
 from agent.graph import build_graph
 from agent.llm import get_llm
-from agent.vault import Vault, load_master_key, public
+from agent.portal import edge, progress
+from agent.portal.browser import PlaywrightDriver
+from agent.vault import Vault, VaultError, load_master_key, public
 
 _log = logging.getLogger("yojanasaathi")
 if not _log.handlers:
@@ -46,11 +53,19 @@ if not _log.handlers:
 # Fails here, with a message that says what to fix, if MASTER_KEY or Postgres is not usable.
 _master_key = load_master_key(config.MASTER_KEY)
 auth.set_key(_master_key)
+sealed.set_key(_master_key)
 store = db.open_store(config.DATABASE_URL)
 vault = Vault(store, config.VAULT_DIR, _master_key)
 audit.set_store(store)
 graph = build_graph(store.checkpointer)
 speech = tts.SarvamTTS(config.SARVAM_API_KEY, cache_size=config.TTS_CACHE_SIZE)
+# The browser agent's link to our storage: encrypted screenshots, timeline, audit, and the
+# citizen's documents (decrypted to memory only for the upload, audited as browser_agent).
+progress.set_recorder(progress.Recorder(
+    save_shot=vault.put_screenshot, event=store.add_event, audit=audit.log_event,
+    documents=store.documents, read_doc=lambda case_id, doc_id: vault.read(case_id, doc_id, actor="browser_agent")))
+driver = PlaywrightDriver()
+portal.set_driver(driver)
 
 # One turn at a time per case: a double-send (e.g. voice barge-in) must not race
 # between reading "is it paused?" and resuming. (One agent process; see CLAUDE.md.)
@@ -74,6 +89,8 @@ async def lifespan(_: FastAPI):
                                                        "database": db.redact(config.DATABASE_URL)})
     for warning in config.portal_url_warnings():
         _log.warning("config: %s", warning)
+    if config.portal_ready():
+        portal.get_driver().warmup()  # the portal API sleeps when idle (Render): wake it now
     vault.purge_expired()
     stop = threading.Event()
     threading.Thread(target=_purge_loop, args=(stop,), name="vault-purge", daemon=True).start()
@@ -83,6 +100,7 @@ async def lifespan(_: FastAPI):
         threading.Thread(target=get_llm().warmup, name="llm-warmup", daemon=True).start()
     yield
     stop.set()
+    portal.get_driver().shutdown()
     store.close()
 
 
@@ -121,22 +139,30 @@ def _run(case_id: str, inp, resumed: bool) -> TurnOut:
     # durability="sync": each step's checkpoint is written before the next step runs
     out = graph.invoke(inp, _cfg(case_id), version="v2", durability="sync")
     pause = out.interrupts[0].value if out.interrupts else None
-    store.record_turn(case_id, out.value, pause, resumed=resumed)
-    return TurnOut(reply=out.value.get("reply", ""), pause=pause, ui=out.value.get("ui"),
-                   subtitle=out.value.get("subtitle"))
+    values = out.value
+    store.record_turn(case_id, values, pause, resumed=resumed)
+    # The spoken read-back of a sealed value ("I heard ⟦bank_account_number⟧") is filled in
+    # only here: the checkpoint keeps the marker, never the digits.
+    lang = values.get("lang") or "en"
+    return TurnOut(reply=edge.expand(case_id, values, values.get("reply", ""), lang) or "", pause=pause,
+                   ui=values.get("ui"), subtitle=edge.expand(case_id, values, values.get("subtitle"), "en"))
 
 
 @app.post("/turn/{case_id}", response_model=TurnOut)
 def turn(case_id: str, m: TurnIn) -> TurnOut:
-    # Before anything stores or forwards the text (checkpoint, LLM, logs).
-    text, aadhaar = privacy.mask_aadhaar(m.text, privacy.HIDDEN)
     with _case_locks[case_id]:
         store.ensure_case(case_id)
+        snap = graph.get_state(_cfg(case_id))
+        pause = snap.interrupts[0].value if snap.interrupts else None
+        # Before anything stores or forwards the text (checkpoint, LLM, logs): the OTP and
+        # sensitive form answers come out first (edge), then Aadhaar-like numbers.
+        text, extra = edge.prepare(case_id, snap.values or {}, pause, m.text)
+        text, aadhaar = privacy.mask_aadhaar(text, privacy.HIDDEN)
         if aadhaar:
             audit.log_event("agent", "aadhaar_masked", case_id=case_id,
                             detail={"aadhaar_last4": aadhaar})
-        paused = _pause(case_id) is not None
-        update = {"docs_stored": store.document_types(case_id)}
+        paused = pause is not None
+        update = {"docs_stored": store.document_types(case_id), "form_input": None, **extra}
         if m.lang:
             update["lang"] = m.lang
         # ui/subtitle are per turn: a resume skips the router, so clear the previous turn's here
@@ -226,8 +252,20 @@ def edit(case_id: str, e: EditIn) -> TurnOut:
         pause = _pause(case_id)
         if not pause or pause.get("type") != "confirm":
             raise HTTPException(409, "nothing to review: the case is not waiting for confirmation")
-        update = {"docs_stored": store.document_types(case_id), "ui": None, "subtitle": None}
+        update = {"docs_stored": store.document_types(case_id), "ui": None, "subtitle": None,
+                  "form_input": None}
         return _run(case_id, Command(resume={"edit": {e.field: e.value}}, update=update), resumed=True)
+
+
+@app.get("/cases/{case_id}/screenshots/{shot_id}", dependencies=CaseAuth)
+def get_screenshot(case_id: str, shot_id: str) -> Response:
+    """One browser-agent screenshot (PNG), decrypted for the case's own token holder only.
+    They show the citizen's form as the portal displayed it."""
+    try:
+        png = vault.read_screenshot(case_id, shot_id)
+    except (VaultError, FileNotFoundError):
+        raise HTTPException(404, "no such screenshot") from None
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, no-store"})
 
 
 # --- read aloud (Sarvam Bulbul, same voice as the bot) ----------------------------------
@@ -337,9 +375,13 @@ def get_data(case_id: str) -> dict:
         "case": data["case"],
         "consent": store.consent(case_id),
         "saved_profile": (data["profile"] or {}).get("data") or {},
-        "case_memory": {k: values.get(k) for k in ("lang", "profile", "applications", "status",
-                                                    "selected", "docs_have", "docs_missing")},
+        "case_memory": {**{k: values.get(k) for k in ("lang", "profile", "applications", "status",
+                                                       "selected", "docs_have", "docs_missing", "declared")},
+                        # the application form as shown (sensitive values masked; stored sealed)
+                        "form": values.get("form_shown") or {}},
         "documents": [public(r) for r in store.documents(case_id)],
+        "screenshots": [{"id": str(s["id"]), "step": s["step"], "created_at": s["created_at"].isoformat()}
+                        for s in store.screenshots(case_id)],
         "events": data["events"],
         "audit": data["audit"],
     }
@@ -353,6 +395,11 @@ def delete_data(case_id: str) -> dict:
     with _case_locks[case_id]:
         if store.case_data(case_id) is None:
             return {"deleted": False}
+        try:  # an open portal session holds the citizen's portal login: end it first
+            portal.get_driver().close(case_id, "data_deleted")
+        except portal.PortalError:
+            pass
+        progress.forget(case_id)
         docs = vault.delete_case(case_id)
         counts = {"documents": docs, **store.delete_case_data(case_id), "case_memory": 1}
         audit.log_event("citizen", "data_deleted", case_id=case_id, detail=counts)

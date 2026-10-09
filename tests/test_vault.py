@@ -11,6 +11,7 @@ from agent import config
 from agent.db import StartupError
 from agent.main import app, store, vault
 from agent.vault import VaultError, load_master_key, seal, unseal
+from tests import helpers
 from tests.helpers import CaseClient
 
 client = CaseClient(app)  # sends the case's session token, like the web app
@@ -163,9 +164,12 @@ def test_uploaded_document_shows_in_checklist_and_never_reaches_llm(case_id, fak
 
 
 def submit(case_id: str) -> None:
+    """The rest of the scheme's documents, then the full Phase 4 flow (FakeDriver)."""
+    helpers.upload_documents(client, case_id, "pension-001", skip=("identity_proof",))
     client.post(f"/turn/{case_id}", json={"text": READY})
-    client.post(f"/turn/{case_id}", json={"text": "senior citizen pension"})
-    assert "DEMO-0001" in client.post(f"/turn/{case_id}", json={"text": "yes"}).json()["reply"]
+    out = client.post(f"/turn/{case_id}", json={"text": "senior citizen pension"}).json()
+    helpers.to_confirm(lambda m: client.post(f"/turn/{case_id}", json={"text": m}).json(), out)
+    assert "YJS-" in client.post(f"/turn/{case_id}", json={"text": "yes"}).json()["reply"]
 
 
 def test_documents_expire_after_submission_and_are_purged(case_id, monkeypatch):
@@ -174,10 +178,13 @@ def test_documents_expire_after_submission_and_are_purged(case_id, monkeypatch):
     assert store.documents(case_id)[0]["expires_at"] is None  # no clock before submission
     monkeypatch.setattr(config, "DOC_RETENTION_HOURS", 0.0)
     submit(case_id)
-    (row,) = store.documents(case_id)
-    assert row["expires_at"] is not None
-    assert vault.purge_expired() >= 1
-    assert store.documents(case_id) == [] and not (vault.root / f"{row['storage_key']}.ysv").exists()
+    rows = store.documents(case_id)
+    shots = store.screenshots(case_id)
+    assert len(rows) == 5 and all(r["expires_at"] is not None for r in rows)
+    assert shots and all(s["expires_at"] is not None for s in shots)  # screenshots go with them
+    assert vault.purge_expired() >= 5 + len(shots)
+    assert store.documents(case_id) == [] and store.screenshots(case_id) == []
+    assert not any((vault.root / f"{r['storage_key']}.ysv").exists() for r in [*rows, *shots])
     acts = [a["action"] for a in client.get(f"/cases/{case_id}/data").json()["audit"]]
     assert "documents_expiry_set" in acts and "document_auto_deleted" in acts
 
@@ -187,4 +194,16 @@ def test_retention_window_keeps_documents_until_expiry(case_id):
     upload(case_id)
     submit(case_id)  # default retention: 24 h
     vault.purge_expired()
-    assert len(store.documents(case_id)) == 1
+    assert len(store.documents(case_id)) == 5 and store.screenshots(case_id)
+
+
+def test_screenshots_are_vault_envelopes_and_not_orphans(case_id):
+    consent(case_id, documents=True)
+    upload(case_id)
+    submit(case_id)
+    shots = store.screenshots(case_id)
+    assert shots
+    for s in shots:
+        assert (vault.root / f"{s['storage_key']}.ysv").read_bytes().startswith(b"YSV1")
+    assert {s["storage_key"] for s in shots} <= store.storage_keys()  # the orphan purge keeps them
+    assert vault.read_screenshot(case_id, str(shots[0]["id"])).startswith(b"\x89PNG")

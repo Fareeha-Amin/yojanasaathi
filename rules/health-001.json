@@ -182,6 +182,20 @@
       }
     }
   ],
+  "option_labels": {
+    "gender": {
+      "kn": [
+        "ಪುರುಷ",
+        "ಮಹಿಳೆ",
+        "ಇತರ"
+      ],
+      "hi": [
+        "पुरुष",
+        "महिला",
+        "अन्य"
+      ]
+    }
+  },
   "source_url": "{MOCK_PORTAL_URL}/schemes/health-001",
   "effective_date": "2026-10-09",
   "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."

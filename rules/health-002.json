@@ -204,6 +204,44 @@
       }
     }
   ],
+  "option_labels": {
+    "gender": {
+      "kn": [
+        "ಪುರುಷ",
+        "ಮಹಿಳೆ",
+        "ಇತರ"
+      ],
+      "hi": [
+        "पुरुष",
+        "महिला",
+        "अन्य"
+      ]
+    },
+    "ration_card_category": {
+      "kn": [
+        "ಬಿಪಿಎಲ್ (ಬಡತನ ರೇಖೆಗಿಂತ ಕೆಳಗೆ)",
+        "ಅಂತ್ಯೋದಯ",
+        "ಎಪಿಎಲ್"
+      ],
+      "hi": [
+        "बीपीएल (गरीबी रेखा से नीचे)",
+        "अंत्योदय अन्न",
+        "एपीएल राशन कार्ड"
+      ]
+    },
+    "coverage_preference": {
+      "kn": [
+        "ಒಳರೋಗಿ ಆಸ್ಪತ್ರೆ ದಾಖಲಾತಿ",
+        "ಹೊರರೋಗಿ ಆರೈಕೆ",
+        "ರೋಗನಿರ್ಣಯ ಬೆಂಬಲ"
+      ],
+      "hi": [
+        "अस्पताल में भर्ती सहायता",
+        "ओपीडी पुरानी बीमारी देखभाल",
+        "नैदानिक सहायता"
+      ]
+    }
+  },
   "source_url": "{MOCK_PORTAL_URL}/schemes/health-002",
   "effective_date": "2026-10-09",
   "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."

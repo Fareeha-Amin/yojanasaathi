@@ -188,6 +188,34 @@
       }
     }
   ],
+  "option_labels": {
+    "gender": {
+      "kn": [
+        "ಪುರುಷ",
+        "ಮಹಿಳೆ",
+        "ಇತರ"
+      ],
+      "hi": [
+        "पुरुष",
+        "महिला",
+        "अन्य"
+      ]
+    },
+    "assistance_category": {
+      "kn": [
+        "ವೃದ್ಧಾಪ್ಯ ನೆರವು",
+        "ಅಂಗವಿಕಲರ ಕಲ್ಯಾಣ ನೆರವು",
+        "ನಿರಾಶ್ರಿತ / ವಿಧವಾ ನೆರವು",
+        "ವಿಶೇಷ ಆರೈಕೆ"
+      ],
+      "hi": [
+        "वृद्धावस्था सहायता",
+        "दिव्यांग कल्याण सहायता",
+        "निराश्रित / विधवा सहायता",
+        "विशेष देखभाल सहायता"
+      ]
+    }
+  },
   "source_url": "{MOCK_PORTAL_URL}/schemes/pension-002",
   "effective_date": "2026-10-09",
   "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."

@@ -1,7 +1,8 @@
 -- YojanaSaathi tables (Phase 3). Applied at every agent start (idempotent).
 -- The LangGraph checkpointer creates its own tables (checkpoints, checkpoint_blobs,
 -- checkpoint_writes, checkpoint_migrations): that is the case memory, one thread per case.
--- Privacy: no table here holds document contents or a full Aadhaar number.
+-- Privacy: no table here holds document contents or a full Aadhaar number (or a form's
+-- sensitive values, an OTP or a portal token: Phase 4 keeps those sealed or in memory).
 
 CREATE TABLE IF NOT EXISTS citizens (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,13 +31,14 @@ CREATE TABLE IF NOT EXISTS cases (
     lang            text,
     status          text,
     selected_scheme text,
-    paused          text,  -- confirm | otp | safe_stop | null
+    paused          text,  -- confirm | otp | safe_stop | null (agent's pause, not the portal's)
     applications    jsonb NOT NULL DEFAULT '{}'::jsonb,  -- scheme_id -> {app_id, status}
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
 
--- The case timeline (turns, submissions; Phase 6: status changes). No message text.
+-- The case timeline (turns, submissions, browser steps `portal_step`; Phase 6: status
+-- changes). No message text, no form values.
 CREATE TABLE IF NOT EXISTS case_events (
     id        bigserial PRIMARY KEY,
     case_id   text NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
@@ -63,6 +65,21 @@ CREATE TABLE IF NOT EXISTS documents (
     expires_at    timestamptz,  -- set when the case submits; purged after
     UNIQUE (case_id, doc_type)
 );
+
+-- Browser-agent screenshots (Phase 4): METADATA only. The PNG is an encrypted vault file
+-- (same envelope as documents). They show the citizen's form values, so they are served
+-- only to the case's token holder, and deleted with the documents (expiry, consent
+-- withdrawn, delete my data).
+CREATE TABLE IF NOT EXISTS screenshots (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    case_id     text NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+    step        text NOT NULL,
+    storage_key text NOT NULL UNIQUE,
+    size_bytes  integer NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    expires_at  timestamptz
+);
+CREATE INDEX IF NOT EXISTS screenshots_case ON screenshots (case_id, created_at);
 
 -- Append-only: one row per consequential action. No foreign key, so the trail outlives
 -- deleted cases; it holds no personal values (field names, IDs, last 4 digits only).

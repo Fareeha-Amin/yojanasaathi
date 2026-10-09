@@ -14,22 +14,36 @@ KN_AGE = "ನನಗೆ 62 ವರ್ಷ. ನನಗೆ ಪಿಂಚಣಿ ಸಿ�
 KN_INCOME = "ಒಂದು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ"
 KN_PENSION = "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
 
-# stage name -> messages sent on a fresh case (lang kn), then GET /summary?lang=kn
+# stage name -> messages sent on a fresh case (lang kn), then GET /summary?lang=kn.
+# Phase 4: from the scheme choice on, the case has its documents uploaded; "<FORM>"
+# answers the application-form questions (tests/helpers.answer_form), "<OTP>" says the code.
 STAGES = {
     "interview": [KN_AGE],
     "eligible": [KN_AGE, KN_INCOME],
-    "review": [KN_AGE, KN_INCOME, KN_PENSION],
-    "submitted": [KN_AGE, KN_INCOME, KN_PENSION, "ಹೌದು"],
+    "otp": [KN_AGE, KN_INCOME, KN_PENSION, "<FORM>"],
+    "review": [KN_AGE, KN_INCOME, KN_PENSION, "<FORM>", "<OTP>"],
+    "submitted": [KN_AGE, KN_INCOME, KN_PENSION, "<FORM>", "<OTP>", "ಹೌದು"],
 }
 
 
 def build(client, case_prefix: str = "fixture") -> dict[str, dict]:
+    from tests import helpers
+
     out = {}
     for stage, msgs in STAGES.items():
         case_id = f"{case_prefix}-{stage}"
         client.delete(f"/cases/{case_id}/data")
+        if "<FORM>" in msgs:
+            helpers.upload_documents(client, case_id, "pension-001")
+
+        def turn(m: str) -> dict:
+            r = client.post(f"/turn/{case_id}", json={"text": m, "lang": "kn"})
+            assert r.status_code == 200
+            return r.json()
+
+        last: dict = {}
         for m in msgs:
-            assert client.post(f"/turn/{case_id}", json={"text": m, "lang": "kn"}).status_code == 200
+            last = helpers.answer_form(turn, last) if m == "<FORM>" else turn(helpers.OTP if m == "<OTP>" else m)
         summary = client.get(f"/cases/{case_id}/summary", params={"lang": "kn"}).json()
         summary["case_id"] = f"web-{stage}"
         out[stage] = summary

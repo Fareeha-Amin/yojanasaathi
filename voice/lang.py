@@ -70,3 +70,13 @@ AGENT_UNREACHABLE: dict[TurnLang, str] = {
     "hi": "माफ़ कीजिए, अभी सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर कोशिश करें।",
     "en": "Sorry, the service is not available right now. Please try again in a little while.",
 }
+
+
+# One short line spoken when a turn takes longer than FILLER_AFTER_S (the browser agent is
+# working on the portal). Said once per turn; dropped if the citizen starts speaking again.
+FILLER_AFTER_S = 2.5
+FILLER: dict[TurnLang, str] = {
+    "kn": "ಒಂದು ನಿಮಿಷ, ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ತುಂಬುತ್ತಿದ್ದೇನೆ.",
+    "hi": "एक मिनट, पोर्टल पर भर रहा हूँ।",
+    "en": "One moment, I'm filling in the portal.",
+}

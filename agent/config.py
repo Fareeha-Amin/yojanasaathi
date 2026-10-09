@@ -52,14 +52,31 @@ SESSION_TTL_HOURS = float(os.getenv("SESSION_TTL_HOURS", str(24 * 30)))
 SARVAM_API_KEY = _opt("SARVAM_API_KEY")
 TTS_CACHE_SIZE = int(os.getenv("TTS_CACHE_SIZE", "128"))
 
-# Mock portal (Phase 4). Runs on Ayush's laptop behind a public URL; never assume localhost.
-MOCK_PORTAL_URL = _opt("MOCK_PORTAL_URL")  # the site Playwright drives
-MOCK_PORTAL_API = _opt("MOCK_PORTAL_API")  # status polling API base
+def _url(name: str) -> str | None:
+    """A URL setting without surrounding spaces or a trailing slash."""
+    v = (os.getenv(name) or "").strip().rstrip("/")
+    return v or None
+
+
+# Mock portal (Phase 4). Public URLs (Render / Netlify); never assume localhost.
+MOCK_PORTAL_URL = _url("MOCK_PORTAL_URL")  # the site Playwright drives
+MOCK_PORTAL_API = _url("MOCK_PORTAL_API")  # API base, ends with /api
+MOCK_PORTAL_AGENT_KEY = (os.getenv("MOCK_PORTAL_AGENT_KEY") or "").strip() or None  # yjs_ag_..., secret
+# The API sleeps when idle (Render): the first call may take this long, later ones less.
+PORTAL_FIRST_TIMEOUT = float(os.getenv("PORTAL_FIRST_TIMEOUT", "90"))
+PORTAL_TIMEOUT = float(os.getenv("PORTAL_TIMEOUT", "20"))
+
+# Browser agent (Phase 4): Playwright Chromium in its own thread. Demo: headless false,
+# slow-mo 250 ms so the audience sees the form being filled.
+BROWSER_HEADLESS = os.getenv("BROWSER_HEADLESS", "true").strip().lower() not in ("0", "false", "no")
+BROWSER_SLOWMO_MS = float(os.getenv("BROWSER_SLOWMO_MS", "0"))
+BROWSER_IDLE_SECONDS = float(os.getenv("BROWSER_IDLE_SECONDS", "900"))  # a case's session closes after
+OTP_TTL_SECONDS = float(os.getenv("OTP_TTL_SECONDS", "600"))  # Twilio Verify codes last 10 minutes
 
 
 def portal_url_warnings() -> list[str]:
-    """What is wrong with MOCK_PORTAL_URL / MOCK_PORTAL_API (logged at agent start). The
-    values are never echoed: a key pasted into the wrong variable must not reach the logs."""
+    """What is wrong with the portal settings (logged at agent start). Values are never
+    echoed: a key pasted into the wrong variable must not reach the logs."""
     import re
 
     out = []
@@ -72,4 +89,17 @@ def portal_url_warnings() -> list[str]:
         elif not re.fullmatch(r"https?://[^\s<>{}\"']+", v):
             out.append(f"{name} is not an http(s) URL: expected e.g. https://portal.example.org"
                        + ("/api" if name.endswith("API") else ""))
+        elif name == "MOCK_PORTAL_API" and not v.endswith("/api"):
+            out.append("MOCK_PORTAL_API must end with /api (the portal's API base, e.g. "
+                       "https://portal.example.org/api)")
+    key = MOCK_PORTAL_AGENT_KEY
+    if not key:
+        out.append("MOCK_PORTAL_AGENT_KEY is not set: the agent can't read the portal's form requirements")
+    elif not key.startswith("yjs_ag_"):
+        out.append("MOCK_PORTAL_AGENT_KEY does not look like an agent key (expected yjs_ag_...)")
     return out
+
+
+def portal_ready() -> bool:
+    """All portal settings present and well formed (else the agent won't open the browser)."""
+    return not portal_url_warnings()

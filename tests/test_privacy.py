@@ -84,16 +84,23 @@ def test_aadhaar_said_when_asked_for_income_is_not_read_as_income(case_id):
 
 
 def test_privacy_scan_of_the_whole_test_database_is_clean(case_id):
-    # A case with an Aadhaar number said aloud, a submission and a document, then scan
-    # every table (incl. the checkpointer's blobs) and the vault.
-    turn(case_id, AADHAAR_MSG)
-    turn(case_id, "income 1 lakh 20 thousand")
-    turn(case_id, "senior citizen pension")
-    turn(case_id, "yes")
+    # A case with an Aadhaar number said aloud, documents, the whole portal flow (form with
+    # mobile, account, IFSC, date of birth; a wrong OTP and the right one; screenshots; the
+    # delegation token), then scan every table (incl. the checkpointer's blobs) and the vault.
+    from tests import helpers
+
     client.put(f"/cases/{case_id}/consent", json={"profile": True, "documents": True})
+    helpers.upload_documents(client, case_id, "pension-001")
     client.put(f"/cases/{case_id}/documents/identity_proof", content=b"\x89PNG card 2345 6789 0123",
                headers={"Content-Type": "image/png"}, params={"aadhaar_last4": "0123"})
-    assert privacy_check.scan_database(store) == []
+    turn(case_id, AADHAAR_MSG)
+    turn(case_id, "income 1 lakh 20 thousand")
+    out = helpers.answer_form(lambda m: turn(case_id, m), turn(case_id, "senior citizen pension"))
+    assert out["pause"]["type"] == "otp"
+    turn(case_id, "654321")
+    turn(case_id, helpers.OTP)
+    assert "YJS-" in turn(case_id, "yes")["reply"]
+    assert privacy_check.scan_database(store) == [], "findings name table.column only"
     assert privacy_check.scan_vault(privacy_check.config.VAULT_DIR) == []
 
 
@@ -102,6 +109,37 @@ def test_privacy_scan_of_the_whole_test_database_is_clean(case_id):
 def test_privacy_scan_ignores_checkpoint_versions_and_uuids(noise):
     assert not privacy_check.has_full_aadhaar(noise)
     assert privacy_check.has_full_aadhaar(f"{noise} aadhaar 2345 6789 0123")
+
+
+@pytest.mark.parametrize("text, found", [
+    ("call 98765 43210", ["mobile number"]), ("+91 9876543210", ["mobile number"]),
+    ("ifsc SBIN0001234", ["IFSC code"]), ("token yjs_del_abcdef123456", ["portal token"]),
+    ("XXXXXX3210 and SBIN0******", []),  # masked
+    ("YJS-07531B2688", []),  # an application number is not personal
+    ("sha 9a7f3c2b1d0e9876543210ffab", []),  # a hex digest
+    ("version 0.9876543210123 and 1.9876543210", []),  # digits of a random decimal
+])
+def test_portal_leak_patterns(text, found):
+    assert privacy_check.portal_leaks(text) == found
+
+
+def test_sealed_values_are_not_leaks():
+    from agent import sealed
+
+    sealed.set_key(bytes(range(32)))
+    for _ in range(50):
+        assert privacy_check.portal_leaks(sealed.seal("c", "mobile", "9876543210")) == []
+
+
+def test_privacy_scan_finds_planted_portal_values_in_case_memory(case_id):
+    turn(case_id, READY)
+    graph.update_state({"configurable": {"thread_id": case_id}},
+                       {"form_shown": {"mobile": "9876543210", "bank_ifsc": "SBIN0001234"}})
+    try:
+        found = privacy_check.scan_database(store)
+        assert any("mobile number" in f for f in found) and any("IFSC code" in f for f in found)
+    finally:
+        store.checkpointer.delete_thread(case_id)
 
 
 def test_privacy_scan_finds_a_planted_number(case_id):
@@ -152,7 +190,8 @@ def test_withdrawing_profile_consent_empties_the_saved_profile(case_id):
 def test_view_my_data(case_id):
     turn(case_id, READY)
     data = client.get(f"/cases/{case_id}/data").json()
-    assert set(data) == {"case", "consent", "saved_profile", "case_memory", "documents", "events", "audit"}
+    assert set(data) == {"case", "consent", "saved_profile", "case_memory", "documents", "screenshots",
+                         "events", "audit"}
     assert data["case_memory"]["profile"] == {"age": 62, "annual_income": 120000}
     assert data["case"]["case_id"] == case_id
     assert "data_viewed" in [a["action"] for a in client.get(f"/cases/{case_id}/data").json()["audit"]]
