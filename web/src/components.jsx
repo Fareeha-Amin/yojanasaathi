@@ -1,6 +1,6 @@
 // Shared UI pieces: bilingual text, header, navigation, mic, toast, screen header.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCase } from "./case.jsx";
 import { LANGS, LANG_NAMES, tr } from "./i18n.js";
 import { Icon } from "./icons.jsx";
@@ -13,9 +13,12 @@ import { Icon } from "./icons.jsx";
  */
 export function Bi({ k, vars, envars, text, en, className = "", block = false, dual = false }) {
   const { lang } = useCase();
-  const local = k ? tr(lang, k, vars) : text;
+  const localized = k ? tr(lang, k, vars) : text;
   const english = k ? tr("en", k, envars ?? vars) : en;
-  const showEn = dual && lang !== "en" && english && english !== local;
+  // Agent text arrives in the case language; when English is selected its English form
+  // becomes the main line, so no subtitle is needed.
+  const local = lang === "en" && english ? english : localized;
+  const showEn = dual && lang !== "en" && english && english !== localized;
   if (!showEn && !block) return <span className={className || undefined} lang={lang}>{local}</span>;
   return (
     <span className={`bi ${block ? "bi-block" : ""} ${className}`}>
@@ -29,6 +32,13 @@ export function Bi({ k, vars, envars, text, en, className = "", block = false, d
 export function useT() {
   const { lang } = useCase();
   return (k, vars) => tr(lang, k, vars);
+}
+
+/** Picks the English form of agent text (a scheme title, a field label) when English is
+ * the UI language; otherwise the case-language form. For plain (non-`Bi`) renders. */
+export function useText() {
+  const { lang } = useCase();
+  return useCallback((local, en) => (lang === "en" && en ? en : local), [lang]);
 }
 
 /** aria-label: the UI language, plus English when that differs. */

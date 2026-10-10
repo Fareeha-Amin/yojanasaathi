@@ -6,7 +6,7 @@
 //   status: "waiting" | "running" | "done". The phone is shown exactly as the portal masks it.
 
 import { useState } from "react";
-import { Bi, ScreenHeader, useLabel } from "../components.jsx";
+import { Bi, ScreenHeader, useLabel, useText } from "../components.jsx";
 import { useCase } from "../case.jsx";
 import { tr } from "../i18n.js";
 import { Icon } from "../icons.jsx";
@@ -26,7 +26,7 @@ function Steps({ steps, paused }) {
           <li key={s.key || i} className={`agent-step agent-step-${s.status}`}>
             <span className="step-dot" aria-hidden="true">{s.status === "done" && <Icon name="check" size={18} strokeWidth={3} />}</span>
             <span className="step-text">
-              {s.k ? <Bi k={s.k} /> : s.label}
+              {s.k ? <Bi k={s.k} /> : <Bi text={s.label} en={s.label_en} />}
               <span className="sr-only"> · {s.status}</span>
             </span>
             {s.screenshot && <img src={s.screenshot} alt={`Screenshot: ${s.label_en || s.label || ""}`} className="shot" />}
@@ -70,6 +70,7 @@ function OtpCard({ pause, code, setCode }) {
 
 export default function Prefill() {
   const { summary, navigate, send, busy } = useCase();
+  const pick = useText();
   const [code, setCode] = useState("");
   const pause = summary?.pause;
   const progress = summary?.progress?.steps;
@@ -85,7 +86,7 @@ export default function Prefill() {
 
   return (
     <main className="screen prefill">
-      <ScreenHeader k="prefill_title" back="talk" eyebrow={scheme ? scheme.title : null} />
+      <ScreenHeader k="prefill_title" back="talk" eyebrow={scheme ? pick(scheme.title, scheme.title_en) : null} />
       {pause?.type === "safe_stop" && (
         <section className="card safe-stop" role="alert" aria-labelledby="ss-h">
           <h2 id="ss-h"><Icon name="alert" /> <Bi k="safe_stop_title" /></h2>

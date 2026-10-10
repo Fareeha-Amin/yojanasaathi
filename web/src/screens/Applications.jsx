@@ -22,7 +22,7 @@ export default function Applications() {
           <header className="scheme-head">
             <h2 id={`a-${a.scheme_id}`}><Bi text={a.title} en={a.title_en} block /></h2>
             <StatusBadge kind={STATUS_BADGE[a.status] || "done"}>
-              <Bi text={a.status_text} en={a.status_text_en} />
+              <Bi text={a.status_text} en={a.status_text_en} dual />
             </StatusBadge>
           </header>
           <p className="app-id">

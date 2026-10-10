@@ -3,7 +3,7 @@
 // big marigold mic with a level ring, pause, and the state line.
 
 import { useEffect, useRef, useState } from "react";
-import { Bi, MicButton, MicStatus, Skeleton, SpeakButton, Waveform, useLabel } from "../components.jsx";
+import { Bi, MicButton, MicStatus, Skeleton, SpeakButton, Waveform, useLabel, useText } from "../components.jsx";
 import { useCase } from "../case.jsx";
 import { Icon } from "../icons.jsx";
 
@@ -19,11 +19,11 @@ function KnownBar({ summary }) {
         {profile.map((p) => (
           <li key={p.field} className={`chip ${p.unsure ? "chip-unsure" : "chip-known"}`}>
             <Icon name={p.unsure ? "alert" : "check"} size={16} strokeWidth={2.5} />
-            <Bi text={`${p.label} ${p.text}`} />
+            <Bi text={`${p.label} ${p.text}`} en={`${p.label_en} ${p.text_en}`} />
           </li>
         ))}
         {asking?.kind === "field" && (
-          <li className="chip chip-asking"><Bi text={`${asking.label} ?`} /></li>
+          <li className="chip chip-asking"><Bi text={`${asking.label} ?`} en={asking.label_en ? `${asking.label_en} ?` : undefined} /></li>
         )}
         {!profile.length && asking?.kind !== "field" && <li className="chip chip-empty"><Bi k="known_empty" /></li>}
       </ul>
@@ -32,13 +32,18 @@ function KnownBar({ summary }) {
 }
 
 function SaathiMessage({ text, en, tag }) {
+  const { lang } = useCase();
+  // Saathi's reply arrives in the case language; English mode shows the English line as
+  // the message and drops the subtitle.
+  const main = lang === "en" && en ? en : text;
+  const sub = lang === "en" ? null : en;
   return (
     <li className="msg msg-agent">
       {tag && <span className="msg-tag"><Bi k={tag} /></span>}
-      <div className="bubble"><span lang="und">{text}</span></div>
+      <div className="bubble"><span lang={lang === "en" ? "en" : "und"}>{main}</span></div>
       <div className="msg-foot">
-        {en && en !== text && <p className="msg-en" lang="en">{en}</p>}
-        <SpeakButton text={text} label="replay" round />
+        {sub && sub !== main && <p className="msg-en" lang="en">{sub}</p>}
+        <SpeakButton text={main} label="replay" round />
       </div>
     </li>
   );
@@ -55,6 +60,7 @@ function UserMessage({ m }) {
 
 function ResultCard({ summary }) {
   const { navigate } = useCase();
+  const pick = useText();
   const eligible = (summary?.schemes || []).filter((s) => s.status === "eligible" && !s.app_id);
   if (!eligible.length) return null;
   return (
@@ -62,7 +68,7 @@ function ResultCard({ summary }) {
       <span className="badge badge-ok"><Icon name="check" size={16} strokeWidth={2.5} />
         <Bi k={eligible.length === 1 ? "talk_result_1" : "talk_result"} vars={{ n: eligible.length }} />
       </span>
-      <p className="result-titles">{eligible.slice(0, 2).map((s) => s.title).join(" · ")}</p>
+      <p className="result-titles">{eligible.slice(0, 2).map((s) => pick(s.title, s.title_en)).join(" · ")}</p>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate("schemes")}>
         <Bi k="see_schemes" /> <Icon name="chevronRight" size={18} />
       </button>
@@ -98,7 +104,7 @@ export default function Talk() {
   const why = asking?.kind === "field" && asking.why ? (
     <li className="why-note">
       <h3 className="why-title"><Icon name="help" size={16} /> <Bi k="why_title" /></h3>
-      <p>{asking.why}</p>
+      <p><Bi text={asking.why} en={asking.why_en} /></p>
     </li>
   ) : null;
 

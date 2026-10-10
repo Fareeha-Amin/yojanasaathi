@@ -1,7 +1,7 @@
 // YojanaSaathi web app (Phase 5): landing + 6 screens + privacy, voice and text on one case.
 // Hash routes (#/talk, #/schemes, ...): no router dependency, works from the PWA's start_url.
 
-import { BottomNav, Bi, DemoStrip, Header, TapToHear, VoiceDock, micText } from "./components.jsx";
+import { BottomNav, Bi, FloatingVoice, Header, TapToHear, micText } from "./components.jsx";
 import { CaseProvider, useCase } from "./case.jsx";
 import Applications from "./screens/Applications.jsx";
 import Documents from "./screens/Documents.jsx";
@@ -25,7 +25,6 @@ function Shell() {
     <div className={`app ${inApp ? "in-app" : "on-landing"} ${inApp && route !== "talk" ? "with-dock" : ""}`}>
       <a href="#main" className="skip">Skip to content</a>
       <Header />
-      <DemoStrip />
       {error === "agent" && (
         <div className="banner banner-error" role="alert">
           <Bi k="error_agent" block />
@@ -39,8 +38,13 @@ function Shell() {
       <div id="main" className="main">
         <Screen />
       </div>
-      {inApp && route !== "talk" && <VoiceDock />}
+      {inApp && route !== "talk" && <FloatingVoice />}
       {inApp && <BottomNav />}
+      {!inApp && (
+        <footer className="site-footer">
+          <Bi k="footer" block />
+        </footer>
+      )}
     </div>
   );
 }

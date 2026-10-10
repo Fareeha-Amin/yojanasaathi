@@ -10,7 +10,7 @@ import { fieldValue, usableUrl } from "../format.js";
 import { tr } from "../i18n.js";
 
 function FieldRow({ f }) {
-  const { edit, busy } = useCase();
+  const { edit, busy, lang } = useCase();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(f.value ?? ""));
@@ -34,7 +34,7 @@ function FieldRow({ f }) {
     <li className={`field-row ${f.unsure ? "field-unsure" : ""}`}>
       <div className="field-main">
         <span className="field-label"><Bi text={f.label} en={f.label_en} /></span>
-        {!editing && <strong className="field-value">{f.text}</strong>}
+        {!editing && <strong className="field-value" lang={lang}>{lang === "en" && f.text_en ? f.text_en : f.text}</strong>}
         {f.unsure && !editing && (
           <span className="unsure-note" role="note">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -83,11 +83,11 @@ export default function Review() {
   return (
     <main className="screen review">
       <h1><Bi k="review_title" block /></h1>
-      <p className="review-scheme"><Bi text={r.title} en={r.title_en} block /></p>
+      <p className="review-scheme"><Bi text={r.title} en={r.title_en} dual block /></p>
 
       <div className="readback card">
-        <p><Bi text={r.readback} en={r.readback_en} block /></p>
-        <SpeakButton text={r.readback} />
+        <p><Bi text={r.readback} en={r.readback_en} dual block /></p>
+        <SpeakButton text={lang === "en" && r.readback_en ? r.readback_en : r.readback} />
       </div>
 
       {r.documents_missing > 0 && (

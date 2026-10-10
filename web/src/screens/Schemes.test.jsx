@@ -2,38 +2,38 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { fx, renderScreen } from "../test/render.jsx";
+import { tr } from "../i18n.js";
 import Schemes from "./Schemes.jsx";
 
-const card = (titleEn) => screen.getByText(titleEn).closest("article");
+const kn = (k, vars) => tr("kn", k, vars);
+const card = (titleKn) => screen.getByText(titleKn).closest("article") || screen.getByText(titleKn).closest("details.scheme");
 
 describe("Schemes for you", () => {
   it("lists all four with you-qualify, the WHY box and the source date", () => {
     renderScreen(Schemes, { summary: fx("eligible") });
-    expect(screen.getByText("You qualify for 4 of 4")).toBeInTheDocument();
-    expect(screen.getAllByText("You qualify")).toHaveLength(4);
-    const pension = within(card("Senior Citizen Pension Scheme"));
-    expect(pension.getByText("₹1,20,000")).toBeInTheDocument(); // the citizen's value
-    expect(pension.getByText("up to ₹3,00,000")).toBeInTheDocument(); // the rule
-    expect(pension.getByText("60 or more")).toBeInTheDocument();
-    expect(pension.getByText(/effective 9 October 2026/)).toBeInTheDocument();
-    expect(pension.getByText("DEMO scheme on the mock portal")).toBeInTheDocument();
+    expect(screen.getAllByText(kn("st_eligible"))).toHaveLength(4);
+    const pension = within(card("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"));
+    expect(pension.getByText(/₹1,20,000/)).toBeInTheDocument(); // the citizen's value
+    expect(pension.getByText(/₹3,00,000/)).toBeInTheDocument(); // the rule
+    expect(pension.getByText(/60/)).toBeInTheDocument();
+    expect(pension.getByText(kn("why_box"))).toBeInTheDocument();
+    expect(pension.getByText(/9 ಅಕ್ಟೋಬರ್ 2026/)).toBeInTheDocument();
   });
 
   it("apply = saying the scheme's name", async () => {
     const summary = fx("eligible");
     const { ctx } = renderScreen(Schemes, { summary });
-    await userEvent.click(within(card("Senior Citizen Pension Scheme")).getByRole("button", { name: /Apply for this/ }));
+    await userEvent.click(within(card("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ")).getByRole("button", { name: /Apply with YojanaSaathi/ }));
     expect(ctx.pickScheme).toHaveBeenCalledWith(summary.schemes[0]);
     expect(ctx.pickScheme.mock.calls[0][0].title).toBe("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ");
   });
 
   it("question left: answer inline", async () => {
     const { ctx } = renderScreen(Schemes, { summary: fx("interview") });
-    const pension = within(card("Senior Citizen Pension Scheme"));
-    expect(pension.getByText("1 question left")).toBeInTheDocument();
-    expect(pension.getByText("not told yet")).toBeInTheDocument();
+    const pension = within(card("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"));
+    expect(pension.getByText(kn("st_unknown_1"))).toBeInTheDocument();
     await userEvent.type(pension.getByLabelText(/Annual income/), "120000");
-    await userEvent.click(pension.getByRole("button", { name: /ಉತ್ತರಿಸಿ/ }));
+    await userEvent.click(pension.getByRole("button", { name: kn("answer") }));
     expect(ctx.answerField).toHaveBeenCalledWith("annual_income", 120000, "ವಾರ್ಷಿಕ ಆದಾಯ: 120000");
   });
 
@@ -44,37 +44,37 @@ describe("Schemes for you", () => {
       s.clauses[0] = { ...s.clauses[0], value: 45, result: false };
     }
     renderScreen(Schemes, { summary });
-    const row = screen.getByText("2 schemes you don't qualify for · see why");
+    const row = screen.getByText(kn("not_eligible_group", { n: 2 }));
     const group = row.closest("details");
     expect(group).not.toHaveAttribute("open");
-    expect(screen.queryByText("Senior Citizen Pension Scheme").closest("article")).toBeNull(); // not a card
+    expect(screen.queryByText("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ").closest("article")).toBeNull(); // not a card
     await userEvent.click(row);
     expect(group).toHaveAttribute("open");
-    expect(within(group).getByText("Senior Citizen Pension Scheme")).toBeInTheDocument();
-    expect(within(group).getAllByText("45")).toHaveLength(2);
+    expect(within(group).getByText("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ")).toBeInTheDocument();
+    expect(within(group).getAllByText(/45/)).toHaveLength(2);
   });
 
-  it("the English line of an inline question uses the English field name", () => {
+  it("the inline question repeats the English field name in its label", () => {
     renderScreen(Schemes, { summary: fx("interview") });
-    expect(screen.getAllByText("Annual income?").length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText(/Annual income/).length).toBeGreaterThan(0);
   });
 
   it("while a review is open, other applications wait", () => {
     renderScreen(Schemes, { summary: fx("review") });
-    expect(within(card("Senior Citizen Pension Scheme")).getByRole("button", { name: /Open review/ })).toBeInTheDocument();
-    expect(within(card("National Health Support Scheme")).getByRole("button", { name: /Apply for this/ })).toBeDisabled();
+    expect(within(card("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ")).getByRole("button", { name: /Open review/ })).toBeInTheDocument();
+    expect(within(card("ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ")).getByRole("button", { name: /Apply with YojanaSaathi/ })).toBeDisabled();
   });
 
-  it("read aloud speaks title and reasons", async () => {
+  it("read aloud speaks the qualifying schemes", async () => {
     const { ctx } = renderScreen(Schemes, { summary: fx("eligible") });
-    await userEvent.click(within(card("Senior Citizen Pension Scheme")).getByRole("button", { name: /Read aloud/ }));
-    expect(ctx.speak.mock.calls[0][0]).toMatch(/^ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ\. /);
+    await userEvent.click(screen.getByRole("button", { name: /Read aloud/ }));
+    expect(ctx.speak.mock.calls[0][0]).toMatch(/ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ/);
   });
 
   it("empty before the interview", () => {
     const summary = fx("interview");
     summary.profile = [];
     renderScreen(Schemes, { summary });
-    expect(screen.getByText(/Tell me your age and income/)).toBeInTheDocument();
+    expect(screen.getByText(kn("schemes_empty"))).toBeInTheDocument();
   });
 });

@@ -53,7 +53,7 @@ export default function Profile() {
             {summary.profile.map((p) => (
               <li key={p.field} className="chip">
                 <span className="chip-label"><Bi text={p.label} en={p.label_en} /></span>
-                <strong className="chip-value">{p.text}</strong>
+                <strong className="chip-value"><Bi text={p.text} en={p.text_en} /></strong>
               </li>
             ))}
           </ul>

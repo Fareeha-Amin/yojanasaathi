@@ -4,7 +4,7 @@
 // for the schemes they don't qualify for. Opened from Talk and from My applications.
 
 import { useState } from "react";
-import { Bi, Empty, ScreenHeader, SpeakButton, StatusBadge, useLabel } from "../components.jsx";
+import { Bi, Empty, ScreenHeader, SpeakButton, StatusBadge, useLabel, useText } from "../components.jsx";
 import { useCase } from "../case.jsx";
 import { fieldValue, usableUrl } from "../format.js";
 import { tr } from "../i18n.js";
@@ -14,9 +14,10 @@ const OP_KEY = { ">=": "why_min", "<=": "why_max", ">": "why_gt", "<": "why_lt",
 
 /** One WHY line in the case language, e.g. "Age 62 · rule needs 60 or above". */
 export function whyLine(c, lang) {
+  const label = lang === "en" && c.label_en ? c.label_en : c.label;
   const limit = Array.isArray(c.limit) ? c.limit.join(", ") : fieldValue(c.field, c.limit);
-  if (c.value === null || c.value === undefined) return tr(lang, "why_unknown", { label: c.label });
-  return tr(lang, OP_KEY[c.op] || "why_eq", { label: c.label, value: fieldValue(c.field, c.value), limit });
+  if (c.value === null || c.value === undefined) return tr(lang, "why_unknown", { label });
+  return tr(lang, OP_KEY[c.op] || "why_eq", { label, value: fieldValue(c.field, c.value), limit });
 }
 
 function WhyBox({ scheme, compact = false }) {
@@ -43,7 +44,8 @@ function WhyBox({ scheme, compact = false }) {
 function RuleLink({ s }) {
   const { lang } = useCase();
   const url = usableUrl(s.source_url);
-  const text = tr(lang, "official_rule", { date: s.effective_date_text });
+  const date = lang === "en" && s.effective_date_text_en ? s.effective_date_text_en : s.effective_date_text;
+  const text = tr(lang, "official_rule", { date });
   return url ? (
     <a className="rule-link" href={url} target="_blank" rel="noopener noreferrer">
       <Icon name="external" size={18} /> {text}
@@ -76,7 +78,7 @@ function CardTop({ s, badge }) {
   return (
     <div className="card-top">
       {badge}
-      <span className="category">{s.category}</span>
+      <span className="category"><Bi text={s.category} en={s.category_en} /></span>
     </div>
   );
 }
@@ -85,7 +87,7 @@ function FeaturedCard({ s, reviewing }) {
   return (
     <article className="card scheme scheme-featured" aria-labelledby={`t-${s.scheme_id}`}>
       <CardTop s={s} badge={<StatusBadge kind="ok-solid" icon="check"><Bi k="st_eligible" /></StatusBadge>} />
-      <h2 id={`t-${s.scheme_id}`} className="scheme-title">{s.title}</h2>
+      <h2 id={`t-${s.scheme_id}`} className="scheme-title"><Bi text={s.title} en={s.title_en} /></h2>
       <WhyBox scheme={s} />
       <RuleLink s={s} />
       <ApplyButton s={s} reviewing={reviewing} />
@@ -102,7 +104,7 @@ function CompactCard({ s, reviewing }) {
         <CardTop s={s} badge={s.app_id
           ? <StatusBadge kind="done" icon="check"><Bi k="applied" /></StatusBadge>
           : <StatusBadge kind="ok" icon="check"><Bi k="st_eligible" /></StatusBadge>} />
-        <h2 id={`t-${s.scheme_id}`} className="scheme-title">{s.title}</h2>
+        <h2 id={`t-${s.scheme_id}`} className="scheme-title"><Bi text={s.title} en={s.title_en} /></h2>
         {s.app_id ? (
           <p className="muted"><Bi k="app_id" />: <code>{s.app_id}</code></p>
         ) : first && <p className="muted">{tr(lang, "why_line", { text: whyLine(first, lang) })}</p>}
@@ -126,9 +128,9 @@ function QuestionCard({ s }) {
   return (
     <article className="card scheme scheme-question" aria-labelledby={`t-${s.scheme_id}`}>
       <CardTop s={s} badge={<StatusBadge kind="white"><Bi k={n === 1 ? "st_unknown_1" : "st_unknown_n"} vars={{ n }} /></StatusBadge>} />
-      <h2 id={`t-${s.scheme_id}`} className="scheme-title">{s.title}</h2>
+      <h2 id={`t-${s.scheme_id}`} className="scheme-title"><Bi text={s.title} en={s.title_en} /></h2>
       <div className="question-row">
-        <label htmlFor={id} className="question-text">{field.question}</label>
+        <label htmlFor={id} className="question-text"><Bi text={field.question} en={field.question_en} /></label>
         <button type="button" className="round-btn round-btn-gold" aria-label={label("mic_label_off")} onClick={connectVoice}>
           <Icon name="mic" />
         </button>
@@ -148,6 +150,7 @@ function QuestionCard({ s }) {
 
 export default function Schemes() {
   const { summary, lang, navigate } = useCase();
+  const pick = useText();
   const schemes = summary?.schemes || [];
   const reviewing = summary?.pause?.type === "confirm" ? summary.pause.preview?.scheme_id : null;
   const profile = summary?.profile || [];
@@ -156,7 +159,7 @@ export default function Schemes() {
   const unknown = schemes.filter((s) => s.status === "unknown" && !s.app_id && s.missing_fields?.length);
   const notEligible = schemes.filter((s) => s.status === "not_eligible" && !s.app_id);
   const spoken = open.length
-    ? [tr(lang, open.length === 1 ? "talk_result_1" : "talk_result", { n: open.length }), ...open.map((s) => s.title)].join(". ")
+    ? [tr(lang, open.length === 1 ? "talk_result_1" : "talk_result", { n: open.length }), ...open.map((s) => pick(s.title, s.title_en))].join(". ")
     : "";
 
   return (
@@ -166,7 +169,7 @@ export default function Schemes() {
         <Empty k="schemes_empty" action={<button type="button" className="btn btn-primary" onClick={() => navigate("talk")}><Bi k="go_talk" dual /></button>} />
       ) : (
         <>
-          <p className="based-on">{tr(lang, "based_on", { facts: profile.map((p) => `${p.label} ${p.text}`).join(" · ") })}</p>
+          <p className="based-on">{tr(lang, "based_on", { facts: profile.map((p) => `${pick(p.label, p.label_en)} ${pick(p.text, p.text_en)}`).join(" · ") })}</p>
           {open.map((s, i) => (i === 0
             ? <FeaturedCard key={s.scheme_id} s={s} reviewing={reviewing} />
             : <CompactCard key={s.scheme_id} s={s} reviewing={reviewing} />))}
@@ -180,7 +183,7 @@ export default function Schemes() {
               </summary>
               {notEligible.map((s) => (
                 <div key={s.scheme_id} className="ne-scheme">
-                  <h3>{s.title}</h3>
+                  <h3><Bi text={s.title} en={s.title_en} /></h3>
                   <WhyBox scheme={s} compact />
                   <RuleLink s={s} />
                 </div>

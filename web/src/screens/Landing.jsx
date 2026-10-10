@@ -43,14 +43,12 @@ export default function Landing() {
       </section>
 
       <section className="card phone-card" aria-labelledby="phone-h">
-        <h2 id="phone-h"><Bi k="phone_title" block /></h2>
-        <p className="phone-number" aria-disabled="true">
+        <h2 id="phone-h" className="phone-line">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
             <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
           </svg>
-          <Bi k="phone_number" />
-        </p>
-        <p className="muted"><Bi k="phone_soon" block /></p>
+          <Bi k="phone_soon" block />
+        </h2>
       </section>
 
       <section aria-labelledby="how-h">

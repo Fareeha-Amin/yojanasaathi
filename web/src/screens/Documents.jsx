@@ -4,7 +4,7 @@
 // Names come from the scheme's documents list (the portal's labels). Consent first.
 
 import { useState } from "react";
-import { Bi, Empty, ScreenHeader, useLabel } from "../components.jsx";
+import { Bi, Empty, ScreenHeader, useLabel, useText } from "../components.jsx";
 import { useCase } from "../case.jsx";
 import { tr } from "../i18n.js";
 import { Icon } from "../icons.jsx";
@@ -80,7 +80,7 @@ function ForLine({ item }) {
   if (!item.schemes?.length) return null;
   return (
     <p className="muted small">
-      <Bi k="docs_for" vars={{ titles: item.schemes.join(", ") }} envars={{ titles: (item.schemes_en || item.schemes).join(", ") }} />
+      <Bi k="docs_for" vars={{ titles: item.schemes.join(", ") }} envars={{ titles: (item.schemes_en || item.schemes).join(", ") }} dual />
     </p>
   );
 }
@@ -93,7 +93,7 @@ function PinnedItem({ item, maxBytes, consented }) {
       <div className="doc-row">
         <span className="doc-icon doc-icon-warn"><Icon name="alert" /></span>
         <div className="doc-text">
-          <h2 className="doc-name">{item.label}</h2>
+          <h2 className="doc-name"><Bi text={item.label} en={item.label_en} /></h2>
           <p className="doc-sub"><Bi k={item.status === "missing" ? "doc_missing_now" : "doc_not_yet"} /></p>
           <ForLine item={item} />
         </div>
@@ -118,7 +118,7 @@ function DocItem({ item, maxBytes, consented }) {
           {(done || item.status === "have") && <Icon name="check" strokeWidth={2.5} />}
         </span>
         <div className="doc-text">
-          <h2 className="doc-name">{item.label}</h2>
+          <h2 className="doc-name"><Bi text={item.label} en={item.label_en} /></h2>
           <p className="doc-sub">
             {done ? (
               <>
@@ -144,6 +144,7 @@ function DocItem({ item, maxBytes, consented }) {
 
 export default function Documents() {
   const { summary, setConsent, navigate, lang } = useCase();
+  const pick = useText();
   const [saving, setSaving] = useState(false);
   const checklist = summary?.checklist;
   const hours = summary?.limits?.doc_retention_hours ?? 24;
@@ -164,7 +165,7 @@ export default function Documents() {
     }
   };
 
-  const sub = checklist?.title ? tr(lang, "docs_for_scheme", { title: checklist.title }) : null;
+  const sub = checklist?.title ? tr(lang, "docs_for_scheme", { title: pick(checklist.title, checklist.title_en) }) : null;
 
   return (
     <main className="screen documents">

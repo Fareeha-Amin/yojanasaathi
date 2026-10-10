@@ -2,20 +2,22 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { fx, renderScreen } from "../test/render.jsx";
+import { tr } from "../i18n.js";
 import Talk from "./Talk.jsx";
+
+const kn = (k, vars) => tr("kn", k, vars);
 
 describe("Talk", () => {
   it("shows what I know so far, the question and why I ask", () => {
     renderScreen(Talk, { summary: fx("interview") });
-    expect(screen.getByText("What I know so far")).toBeInTheDocument();
-    expect(screen.getByText("ವಯಸ್ಸು")).toBeInTheDocument();
-    expect(screen.getByText("62")).toBeInTheDocument();
+    expect(screen.getByText(kn("known_title"))).toBeInTheDocument();
+    expect(screen.getByText("ವಯಸ್ಸು 62")).toBeInTheDocument();
     // the question card (and the "where we left off" bubble on a reload)
     expect(screen.getAllByText("What is your family's total income in one year?").length).toBeGreaterThan(0);
-    expect(screen.getByText(/I ask your annual income to check: Senior Citizen Pension Scheme/)).toBeInTheDocument();
     // "Why I ask" is a heading of its own: no line holding just a colon
     const why = document.querySelector(".why-note");
-    expect(why.querySelector(".why-title")).toHaveTextContent("Why I ask");
+    expect(why).toHaveTextContent("ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ");
+    expect(why.querySelector(".why-title")).toHaveTextContent(kn("why_title"));
     expect([...why.querySelectorAll("*")].some((el) => el.textContent.trim() === ":")).toBe(false);
   });
 
@@ -29,7 +31,7 @@ describe("Talk", () => {
     });
     const list = screen.getByRole("list", { name: "Conversation" });
     expect(list).toHaveTextContent("ನನಗೆ 62 ವರ್ಷ");
-    expect(list).toHaveTextContent("spoken");
+    expect(list).toHaveTextContent(kn("via_voice"));
     expect(list).toHaveTextContent("What is your family's total income in one year?");
     await userEvent.click(screen.getByRole("button", { name: /Replay/ }));
     expect(ctx.speak).toHaveBeenCalledWith("ನಿಮ್ಮ ಕುಟುಂಬದ ಒಂದು ವರ್ಷದ ಒಟ್ಟು ಆದಾಯ ಎಷ್ಟು?");
@@ -50,14 +52,14 @@ describe("Talk", () => {
     off.unmount();
 
     const on = renderScreen(Talk, { summary: fx("interview"), voice: { status: "user" } });
-    expect(screen.getByRole("status")).toHaveTextContent("You're speaking");
+    expect(screen.getByRole("status")).toHaveTextContent(kn("mic_user"));
     await userEvent.click(screen.getByRole("button", { name: /Voice is on/ }));
     expect(on.ctx.disconnectVoice).toHaveBeenCalled();
   });
 
   it("points to the review when the case waits for confirmation", async () => {
     const { ctx } = renderScreen(Talk, { summary: fx("review") });
-    await userEvent.click(screen.getByRole("button", { name: /ready for your review/ }));
+    await userEvent.click(document.querySelector(".banner-action"));
     expect(ctx.navigate).toHaveBeenCalledWith("review");
   });
 });
@@ -65,13 +67,13 @@ describe("Talk", () => {
 describe("Talk: voice states and audio", () => {
   it("an error names its reason", () => {
     renderScreen(Talk, { summary: fx("interview"), voice: { status: "error", reason: "blocked" } });
-    expect(screen.getByRole("status")).toHaveTextContent("Microphone blocked. Allow it in the address bar");
+    expect(screen.getByRole("status")).toHaveTextContent(kn("mic_err_blocked"));
   });
 
   it.each([
-    ["connecting", "Connecting…"], ["listening", "Listening…"], ["thinking", "Thinking…"], ["bot", "Saathi is speaking"],
-  ])("%s is shown", (status, text) => {
+    ["connecting", "mic_connecting"], ["listening", "mic_listening_long"], ["thinking", "mic_thinking"], ["bot", "mic_bot"],
+  ])("%s is shown", (status, key) => {
     renderScreen(Talk, { summary: fx("interview"), voice: { status } });
-    expect(screen.getByRole("status")).toHaveTextContent(text);
+    expect(screen.getByRole("status")).toHaveTextContent(kn(key));
   });
 });

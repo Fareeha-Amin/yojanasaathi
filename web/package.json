@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "shots": "playwright test -c playwright.screenshots.config.js"
   },
   "dependencies": {
     "@pipecat-ai/client-js": "1.13.1",
