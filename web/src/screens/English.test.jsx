@@ -3,7 +3,7 @@
 // so in English mode its English form becomes the main line and the Kannada one drops away.
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { fx, renderScreen } from "../test/render.jsx";
+import { fx, renderScreen, withMissingDocs } from "../test/render.jsx";
 import { tr } from "../i18n.js";
 import Applications from "./Applications.jsx";
 import Documents from "./Documents.jsx";
@@ -37,7 +37,7 @@ describe("English mode shows agent text in English", () => {
 
   it("Review: the scheme, the read-back and the effective date", () => {
     const r = fx("review").review;
-    renderScreen(Review, { summary: fx("review"), lang: "en" });
+    renderScreen(Review, { summary: withMissingDocs(fx("review")), lang: "en" });
     expect(screen.getByText(r.title_en)).toBeInTheDocument();
     expect(screen.queryByText(r.title)).toBeNull();
     expect(screen.getByText(r.readback_en)).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("English mode shows agent text in English", () => {
 
   it("Applications: the scheme, the status badge and the missing documents", () => {
     const a = fx("submitted").applications[0];
-    renderScreen(Applications, { summary: fx("submitted"), lang: "en" });
+    renderScreen(Applications, { summary: withMissingDocs(fx("submitted")), lang: "en" });
     expect(screen.getByText(a.title_en)).toBeInTheDocument();
     expect(screen.queryByText(a.title)).toBeNull();
     expect(screen.getByText(a.status_text_en)).toBeInTheDocument();

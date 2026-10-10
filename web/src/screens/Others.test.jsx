@@ -3,7 +3,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { fx, renderScreen } from "../test/render.jsx";
+import { fx, renderScreen, withMissingDocs } from "../test/render.jsx";
 import { tr } from "../i18n.js";
 import Applications from "./Applications.jsx";
 import Landing from "./Landing.jsx";
@@ -16,7 +16,7 @@ const kn = (k, vars) => tr("kn", k, vars);
 describe("My applications", () => {
   it("shows the id, status, timeline and what to do next", async () => {
     const { ctx } = renderScreen(Applications, { summary: fx("submitted") });
-    expect(screen.getByText("DEMO-0001", { selector: "p.app-id code" })).toBeInTheDocument();
+    expect(screen.getByText("YJS-0000000001",{ selector: "p.app-id code" })).toBeInTheDocument();
     expect(screen.getByText("Submitted", { selector: ".badge .bi-en" })).toBeInTheDocument();
     const timeline = document.querySelector(".timeline");
     expect(timeline).toHaveTextContent(kn("tl_eligibility_decided"));
@@ -29,8 +29,8 @@ describe("My applications", () => {
   });
 
   it("What to do lists the missing documents with an upload link", async () => {
-    const { ctx } = renderScreen(Applications, { summary: fx("submitted") });
-    const todo = document.querySelector(".todo");
+    const { ctx } = renderScreen(Applications, { summary: withMissingDocs(fx("submitted")) });
+    const todo =document.querySelector(".todo");
     expect(todo).toHaveTextContent(kn("todo_upload"));
     expect(todo).toHaveTextContent("ಗುರುತಿನ ಪುರಾವೆ");
     await userEvent.click(within(todo).getByRole("link", { name: kn("upload_now") }));

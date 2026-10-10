@@ -57,38 +57,38 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+      "source_url": "https://mock-portal.invalid/schemes/pension-001",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
       "documents": [
         {
           "doc": "identity_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಗುರುತಿನ ಪುರಾವೆ",
           "label_en": "Identity Proof"
         },
         {
           "doc": "age_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
           "label_en": "Age Proof"
         },
         {
           "doc": "residence_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ನಿವಾಸ ಪುರಾವೆ",
           "label_en": "Residence Proof"
         },
         {
           "doc": "income_certificate",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
           "label_en": "Income Certificate"
         },
         {
           "doc": "bank_account_details",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
           "label_en": "Bank Account Details"
         }
@@ -122,38 +122,38 @@
           "label_en": "Age"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/pension-002",
+      "source_url": "https://mock-portal.invalid/schemes/pension-002",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
       "documents": [
         {
           "doc": "identity_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಗುರುತಿನ ಪುರಾವೆ",
           "label_en": "Identity Proof"
         },
         {
           "doc": "residence_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ನಿವಾಸ ಪುರಾವೆ",
           "label_en": "Residence Proof"
         },
         {
           "doc": "income_certificate",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
           "label_en": "Income Certificate"
         },
         {
           "doc": "bank_account_details",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
           "label_en": "Bank Account Details"
         },
         {
           "doc": "age_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
           "label_en": "Age Proof, where applicable"
         }
@@ -186,32 +186,32 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/health-001",
+      "source_url": "https://mock-portal.invalid/schemes/health-001",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
       "documents": [
         {
           "doc": "identity_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಗುರುತಿನ ಪುರಾವೆ",
           "label_en": "Identity Proof"
         },
         {
           "doc": "residence_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ನಿವಾಸ ಪುರಾವೆ",
           "label_en": "Residence Proof"
         },
         {
           "doc": "income_certificate",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
           "label_en": "Income Certificate"
         },
         {
           "doc": "bank_account_details",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
           "label_en": "Bank Account Details"
         },
@@ -250,26 +250,26 @@
           "label_en": "Annual income"
         }
       ],
-      "source_url": "https://<ayush-portal-public-url>/schemes/health-002",
+      "source_url": "https://mock-portal.invalid/schemes/health-002",
       "effective_date": "2026-10-09",
       "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
       "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
       "documents": [
         {
           "doc": "identity_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಗುರುತಿನ ಪುರಾವೆ",
           "label_en": "Identity Proof"
         },
         {
           "doc": "residence_proof",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ನಿವಾಸ ಪುರಾವೆ",
           "label_en": "Residence Proof"
         },
         {
           "doc": "income_certificate",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
           "label_en": "Income Certificate"
         },
@@ -281,7 +281,7 @@
         },
         {
           "doc": "bank_account_details",
-          "status": "needed",
+          "status": "uploaded",
           "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
           "label_en": "Bank Account Details"
         }
@@ -305,10 +305,18 @@
     "items": [
       {
         "doc": "identity_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಗುರುತಿನ ಪುರಾವೆ",
         "label_en": "Identity Proof",
-        "document": null,
+        "document": {
+          "id": "cb168b2a-374a-44c8-8305-1a6a3c57a83e",
+          "doc_type": "identity_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 28,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.856294+05:30",
+          "expires_at": null
+        },
         "schemes": [
           "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
         ],
@@ -318,10 +326,18 @@
       },
       {
         "doc": "age_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
         "label_en": "Age Proof",
-        "document": null,
+        "document": {
+          "id": "7f56db0f-399f-4d24-b710-a15c792f48dd",
+          "doc_type": "age_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 23,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.862305+05:30",
+          "expires_at": null
+        },
         "schemes": [
           "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
         ],
@@ -331,10 +347,18 @@
       },
       {
         "doc": "residence_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ನಿವಾಸ ಪುರಾವೆ",
         "label_en": "Residence Proof",
-        "document": null,
+        "document": {
+          "id": "09f7e5e0-188b-4b16-af6c-ad1ee7b2ceea",
+          "doc_type": "residence_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 29,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.867738+05:30",
+          "expires_at": null
+        },
         "schemes": [
           "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
         ],
@@ -344,10 +368,18 @@
       },
       {
         "doc": "income_certificate",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
         "label_en": "Income Certificate",
-        "document": null,
+        "document": {
+          "id": "88d1d278-d8f6-44fe-afba-2f99fba28865",
+          "doc_type": "income_certificate",
+          "content_type": "application/pdf",
+          "size_bytes": 32,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.873550+05:30",
+          "expires_at": null
+        },
         "schemes": [
           "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
         ],
@@ -357,10 +389,18 @@
       },
       {
         "doc": "bank_account_details",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
         "label_en": "Bank Account Details",
-        "document": null,
+        "document": {
+          "id": "40c6fdcb-1bd9-4b20-873a-3224696cc29e",
+          "doc_type": "bank_account_details",
+          "content_type": "application/pdf",
+          "size_bytes": 34,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.879254+05:30",
+          "expires_at": null
+        },
         "schemes": [
           "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ"
         ],
@@ -397,19 +437,66 @@
         ]
       }
     ],
-    "ready": 0,
+    "ready": 5,
     "total": 5,
-    "missing": 5
+    "missing": 0
   },
-  "documents": [],
+  "documents": [
+    {
+      "id": "cb168b2a-374a-44c8-8305-1a6a3c57a83e",
+      "doc_type": "identity_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 28,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:13.856294+05:30",
+      "expires_at": null
+    },
+    {
+      "id": "7f56db0f-399f-4d24-b710-a15c792f48dd",
+      "doc_type": "age_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 23,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:13.862305+05:30",
+      "expires_at": null
+    },
+    {
+      "id": "09f7e5e0-188b-4b16-af6c-ad1ee7b2ceea",
+      "doc_type": "residence_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 29,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:13.867738+05:30",
+      "expires_at": null
+    },
+    {
+      "id": "88d1d278-d8f6-44fe-afba-2f99fba28865",
+      "doc_type": "income_certificate",
+      "content_type": "application/pdf",
+      "size_bytes": 32,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:13.873550+05:30",
+      "expires_at": null
+    },
+    {
+      "id": "40c6fdcb-1bd9-4b20-873a-3224696cc29e",
+      "doc_type": "bank_account_details",
+      "content_type": "application/pdf",
+      "size_bytes": 34,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:13.879254+05:30",
+      "expires_at": null
+    }
+  ],
   "consent": {
     "profile": false,
-    "documents": false,
-    "at": null
+    "documents": true,
+    "at": "2026-10-10T05:33:13.850783+05:30"
   },
   "pause": {
     "type": "confirm",
     "preview": {
+      "portal": true,
       "scheme_id": "pension-001",
       "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
       "fields": {
@@ -417,44 +504,189 @@
         "annual_income": 120000
       },
       "needs_readback": [],
+      "form": [
+        {
+          "field": "full_name",
+          "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+          "label_en": "Senior Citizen Applicant Full Name",
+          "value": "Ramesh Kumar",
+          "text": "Ramesh Kumar",
+          "text_en": "Ramesh Kumar",
+          "sensitive": false
+        },
+        {
+          "field": "dob",
+          "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+          "label_en": "Date of Birth (Must be 60 years or older)",
+          "value": null,
+          "text": "**/**/1964",
+          "text_en": "**/**/1964",
+          "sensitive": true
+        },
+        {
+          "field": "gender",
+          "label": "ಲಿಂಗ",
+          "label_en": "Gender",
+          "value": "Male",
+          "text": "ಪುರುಷ",
+          "text_en": "Male",
+          "sensitive": false
+        },
+        {
+          "field": "marital_status",
+          "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+          "label_en": "Marital Status",
+          "value": "Married",
+          "text": "ವಿವಾಹಿತ",
+          "text_en": "Married",
+          "sensitive": false
+        },
+        {
+          "field": "annual_income",
+          "label": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
+          "label_en": "Current Annual Income from All Sources (INR)",
+          "value": "120000",
+          "text": "₹1,20,000",
+          "text_en": "₹1,20,000",
+          "sensitive": false
+        },
+        {
+          "field": "disbursement_mode",
+          "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+          "label_en": "Preferred Pension Disbursement Channel",
+          "value": "Direct Bank Transfer (DBT)",
+          "text": "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+          "text_en": "Direct Bank Transfer (DBT)",
+          "sensitive": false
+        },
+        {
+          "field": "bank_account_number",
+          "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+          "label_en": "Pension Bank / Post Office Account Number",
+          "value": null,
+          "text": "XXXXXX0123",
+          "text_en": "XXXXXX0123",
+          "sensitive": true
+        },
+        {
+          "field": "bank_ifsc",
+          "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+          "label_en": "Branch IFSC / Postal Code",
+          "value": null,
+          "text": "SBIN0******",
+          "text_en": "SBIN0******",
+          "sensitive": true
+        },
+        {
+          "field": "nominee_name",
+          "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+          "label_en": "Nominee / Guardian Full Name",
+          "value": "Sita Kumar",
+          "text": "Sita Kumar",
+          "text_en": "Sita Kumar",
+          "sensitive": false
+        },
+        {
+          "field": "address",
+          "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+          "label_en": "Permanent Address",
+          "value": "12 Temple Road, Tumakuru 572101",
+          "text": "12 Temple Road, Tumakuru 572101",
+          "text_en": "12 Temple Road, Tumakuru 572101",
+          "sensitive": false
+        },
+        {
+          "field": "declaration_consent",
+          "label": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+          "label_en": "I solemnly affirm that I am not drawing any other central/state government pension.",
+          "value": true,
+          "text": "ಹೌದು",
+          "text_en": "yes",
+          "sensitive": false
+        },
+        {
+          "field": "mobile",
+          "label": "ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಾಯಿಸಿದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",
+          "label_en": "Mobile number registered on the portal",
+          "value": null,
+          "text": "XXXXXX3210",
+          "text_en": "XXXXXX3210",
+          "sensitive": true
+        }
+      ],
       "documents": [
         {
           "doc": "identity_proof",
-          "status": "needed",
-          "label": "ಗುರುತಿನ ಪುರಾವೆ"
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "status": "uploaded"
         },
         {
           "doc": "age_proof",
-          "status": "needed",
-          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ"
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+          "status": "uploaded"
         },
         {
           "doc": "residence_proof",
-          "status": "needed",
-          "label": "ನಿವಾಸ ಪುರಾವೆ"
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "status": "uploaded"
         },
         {
           "doc": "income_certificate",
-          "status": "needed",
-          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ"
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "status": "uploaded"
         },
         {
           "doc": "bank_account_details",
-          "status": "needed",
-          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು"
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "status": "uploaded"
         }
       ],
-      "documents_missing": 5,
-      "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
-      "effective_date": "2026-10-09"
+      "documents_missing": 0,
+      "screenshots": [
+        "7cdf87e8-1208-478f-a3f7-72125b6cc871",
+        "ba23c878-4e83-4b9e-87a2-c175b3cdd606",
+        "88c4719a-4cb1-4720-ba35-ab2c6a956f53",
+        "cab8f0ba-64bf-442b-b4b6-61bf3bc17e0c",
+        "9b981765-a3c3-4dba-bc9b-cd490a5ffc64",
+        "572361c0-9a3f-4cec-941b-039dc3a0e9ec"
+      ],
+      "declaration": {
+        "text": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+        "text_en": "I solemnly affirm that I am not drawing any other central/state government pension."
+      },
+      "delegation": {
+        "hours": 24,
+        "scopes": [
+          "applications:read",
+          "notifications:read"
+        ]
+      },
+      "fingerprint": "d127bebf5497ade901373e5117fe646de0aa6174f4a30433d6cd5b3d505f41aa",
+      "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: Ramesh Kumar, ಹುಟ್ಟಿದ ದಿನಾಂಕ ⟦dob⟧, ಆದಾಯ ₹1,20,000, ಹಣ 0123 ರಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಖಾತೆಗೆ. ಹೌದು ಎಂದರೆ ನೀವು ಇದನ್ನೂ ದೃಢೀಕರಿಸುತ್ತೀರಿ: \"ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ\", ಮತ್ತು ಅರ್ಜಿಯ ಸ್ಥಿತಿ ನೋಡಲು 24 ಗಂಟೆಗಳ ಕಾಲ ಓದಲು ಮಾತ್ರ ಅನುಮತಿ ನೀಡುತ್ತೀರಿ. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸಲೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ.",
+      "readback_en": "Please check: Ramesh Kumar, born ⟦dob⟧, income ₹1,20,000, payment to the account ending 0123. By saying yes you also affirm: \"I solemnly affirm that I am not drawing any other central/state government pension\", and allow read-only access for 24 hours to track the status. Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit.",
+      "source_url": "https://mock-portal.invalid/schemes/pension-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026"
+    },
+    "screenshots": [
+      "7cdf87e8-1208-478f-a3f7-72125b6cc871",
+      "ba23c878-4e83-4b9e-87a2-c175b3cdd606",
+      "88c4719a-4cb1-4720-ba35-ab2c6a956f53",
+      "cab8f0ba-64bf-442b-b4b6-61bf3bc17e0c",
+      "9b981765-a3c3-4dba-bc9b-cd490a5ffc64",
+      "572361c0-9a3f-4cec-941b-039dc3a0e9ec"
+    ],
+    "declaration_text": {
+      "text": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+      "text_en": "I solemnly affirm that I am not drawing any other central/state government pension."
     }
   },
   "review": {
     "scheme_id": "pension-001",
     "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
     "title_en": "Senior Citizen Pension Scheme",
-    "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
-    "readback_en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first.",
+    "readback": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: Ramesh Kumar, ಹುಟ್ಟಿದ ದಿನಾಂಕ **/**/1964, ಆದಾಯ ₹1,20,000, ಹಣ 0123 ರಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಖಾತೆಗೆ. ಹೌದು ಎಂದರೆ ನೀವು ಇದನ್ನೂ ದೃಢೀಕರಿಸುತ್ತೀರಿ: \"ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ\", ಮತ್ತು ಅರ್ಜಿಯ ಸ್ಥಿತಿ ನೋಡಲು 24 ಗಂಟೆಗಳ ಕಾಲ ಓದಲು ಮಾತ್ರ ಅನುಮತಿ ನೀಡುತ್ತೀರಿ. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸಲೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ.",
+    "readback_en": "Please check: Ramesh Kumar, born **/**/1964, income ₹1,20,000, payment to the account ending 0123. By saying yes you also affirm: \"I solemnly affirm that I am not drawing any other central/state government pension\", and allow read-only access for 24 hours to track the status. Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit.",
     "fields": [
       {
         "field": "age",
@@ -484,9 +716,12 @@
         "required": true,
         "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
         "label_en": "Senior Citizen Applicant Full Name",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "Ramesh Kumar",
+        "text": "Ramesh Kumar",
+        "text_en": "Ramesh Kumar",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "dob",
@@ -494,9 +729,12 @@
         "required": true,
         "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
         "label_en": "Date of Birth (Must be 60 years or older)",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "**/**/1964",
+        "text": "**/**/1964",
+        "text_en": "**/**/1964",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": true
       },
       {
         "name": "gender",
@@ -504,9 +742,12 @@
         "required": true,
         "label": "ಲಿಂಗ",
         "label_en": "Gender",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "ಪುರುಷ",
+        "text": "ಪುರುಷ",
+        "text_en": "Male",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "marital_status",
@@ -514,9 +755,12 @@
         "required": true,
         "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
         "label_en": "Marital Status",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "ವಿವಾಹಿತ",
+        "text": "ವಿವಾಹಿತ",
+        "text_en": "Married",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "annual_income",
@@ -524,9 +768,12 @@
         "required": true,
         "label": "ಎಲ್ಲಾ ಮೂಲಗಳಿಂದ ವಾರ್ಷಿಕ ಆದಾಯ (ರೂ.)",
         "label_en": "Current Annual Income from All Sources (INR)",
-        "value": 120000,
+        "value": "₹1,20,000",
         "text": "₹1,20,000",
-        "from_answers": true
+        "text_en": "₹1,20,000",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "disbursement_mode",
@@ -534,9 +781,12 @@
         "required": true,
         "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
         "label_en": "Preferred Pension Disbursement Channel",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+        "text": "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+        "text_en": "Direct Bank Transfer (DBT)",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "bank_account_number",
@@ -544,9 +794,12 @@
         "required": true,
         "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
         "label_en": "Pension Bank / Post Office Account Number",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "XXXXXX0123",
+        "text": "XXXXXX0123",
+        "text_en": "XXXXXX0123",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": true
       },
       {
         "name": "bank_ifsc",
@@ -554,9 +807,12 @@
         "required": true,
         "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
         "label_en": "Branch IFSC / Postal Code",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "SBIN0******",
+        "text": "SBIN0******",
+        "text_en": "SBIN0******",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": true
       },
       {
         "name": "nominee_name",
@@ -564,9 +820,12 @@
         "required": true,
         "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
         "label_en": "Nominee / Guardian Full Name",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "Sita Kumar",
+        "text": "Sita Kumar",
+        "text_en": "Sita Kumar",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "address",
@@ -574,9 +833,12 @@
         "required": true,
         "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
         "label_en": "Permanent Address",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "12 Temple Road, Tumakuru 572101",
+        "text": "12 Temple Road, Tumakuru 572101",
+        "text_en": "12 Temple Road, Tumakuru 572101",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       },
       {
         "name": "declaration_consent",
@@ -584,57 +846,250 @@
         "required": true,
         "label": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
         "label_en": "I solemnly affirm that I am not drawing any other central/state government pension.",
-        "value": null,
-        "text": null,
-        "from_answers": false
+        "value": "ಹೌದು",
+        "text": "ಹೌದು",
+        "text_en": "yes",
+        "from_answers": true,
+        "from_page": true,
+        "sensitive": false
       }
     ],
-    "screenshots": [],
+    "screenshots": [
+      "7cdf87e8-1208-478f-a3f7-72125b6cc871",
+      "ba23c878-4e83-4b9e-87a2-c175b3cdd606",
+      "88c4719a-4cb1-4720-ba35-ab2c6a956f53",
+      "cab8f0ba-64bf-442b-b4b6-61bf3bc17e0c",
+      "9b981765-a3c3-4dba-bc9b-cd490a5ffc64",
+      "572361c0-9a3f-4cec-941b-039dc3a0e9ec"
+    ],
+    "declaration": {
+      "text": "ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.",
+      "text_en": "I solemnly affirm that I am not drawing any other central/state government pension."
+    },
+    "delegation": {
+      "hours": 24,
+      "scopes": [
+        "applications:read",
+        "notifications:read"
+      ]
+    },
     "documents": [
       {
         "doc": "identity_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಗುರುತಿನ ಪುರಾವೆ",
         "label_en": "Identity Proof",
-        "document": null
+        "document": {
+          "id": "cb168b2a-374a-44c8-8305-1a6a3c57a83e",
+          "doc_type": "identity_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 28,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.856294+05:30",
+          "expires_at": null
+        }
       },
       {
         "doc": "age_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
         "label_en": "Age Proof",
-        "document": null
+        "document": {
+          "id": "7f56db0f-399f-4d24-b710-a15c792f48dd",
+          "doc_type": "age_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 23,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.862305+05:30",
+          "expires_at": null
+        }
       },
       {
         "doc": "residence_proof",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ನಿವಾಸ ಪುರಾವೆ",
         "label_en": "Residence Proof",
-        "document": null
+        "document": {
+          "id": "09f7e5e0-188b-4b16-af6c-ad1ee7b2ceea",
+          "doc_type": "residence_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 29,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.867738+05:30",
+          "expires_at": null
+        }
       },
       {
         "doc": "income_certificate",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
         "label_en": "Income Certificate",
-        "document": null
+        "document": {
+          "id": "88d1d278-d8f6-44fe-afba-2f99fba28865",
+          "doc_type": "income_certificate",
+          "content_type": "application/pdf",
+          "size_bytes": 32,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.873550+05:30",
+          "expires_at": null
+        }
       },
       {
         "doc": "bank_account_details",
-        "status": "needed",
+        "status": "uploaded",
         "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
         "label_en": "Bank Account Details",
-        "document": null
+        "document": {
+          "id": "40c6fdcb-1bd9-4b20-873a-3224696cc29e",
+          "doc_type": "bank_account_details",
+          "content_type": "application/pdf",
+          "size_bytes": 34,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:13.879254+05:30",
+          "expires_at": null
+        }
       }
     ],
-    "documents_missing": 5,
-    "source_url": "https://<ayush-portal-public-url>/schemes/pension-001",
+    "documents_missing": 0,
+    "source_url": "https://mock-portal.invalid/schemes/pension-001",
     "effective_date": "2026-10-09",
     "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
     "effective_date_text_en": "9 October 2026"
   },
-  "progress": null,
+  "progress": {
+    "scheme_id": "pension-001",
+    "steps": [
+      {
+        "key": "login",
+        "label": "ಲಾಗಿನ್",
+        "label_en": "Log in",
+        "status": "done",
+        "screenshot": "7cdf87e8-1208-478f-a3f7-72125b6cc871"
+      },
+      {
+        "key": "otp",
+        "label": "OTP",
+        "label_en": "OTP",
+        "status": "done",
+        "screenshot": "ba23c878-4e83-4b9e-87a2-c175b3cdd606"
+      },
+      {
+        "key": "applicant",
+        "label": "ಅರ್ಜಿದಾರರ ವಿವರ",
+        "label_en": "Applicant details",
+        "status": "done",
+        "screenshot": "88c4719a-4cb1-4720-ba35-ab2c6a956f53"
+      },
+      {
+        "key": "details",
+        "label": "ಯೋಜನೆಯ ವಿವರ",
+        "label_en": "Scheme details",
+        "status": "done",
+        "screenshot": "cab8f0ba-64bf-442b-b4b6-61bf3bc17e0c"
+      },
+      {
+        "key": "documents",
+        "label": "ದಾಖಲೆಗಳು",
+        "label_en": "Documents",
+        "status": "done",
+        "screenshot": "9b981765-a3c3-4dba-bc9b-cd490a5ffc64"
+      },
+      {
+        "key": "review",
+        "label": "ಪರಿಶೀಲನೆ (ನಿಮ್ಮ ಹೌದುಗಾಗಿ ಇಲ್ಲಿ ನಿಲ್ಲುತ್ತದೆ)",
+        "label_en": "Review (stop here for your yes)",
+        "status": "done",
+        "screenshot": "572361c0-9a3f-4cec-941b-039dc3a0e9ec"
+      },
+      {
+        "key": "submit",
+        "label": "ಸಲ್ಲಿಕೆ",
+        "label_en": "Submit",
+        "status": "waiting",
+        "screenshot": null
+      }
+    ]
+  },
+  "form": [
+    {
+      "field": "full_name",
+      "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+      "label_en": "Senior Citizen Applicant Full Name",
+      "text": "Ramesh Kumar",
+      "sensitive": false
+    },
+    {
+      "field": "dob",
+      "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+      "label_en": "Date of Birth (Must be 60 years or older)",
+      "text": "**/**/1964",
+      "sensitive": true
+    },
+    {
+      "field": "gender",
+      "label": "ಲಿಂಗ",
+      "label_en": "Gender",
+      "text": "ಪುರುಷ",
+      "sensitive": false
+    },
+    {
+      "field": "marital_status",
+      "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+      "label_en": "Marital Status",
+      "text": "ವಿವಾಹಿತ",
+      "sensitive": false
+    },
+    {
+      "field": "disbursement_mode",
+      "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+      "label_en": "Preferred Pension Disbursement Channel",
+      "text": "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+      "sensitive": false
+    },
+    {
+      "field": "bank_account_number",
+      "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+      "label_en": "Pension Bank / Post Office Account Number",
+      "text": "XXXXXX0123",
+      "sensitive": true
+    },
+    {
+      "field": "bank_ifsc",
+      "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+      "label_en": "Branch IFSC / Postal Code",
+      "text": "SBIN0******",
+      "sensitive": true
+    },
+    {
+      "field": "nominee_name",
+      "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+      "label_en": "Nominee / Guardian Full Name",
+      "text": "Sita Kumar",
+      "sensitive": false
+    },
+    {
+      "field": "address",
+      "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+      "label_en": "Permanent Address",
+      "text": "12 Temple Road, Tumakuru 572101",
+      "sensitive": false
+    },
+    {
+      "field": "mobile",
+      "label": "ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಾಯಿಸಿದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",
+      "label_en": "Mobile number registered on the portal",
+      "text": "XXXXXX3210",
+      "sensitive": true
+    }
+  ],
   "applications": [],
+  "updates": [],
+  "tracking": {
+    "active": false,
+    "paused": null,
+    "last_checked_at": null,
+    "access_ends": null
+  },
   "next": [
     {
       "scheme_id": "pension-001",
@@ -658,8 +1113,8 @@
     }
   ],
   "last_reply": {
-    "text": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: ವಯಸ್ಸು 62, ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆಗೆ ಇನ್ನೂ 5 ದಾಖಲೆಗಳು ಬೇಕಾಗಿವೆ: ಹಾಗೆಯೇ ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ, ಅಥವಾ ಮೊದಲು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
-    "en": "Please check: age 62, annual income ₹1,20,000. 5 documents for Senior Citizen Pension Scheme are still missing: say yes to submit anyway, or upload them first."
+    "text": "ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ: Ramesh Kumar, ಹುಟ್ಟಿದ ದಿನಾಂಕ **/**/1964, ಆದಾಯ ₹1,20,000, ಹಣ 0123 ರಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಖಾತೆಗೆ. ಹೌದು ಎಂದರೆ ನೀವು ಇದನ್ನೂ ದೃಢೀಕರಿಸುತ್ತೀರಿ: \"ನಾನು ಯಾವುದೇ ಇತರ ಸರ್ಕಾರಿ ಪಿಂಚಣಿಯನ್ನು ಪಡೆಯುತ್ತಿಲ್ಲ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ\", ಮತ್ತು ಅರ್ಜಿಯ ಸ್ಥಿತಿ ನೋಡಲು 24 ಗಂಟೆಗಳ ಕಾಲ ಓದಲು ಮಾತ್ರ ಅನುಮತಿ ನೀಡುತ್ತೀರಿ. ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ ಅರ್ಜಿಯನ್ನು ಸಲ್ಲಿಸಲೇ? ಸಲ್ಲಿಸಲು ಹೌದು ಎನ್ನಿ.",
+    "en": "Please check: Ramesh Kumar, born **/**/1964, income ₹1,20,000, payment to the account ending 0123. By saying yes you also affirm: \"I solemnly affirm that I am not drawing any other central/state government pension\", and allow read-only access for 24 hours to track the status. Shall I submit your application for Senior Citizen Pension Scheme? Say yes to submit."
   },
   "limits": {
     "doc_retention_hours": 24.0,

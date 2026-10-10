@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { fx, renderScreen } from "../test/render.jsx";
+import { fx, renderScreen, withMissingDocs } from "../test/render.jsx";
 import { tr } from "../i18n.js";
 import Review from "./Review.jsx";
 
@@ -13,14 +13,14 @@ describe("Review & confirm", () => {
     renderScreen(Review, { summary: fx("review") });
     expect(screen.getByText(r.title_en)).toBeInTheDocument();
     expect(screen.getByText("₹1,20,000", { selector: ".field-value" })).toBeInTheDocument();
-    expect(screen.getByText(/Please check: age 62, annual income ₹1,20,000/)).toBeInTheDocument();
+    expect(screen.getByText(/Please check: Ramesh Kumar, born \*\*\/\*\*\/1964, income ₹1,20,000/)).toBeInTheDocument();
     expect(screen.getByText(kn("nothing_without_yes"))).toBeInTheDocument();
     expect(screen.getByText(kn("effective", { date: r.effective_date_text }))).toBeInTheDocument();
   });
 
   it("warns about missing documents and links to uploads, without blocking submit", async () => {
-    const { ctx } = renderScreen(Review, { summary: fx("review") });
-    const box = screen.getByText(kn("docs_still_needed", { n: 5 })).closest(".docs-missing-box");
+    const { ctx } = renderScreen(Review, { summary: withMissingDocs(fx("review")) });
+    const box =screen.getByText(kn("docs_still_needed", { n: 5 })).closest(".docs-missing-box");
     await userEvent.click(within(box).getByRole("link", { name: kn("upload_now") }));
     expect(ctx.navigate).toHaveBeenCalledWith("documents");
     expect(screen.getByRole("button", { name: /Yes, submit/ })).toBeEnabled();
@@ -65,11 +65,12 @@ describe("Review & confirm", () => {
     const r = fx("review").review;
     renderScreen(Review, { summary: fx("review") });
     expect(screen.getByText(r.form_fields[0].label)).toBeInTheDocument();
-    expect(screen.getAllByLabelText("not filled yet")).toHaveLength(10);
+    expect(screen.queryAllByLabelText("not filled yet")).toHaveLength(r.form_fields.filter((f) => !f.from_answers).length);
     const income = screen.getByText(r.form_fields[4].label).closest("li");
     expect(within(income).getByText("₹1,20,000")).toBeInTheDocument();
     expect(within(income).getByText(kn("from_answers"))).toBeInTheDocument();
-    expect(screen.getByText(kn("screenshots_placeholder"))).toBeInTheDocument();
+    expect(screen.getAllByRole("img")).toHaveLength(r.screenshots.length);
+    expect(screen.queryByText(kn("screenshots_placeholder"))).toBeNull();
   });
 
   it("says there is nothing to review when the case is not paused at confirm", () => {

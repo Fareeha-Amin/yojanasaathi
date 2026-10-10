@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { fx, renderScreen } from "../test/render.jsx";
+import { fx, renderScreen, withMissingDocs } from "../test/render.jsx";
 import { tr } from "../i18n.js";
 import Documents from "./Documents.jsx";
 
@@ -92,7 +92,7 @@ describe("Your documents", () => {
   });
 
   it("after a scheme is chosen, shows that scheme's list and collapses the rest", () => {
-    renderScreen(Documents, { summary: withConsent(fx("review")) });
+    renderScreen(Documents, { summary: withConsent(withMissingDocs(fx("review"))) });
     expect(screen.getByText(kn("docs_for_scheme", { title: "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ" }))).toBeInTheDocument();
     expect(screen.getByText(kn("docs_missing_n", { n: 5 }))).toBeInTheDocument();
     const others = screen.getByText(kn("other_docs", { n: 2 })).closest("details");
