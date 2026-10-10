@@ -18,6 +18,7 @@ describe("routing", () => {
     expect(routeForTurn({ pause: null, ui: { type: "submitted" } })).toBe("applications");
     expect(routeForTurn({ pause: null, ui: { type: "eligibility" } })).toBe("schemes");
     expect(routeForTurn({ pause: null, ui: { type: "progress" } })).toBe("prefill");
+    expect(routeForTurn({ pause: null, ui: { type: "form", field: "full_name" } })).toBe("talk");
     expect(routeForTurn({ reply: "How old are you?", pause: null, ui: null })).toBeNull();
   });
 

@@ -40,6 +40,7 @@ export function routeForTurn(res) {
   if (u === "submitted") return "applications";
   if (u === "progress") return "prefill";
   if (u === "eligibility") return "schemes";
+  if (u === "form") return "talk"; // the portal's form questions are asked in the conversation
   return null;
 }
 
