@@ -456,6 +456,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--green); }
 .docs-missing-title { font: 700 1.05rem var(--font-display); color: var(--amber-ink); margin-bottom: 4px; }
 .docs-missing-box .btn { margin-top: 6px; }
 .mini-docs { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; }
+.mini-docs li > .badge { flex-shrink: 1; min-width: 0; max-width: 60%; }
 .mini-docs li { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--surface); border-radius: 10px; padding: 8px 12px; border: 1px solid var(--line-soft); }
 .placeholder-card { background: #fbfaf6; }
 .form-fields { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; font-size: 0.9rem; }
