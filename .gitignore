@@ -18,3 +18,7 @@ web/dist/
 data/
 screenshots/
 *.log
+
+# web tests (Playwright output)
+web/test-results/
+web/playwright-report/

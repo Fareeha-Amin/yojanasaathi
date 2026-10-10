@@ -67,8 +67,18 @@ real SMS (India needs DLT registration; simulate or use WhatsApp sandbox).
 POST /turn/{case_id}
   request:  { "text": "I'm 62, can I get a pension?", "lang"?: "kn" | "hi" | "en" }
   response: { "reply": "...", "pause": null | { "type": "confirm" | "otp" | "safe_stop", ...data },
-              "ui": null | { "type": "eligibility" | "submitted", ...data } }
+              "ui": null | { "type": "eligibility" | "submitted", ...data },
+              "subtitle": null | "..." }
 ```
+`subtitle` (added Phase 5): the reply in English when the case's language is kn/hi (null for
+English and for free-form LLM answers); the web app shows it under the bubble.
+Web app endpoints (Phase 5, all need `Authorization: Bearer <token>` for that case except
+`/session`): `POST /session` (new random case `web-<hex>` + JWT, or refresh with a valid
+token), `GET /cases/{id}/summary?lang=` (the screens), `POST /cases/{id}/edit
+{"field": "age"|"annual_income", "value": int}` (review edit; only at the confirm pause;
+returns the /turn shape), `POST /tts {"text", "lang"?}` (WAV from Sarvam Bulbul, the bot's
+voice; any valid session token; 503 without SARVAM_API_KEY), plus the Phase 3 consent /
+documents / data endpoints.
 If the graph is paused, the incoming text resumes it (`Command(resume=text)`).
 `lang` is optional (added 2026-10-08, decision 1 below): voice sends the STT-detected
 language; when present it updates the case's `lang`, when absent the case keeps its
@@ -112,7 +122,11 @@ commit 6e6e24d (2026-10-09):
 ## Repo layout
 ```
 agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
-  main.py    FastAPI: /health, /turn (per-case lock), /cases/{id}/consent|documents|data
+  main.py    FastAPI: /health, /turn (per-case lock), /session, /cases/{id}/summary|edit|
+             consent|documents|data (JWT per case)
+  auth.py    web session JWT (HS256, stdlib only, key derived from MASTER_KEY); CLI mints a token
+  summary.py GET /cases/{id}/summary: the web screens' read model (kn/hi + *_en), no LLM
+  tts.py     POST /tts: Sarvam Bulbul REST (bot's voice settings), WAV chunks joined, LRU cache
   graph.py   CaseState + nodes + build_graph(checkpointer)
   db.py      Postgres pool + PostgresSaver (case memory) + table queries; StartupError
   schema.sql our tables (applied at every start): citizens, profiles, cases, case_events,
@@ -131,6 +145,16 @@ agent/   FastAPI app + LangGraph graph, nodes, tools (Python)
   llm.py     provider factory (.env), structured extraction, free-form answers, warm-up
   portal_seed.py  reads the mock portal's seed_schemes.py (ast, never executed)
   config.py  env settings (loads repo-root .env)
+  sealed.py  AES-GCM sealing of form answers / delegation token kept in case memory (Phase 4)
+  portal/    Phase 4 browser agent on the mock portal: browser.py (PlaywrightDriver, own thread),
+             api.py (portal API + warm-up), drift.py, fields.py (form parsers, masking), edge.py
+             (OTP + sensitive answers kept out of the graph), nodes.py (graph nodes), progress.py,
+             smoke.py (python -m agent.portal.smoke)
+  tracking/  Phase 6 status tracking + follow-up (see "Implementation decisions (Phase 6)"): api.py (portal
+             agent API client), store.py (Postgres: delegation, tracked apps, updates, push subs),
+             poller.py (APScheduler job + check_case), followup.py (compose(): the update text),
+             push.py (pywebpush), turn.py (what /turn does around the graph), nodes.py (renew + correction)
+  upload_docs.py  CLI: store a scheme's documents for a case; --only=<doc> uploads just the corrected one
   cli.py     text REPL against /turn (use for kn/hi on Windows instead of curl); [case] [lang]
 rules/   one JSON file per mock-portal scheme (portal IDs): rule, required_fields, documents
          (portal labels kn/hi/en), application_fields, titles, topic, priority, aliases,
@@ -141,12 +165,25 @@ voice/   Pipecat + Sarvam bot (own venv voice/.venv; separate process on :7860, 
   lang.py    STT code -> lang, short-turn rule, reply script -> TTS language (no Pipecat import)
   smoke.py   live round-trip without a mic (Bulbul REST -> VAD -> Saaras -> /turn)
   tests/     bridge tests (run with the voice venv)
-web/     React (Vite) app
+web/     React (Vite) PWA, port 5173 (Phase 5)
+  index.html, public/   manifest.webmanifest, sw.js (shell cache only, never /api or /voice), icons
+  vite.config.js        proxy /api -> AGENT_URL (:8000), /voice -> VOICE_URL (:7860); vitest config
+  src/case.jsx          CaseProvider: session, summary, transcript, voice, all actions; routeForTurn()
+  src/api.js            /session + /turn + /cases/... client (token in localStorage "ys.session")
+  src/voice.js          Pipecat client (lazy-loaded on first mic tap); bot audio -> DOM <audio>;
+                        "turn"/"say" messages, speak(), mic/bot preflight with error reasons
+  src/speech.js         read aloud via POST /tts (cached per text+lang), browser speech last
+  src/i18n.js           UI strings kn/hi/en (kn/hi NEED NATIVE-SPEAKER REVIEW); format.js
+  src/components.jsx    <Bi> (local text + English underneath), header, nav, mic, voice dock
+  src/screens/          Landing, Talk, Schemes, Documents, Prefill, Review, Applications, Profile
+  src/**/*.test.jsx     vitest component tests; src/test/fixtures/*.json = real /summary output
+  e2e/                  Playwright text-path test + agent_server.py (agent on :8010, <db>_e2e_test)
 tests/   pytest (deterministic parts: gate, numbers, facts, rules, checklist, replies, flow,
          /turn contract, per-scheme idempotency, portal seed sync, persistence + restart,
-         vault, privacy/consent/data rights); conftest.py gives every test a FakeLLM and
-         points the agent at a fresh <db>_test database; test_llm_live.py is opt-in;
-         fixtures/portal_seed.json = seed snapshot
+         vault, privacy/consent/data rights, auth, summary + edits + subtitles, web fixture
+         shape); conftest.py gives every test a FakeLLM and points the agent at a fresh
+         <db>_test database; helpers.CaseClient sends the case's token; test_llm_live.py is
+         opt-in; fixtures/portal_seed.json = seed snapshot
 data/    (gitignored) data/vault/*.ysv = encrypted documents
 docs/    PROJECT_BRIEF.md
 ```
@@ -172,8 +209,13 @@ py -3.12 -m venv voice\.venv
 .\voice\.venv\Scripts\python.exe -m voice.smoke [case] ["text"]    # live round-trip, no mic
 .\voice\.venv\Scripts\python.exe -m pytest voice/tests -q          # bridge tests
 
-# frontend
+# web app (agent on :8000; voice bot on :7860 for voice)
 cd web; npm install; npm run dev       # http://localhost:5173
+cd web; npm test                       # vitest component tests (no servers)
+cd web; npm run e2e                    # Playwright + installed Chrome; starts agent :8010 (<db>_e2e_test) + Vite :5180
+cd web; npm run build                  # web/dist (PWA)
+.\.venv\Scripts\python.exe -m pytest tests/test_web_fixtures.py -q --regen-web-fixtures  # after a /summary change
+.\.venv\Scripts\python.exe -m agent.auth demo-case-1    # token + ?session= link for an existing case
 ```
 Secrets live in `.env` (see `.env.example`); never commit keys. `.gitignore` keeps `.env`,
 `.venv/`, `node_modules/`, `__pycache__/` and `screenshots/` out of git; `tests/test_gitignore.py`
@@ -182,9 +224,14 @@ checks this.
 Env vars (all loaded in `agent/config.py`):
 | Var | Used by | Notes |
 |---|---|---|
-| `CORS_ORIGINS` | agent | comma-separated web origins |
-| `AGENT_URL` | `agent.cli`, voice | default http://127.0.0.1:8000 |
-| `SARVAM_API_KEY` | voice | Saaras STT + Bulbul TTS |
+| `CORS_ORIGINS` | agent | comma-separated web origins (the web app itself uses Vite's proxy) |
+| `AGENT_URL` | `agent.cli`, voice, Vite proxy | default http://127.0.0.1:8000 |
+| `VOICE_URL` | Vite proxy (shell env) | voice bot, default http://127.0.0.1:7860 |
+| `VITE_API_URL`, `VITE_VOICE_URL` | web build | override `/api`, `/voice` (e.g. hosted agent) |
+| `SESSION_TTL_HOURS` | agent | web session token lifetime (720 = 30 days) |
+| `SARVAM_API_KEY` | voice, agent | Saaras STT + Bulbul TTS; agent `POST /tts` (read aloud) |
+| `TTS_CACHE_SIZE` | agent | /tts results kept in memory (128) |
+| `E2E_SARVAM` | e2e agent | `1` lets the e2e agent call Sarvam for /tts (off by default) |
 | `VOICE_CASE_ID` | voice | case when the client sends none; default `demo-case-1` (= web app) |
 | `LLM_PROVIDER`, `LLM_MODEL` | agent | `ollama` + `qwen3:8b` (local); `openai` / `anthropic` / `none` |
 | `LLM_API_KEY`, `LLM_BASE_URL` | agent | cloud providers only (`LLM_BASE_URL` = any OpenAI-compatible API) |
@@ -192,7 +239,7 @@ Env vars (all loaded in `agent/config.py`):
 | `LLM_TIMEOUT` | agent | seconds per LLM call (default 20), then deterministic fallback |
 | `LLM_WARMUP`, `LLM_KEEPWARM` | agent | load model at startup (1); 1-token ping every N s (2 for ollama, 0 = off) |
 | `MOCK_PORTAL_URL` | agent, Phase 4 | site Playwright drives (public URL); fills `{MOCK_PORTAL_URL}` in rules' `source_url` |
-| `MOCK_PORTAL_API` | Phase 4/6 | portal API base for status polling (public URL) |
+| `MOCK_PORTAL_API` | agent | portal API base, **must end with `/api`** (checked at startup) |
 | `MOCK_PORTAL_REPO` | tests | optional local clone of the portal; seed-sync test also checks it |
 | `DATABASE_URL` | agent | required; startup fails clearly without it (no in-memory fallback) |
 | `TEST_DATABASE_URL` | tests | default: `DATABASE_URL` db name + `_test` (dropped + created per run) |
@@ -200,6 +247,14 @@ Env vars (all loaded in `agent/config.py`):
 | `VAULT_DIR` | agent | encrypted files, default `data/vault` |
 | `DOC_RETENTION_HOURS`, `VAULT_PURGE_SECONDS` | agent | documents deleted N h after the case's latest submission (24); purge every 60 s |
 | `DOC_MAX_BYTES` | agent | upload limit (10 MB) |
+| `MOCK_PORTAL_AGENT_KEY` | agent | `yjs_ag_...` secret: reads the portal's form requirements (never logged) |
+| `PORTAL_FIRST_TIMEOUT`, `PORTAL_TIMEOUT` | agent | portal API timeouts, 90 s for the first call (Render sleeps), 20 s |
+| `BROWSER_HEADLESS`, `BROWSER_SLOWMO_MS` | agent | demo: `false` and `250` so the form is seen being filled |
+| `BROWSER_IDLE_SECONDS`, `OTP_TTL_SECONDS` | agent | a case's browser session closes when idle (900); code lifetime (600) |
+| `STATUS_POLL_SECONDS` | agent | poll each citizen's open applications this often (300; **30 for the demo**) |
+| `STATUS_POLL` | agent | `0` = no background polling (tests; the status question still checks) |
+| `TRACK_TIMEOUT`, `TRACK_NOW_TIMEOUT`, `TRACK_BACKOFF_MAX` | agent | portal call timeouts (15 s poller, 8 s "check now"); back-off cap (900 s) |
+| `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` | agent | web push; `python -m agent.tracking.push keys` prints a pair; unset = push off |
 | `TWILIO_*` | Phase 7 | |
 
 ## Team decisions (2026-10-08)
@@ -219,6 +274,10 @@ Phase 3 (planned in the stack): `langgraph-checkpoint-postgres==3.1.2`, `psycopg
 `psycopg-pool==3.3.3`, `cryptography==50.0.2`. No `python-multipart`: uploads are raw request bodies.
 Voice (`voice/requirements.txt`): `pipecat-ai[sarvam,silero,webrtc,runner]==1.12.0` (Pipecat's
 own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt client), `httpx`.
+Web (Phase 5, `web/package.json`, exact pins): `@pipecat-ai/client-js` 1.13.1 +
+`@pipecat-ai/small-webrtc-transport` 1.10.8 (RTVI protocol 2.1.0 = pipecat-ai 1.12 server);
+dev: vitest 5.0.3, @testing-library/react 16.3.3 + jest-dom + user-event, jsdom,
+@playwright/test 1.64.0 (uses installed Chrome). No router, no PWA plugin, no JWT library.
 
 ## Gotchas
 - **Windows curl + Kannada/Hindi:** `curl.exe` receives arguments in the ANSI code page, so
@@ -242,6 +301,11 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
 - **Test DB:** pytest drops and recreates `<db>_test` (only names ending `_test`; see
   `db.recreate_database`). Close DBeaver's connection to it if a test run hangs on DROP
   (it uses `WITH (FORCE)`, so it shouldn't).
+- **Vite on Windows listens on `localhost` (IPv6 ::1), not 127.0.0.1.** Open
+  http://localhost:5173; scripts/tests must use `localhost` for the web server.
+- **Testing voice without a mic:** Chrome with `--use-fake-device-for-media-stream
+  --use-file-for-fake-audio-capture=<clip.wav>%noloop` (clip from Bulbul, as in `voice.smoke`)
+  drives the real web -> bot -> /turn path (done once in Phase 5; uses Sarvam credit).
 - **Masking regex:** any 12-digit run (4-4-4, contiguous; ASCII/Kannada/Devanagari digits)
   is an "Aadhaar", except `+`-prefixed (`+91` phone numbers). Over-masking is intended.
 
@@ -356,8 +420,8 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   skips the LLM while it is still `warming`.
 - **Contract:** `/turn` gained the optional `ui` output (see "The one API contract"); the
   confirm `preview` also carries fields, documents, source_url and effective_date.
-- Known gap: edits at the confirm pause ("no, my income is ...") cancel instead of editing
-  (Phase 4 review screen).
+- Edits at the confirm pause ("no, my income is ...") now re-confirm with the new value
+  (fixed in Phase 5, see below).
 - **Acceptance VERIFIED 2026-10-09** by Fareeha: voice test (all 5 steps: Kannada pension
   line -> income question -> eligible with reason + source -> read-back + confirm -> "ಹೌದು"
   submits -> repeated "ಹೌದು" gets the same ID) and the `agent.cli` text version. That run was
@@ -419,11 +483,12 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   timeline, case, profile, citizen if no other case, checkpoints; audit keeps a
   `data_deleted` row). Delete is idempotent: `{"deleted": true, "counts": {...}}`, or
   200 `{"deleted": false}` when the case has no data (demo reset never errors).
-  Demo reset: `Invoke-RestMethod -Method Delete http://127.0.0.1:8000/cases/demo-case-1/data`. `GET /cases/{id}/documents`, `PUT|DELETE
+  Demo reset (Phase 5: needs the case's token): `$t = (.\.venv\Scripts\python.exe -m agent.auth demo-case-1 | Select-String '^token:').ToString().Split()[-1];
+  Invoke-RestMethod -Method Delete -Headers @{Authorization="Bearer $t"} http://127.0.0.1:8000/cases/demo-case-1/data`,
+  or "Delete my data" on the web app's Privacy screen. `GET /cases/{id}/documents`, `PUT|DELETE
   /cases/{id}/documents/...` (raw body, jpeg/png/webp/pdf, 10 MB).
-- **Not done in Phase 3 (named):** JWT. These endpoints are keyed by case ID, the same trust
-  level as `/turn`. JWT comes with the web app login (Phase 5); until then there is
-  deliberately no endpoint that returns document contents. Spoken consent question:
+- **Not done in Phase 3 (named):** JWT (done in Phase 5: every /cases endpoint needs the
+  case's token). There is still deliberately no endpoint that returns document contents. Spoken consent question:
   deferred, because a bare "yes" after a submission is reserved for idempotency. Consent is
   given in the UI/API for now. Multi-process: the per-case lock is in-process (one agent
   process); a second process would need `pg_advisory_xact_lock`.
@@ -436,7 +501,228 @@ own extras: Sarvam services, Silero VAD, SmallWebRTC, dev runner + prebuilt clie
   memory). Measure with a persistent HTTP client: a fresh `httpx.post()` per call costs
   ~250 ms of client SSL setup on Windows.
 
-## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); not built yet
+## Implementation decisions (Phase 5, web app)
+- **Built before Phase 4** (portal URL not ready): nothing in the web app depends on the portal.
+- **No helper mode** (decided 2026-10-09, fix-up part B): no helper / CSC / NGO screens, links or
+  wording anywhere; "Delete my data" is the way to a fresh case. `src/i18n.test.js` guards it.
+- **One case per browser:** `POST /session` gives a random case `web-<32 hex>` + a JWT (HS256,
+  `agent/auth.py`, stdlib only; key = HMAC(MASTER_KEY, label), so no new secret; `alg` fixed,
+  `iss`/`aud`/`exp` checked). Token in localStorage, refreshed at every app start; invalid ->
+  new case. `?session=<token>` (from `python -m agent.auth <case>`) opens an existing case.
+  Every `/cases/{id}/...` endpoint needs the token for that case (401 / 403). `/turn` and the
+  voice bot stay case-ID keyed (backward compatible: agent.cli, voice, Phase 7 phone); the
+  random IDs keep other web cases out of reach there.
+- **Voice and text share the case:** the web app starts the Pipecat bot with
+  `{"body": {"case_id": <its case>}}` (bot already read it). Typed text, buttons and edits go to
+  `/turn` over HTTP; with voice on, the web app then sends the RTVI client message `speak` so
+  Bulbul reads that reply too. The bot's own turns arrive as RTVI `turn` messages. Both paths
+  end in `applyTurn()`: bubbles, auto-navigation (pause confirm -> Review, otp/safe_stop ->
+  Pre-fill, ui submitted -> My applications, ui eligibility -> Schemes, ui progress ->
+  Pre-fill), then reload the summary. A voice turn's `lang` switches the UI language.
+- **Screens read `GET /cases/{id}/summary`** (agent/summary.py), not the per-turn `ui`: works
+  after a reload / on a second device; built from the same rules, templates and checklist mapper
+  as the spoken replies; local language + `*_en` for "English underneath". Documents screen
+  uses the rules' current statuses (also mid-interview).
+- **Subtitles:** each template reply is rendered twice (`_say(lang, build)`): reply + English
+  `subtitle`. LLM free-form answers have none (we never translate with the LLM).
+- **Edits at the confirm pause:** review-screen edit = `POST /cases/{id}/edit` -> resume with
+  `{"edit": {...}}`; spoken / typed "no, my income is 2 lakh" (deterministic parsers, value
+  differs from the profile) is the same edit. Either: profile updated (source "edited" or the
+  parser's), audit `fields_edited` (field names only), back through `eligibility` -> a NEW
+  read-back + confirm pause, or "not eligible" and no pause. **An edit never submits**, even
+  "yes, my income is 2 lakh"; the same value again is not an edit ("yes, I'm 62" submits).
+- **Missing documents (fix-up part C):** the confirm read-back says how many documents of the
+  chosen scheme are still missing (`docs_missing_ask`: "5 documents for X are still missing:
+  say yes to submit anyway, or upload them first.", still 1-3 sentences) instead of the plain
+  confirm question; the Review screen shows "N documents still needed" + Upload now; My
+  applications' "What to do" lists them. Submitting is NOT blocked: Phase 4 decides what the
+  portal requires. The count is recomputed from the vault on every summary.
+- **Screen labels:** display labels `field_*` ("Annual income") and status badges `badge_*`
+  ("Submitted") in agent/i18n; the lowercase `label_*` / `status_*` stay for spoken sentences.
+  "Why I ask" names at most 2 schemes, then "and N more". Documents: the chosen scheme's list
+  ("For <scheme>") with the other schemes' extra documents collapsed. The portal form on Review
+  pre-fills fields the citizen already answered (annual_income, "from your answers").
+  "Take photo" (camera) and "Choose file" (gallery / PDF) are separate inputs.
+- **Portal URL check at startup:** the agent logs a warning when MOCK_PORTAL_URL or
+  MOCK_PORTAL_API is unset, still a `<placeholder>`, or not an http(s) URL; it never echoes the
+  value (a key pasted into the wrong variable must not reach the logs).
+- **Typed text language:** Kannada / Devanagari script decides (and switches the UI); Latin
+  text uses the UI language. The language switch = the language replies come in.
+- **Read aloud / replay (fixed in the Phase 5 fix-up):** through the bot (`speak`) when voice is
+  live; else `POST /tts` on the agent (Sarvam Bulbul REST with the bot's settings: bulbul:v3,
+  speaker shubh, pace 1.0, 24 kHz, preprocessing on; language from the text's script; WAV
+  chunks joined; LRU cache by language + text, and an object-URL cache in the browser); the
+  browser's speechSynthesis only if /tts fails. Typed-turn replies are spoken the same way when
+  voice is off ("Speak replies aloud" on Profile, default on, localStorage `ys.speakReplies`).
+- **Bot audio (fixed in the fix-up):** SmallWebRTC calls `onTrackStarted(track)` with NO
+  participant for the bot's track (only local tracks carry `{local: true}`), so the first
+  version's `!participant` guard never played the bot. Now: every non-local audio track plays
+  through `<audio id="ys-bot-audio" autoplay playsinline>` in the DOM; a rejected `play()`
+  (autoplay policy) shows "Tap to hear Saathi". Verified live 2026-10-09 (fake-mic Chrome, no
+  autoplay flag): greeting + reply measured on the element's output.
+- **Bot lines in the transcript:** the bot greets on RTVI `on_client_ready` (not on WebRTC
+  connect: earlier messages can be lost) and sends `{"type": "say", "text", "subtitle"}` with
+  it; the web app shows it as a Saathi bubble. Saathi bubbles are deduplicated (same text within
+  20 s, last 4 messages) so a voice "turn"/"say" and an HTTP reply never show twice.
+- **Voice states:** connecting, listening, you're speaking, thinking, Saathi is speaking, and
+  error with its reason: the web app checks the microphone (getUserMedia) and the bot
+  (`/voice/status`) before connecting, so it can say "microphone blocked", "no microphone",
+  "microphone in use", "voice service not reachable" or "voice couldn't start".
+- **PWA:** hand-written `manifest.webmanifest` + `sw.js` (app shell + fonts cached; `/api`,
+  `/voice`, non-GET never cached), PNG icons 192/512/maskable. Pipecat client lazy-loaded
+  (main bundle ~308 kB, voice chunk ~417 kB).
+- **Placeholders until later phases (designed to slot in, no redesign):** Pre-fill step list
+  (renders `summary.progress.steps` or `ui {type: "progress", steps}` when Phase 4 sends them:
+  `{key, label, label_en, status: waiting|running|done, screenshot}`); OTP card on
+  `pause.type == "otp"` (code typed or said, sent through /turn, bubble shows ••••••); safe-stop
+  card on `pause.type == "safe_stop"` (`message`, `screenshot`); Review `form_fields[*].value`
+  (null until the browser agent pre-fills; labels = portal's) and `screenshots: []`;
+  My applications `checked_at` + `status_changed` timeline entries (Phase 6); phone number
+  card ("+91 00000 00000", Phase 7); web push (Phase 6).
+- **Accessibility:** 44px+ targets (most 48px+), every control labelled in local language + English,
+  live regions for the transcript and mic state, reduced-motion respected, phone width first.
+- **Tests:** pytest (auth, summary, edits, subtitles, fixture shape), vitest component tests
+  against fixtures that ARE real `/summary` output (`tests/test_web_fixtures.py` fails on drift),
+  Playwright text path in Kannada (interview -> schemes -> pick -> edit -> ಹೌದು -> applications ->
+  reload -> delete). Live voice check (2026-10-09, fake-mic Chrome, real bot + Sarvam): spoken
+  Kannada line -> bubble + reply + subtitle + chip on the page in ~9 s incl. connect + greeting;
+  a typed turn while voice is on was spoken by the bot.
+
+## Implementation decisions (Phase 4, browser agent)
+- **Flow (contract unchanged):** pick a scheme -> `prepare`: every document of the scheme must be in the vault
+  (else list what's missing, no browser) -> one form question per turn (portal field labels / choices in
+  kn/hi/en; `ui {"type": "form"}`; the portal-registered mobile; the declaration read out, explicit yes) ->
+  `portal_login` (drift check, open `/citizen-access`, send OTP) -> `otp` `interrupt({"type":"otp",
+  "masked_mobile"})` -> `portal_fill` (drift check, already submitted on the portal?, steps 1-3, documents
+  uploaded from memory, stop at step 4 with the declaration UNticked) -> `confirm` (preview from the values
+  the PAGE shows + screenshot IDs + declaration text) -> explicit yes only -> `submit` (tick, Submit, store
+  `YJS-...`, `POST /auth/agent-delegation/` read-only 24 h, sealed for Phase 6, close session). Idempotency
+  per scheme is unchanged (router, `prepare`, `submit` guards); the portal's `applications/mine/` is also
+  checked before filling, so a "delete my data" case can't apply twice.
+- **Missing documents now block** (Phase 5's "submit anyway" is gone): the portal requires them.
+- **Browser worker:** `agent/portal/browser.py`, one thread with its own Proactor loop; one context per case
+  kept between turns (idle 15 min); requests to any host except MOCK_PORTAL_URL / _API are aborted and
+  audited (`offhost_blocked`); `data-testid` only; every typed value read back from the page; a missing
+  element, unexpected URL, any dialog -> `SafeStop` -> `interrupt({"type":"safe_stop"})` ("try again"
+  restarts from the login). A session lost before the yes (idle, restart) -> log in again, NEW preview, NEW
+  yes; `submit` checks the preview fingerprint against the open page (`submit_blocked_stale`).
+- **Secrets never in the graph as text:** `agent/portal/edge.py` runs on the raw /turn text. OTP -> in-memory
+  inbox for the `otp` node (checkpoint sees `[code given]`). dob / mobile / account / IFSC -> parsed
+  deterministically, sealed (`agent/sealed.py`, key from MASTER_KEY, bound to case + field); state keeps
+  `form` (ciphertext) and `form_shown` (masked). The spoken digit read-back is a `⟦field⟧` marker expanded
+  only in the /turn response (`edge.expand`); screens get it masked. IFSC mask uses `*` (X would look like a code).
+- **Screenshots:** every step, encrypted in the vault (`screenshots` table = metadata), served only by
+  `GET /cases/{id}/screenshots/{shot_id}` (case token), deleted with the documents (expiry, consent
+  withdrawn, delete my data). Steps -> `case_events` `portal_step`; actions -> `log_event`
+  (`browser_agent`: otp_requested, document_uploaded, form_filled, submit_clicked, submitted,
+  delegation_granted, safe_stop, portal_drift, offhost_blocked ...; field names / last 4 only).
+- **Summary:** `progress.steps` (live while a turn fills the form), `review.form_fields` with the page's
+  values (sensitive masked), `review.screenshots`, `review.declaration`, `asking.kind == "form"`.
+- **Drift:** `GET /agent/v1/schemes/{id}/requirements/` fresh before the login and each fill, compared
+  with rules/ + the field map (`FIELD_KINDS`); any difference -> safe-stop. `rules/*.json` gained
+  `option_labels` (the seed's own kn/hi option texts); seed drift test unchanged.
+- **Voice bridge:** one short spoken filler if `/turn` takes > 2.5 s (`voice/lang.py` FILLER).
+- **Tests:** `tests/fake_driver.py` (in-process, every test), `tests/fake_portal.py` (local portal, same
+  testids, OTP 123456) + `tests/test_portal_browser.py` (real Chromium), `test_portal_flow.py`,
+  `test_portal_fields.py`; `agent.privacy_check` also looks for mobiles / IFSC / portal tokens in clear text.
+- **Acceptance VERIFIED 2026-10-09** by Fareeha (Pipecat page, Kannada, real portal + SMS OTP): documents
+  uploaded, form questions, OTP, visible fill, read-back, "ಹೌದು" -> real YJS-... number. Before it: the
+  portal's Netlify site gave 401 and its agent key was refused (Ayush fixed both); `.env`'s `MOCK_PORTAL_API`
+  lacked `/api`. Settings are read at agent start: restart the agent after editing `.env` (no `--reload`).
+- **Documents without the web app:** `python -m agent.upload_docs <case> <scheme> [folder]` (dummy PDFs or
+  your files; `--list`). Voice default case is `demo-case-1`.
+- **Web app:** only kept readable (fixtures regenerated; `otp.json` added). 44 vitest tests already fail
+  on the Phase 5 branch (UI is Kannada, tests expect English); the Playwright e2e text path still assumes the
+  old stub flow. Both are web-side work, on hold.
+
+## Implementation decisions (Phase 6, status tracking and follow-up)
+- **Portal facts used** (portal repo, read 2026-10-10; live check: a bogus delegation token gets `403
+  DELEGATION_TOKEN_INVALID`): `GET {MOCK_PORTAL_API}/agent/v1/citizen/applications/` (list: status, `updated_at`,
+  `submitted_at`), `.../{no}/documents/` (`document_type` = the seed's English document name, `verification_status`,
+  `remarks`), `.../{no}/history/` (`lifecycle_events` = the portal's notifications, newest first), `/notifications/`;
+  headers X-Agent-API-Key + X-Citizen-Delegation-Token. 403 INVALID = ended, 429 THROTTLED (Retry-After honoured if
+  sent). Replace a document: citizen API `POST /applications/{no}/documents/` (multipart `document_type` + `file`,
+  upsert; only DRAFT / CORRECTION_REQUIRED / SUBMITTED); resubmit: `POST /applications/{no}/submit/` (only DRAFT /
+  CORRECTION_REQUIRED; answer `{message, application}`). The portal has **no correction screen** (no data-testid), so
+  the correction uses these citizen API calls with the OTP session's token, not Playwright clicks (see below).
+- **Delegation token** now lives in Postgres (`delegations`, sealed with `agent/sealed.py`, bound to the case), not
+  in the case memory (state keeps only `delegation: {expires_at, scopes}`). Deleted when every application is final
+  (APPROVED / REJECTED), on "delete my data" and when the case is deleted (FK cascade); audit `delegation_deleted`.
+  Cases submitted before Phase 6 are picked up at their next turn (sealed token moved over, apps registered).
+- **Poller** (`agent/tracking/poller.py`): APScheduler `BackgroundScheduler` started in FastAPI's lifespan (own thread:
+  `/turn` never waits for it), ticks every `STATUS_POLL_SECONDS / 6` (max 10 s), polls the cases whose `next_check_at`
+  is due: ONE list call per citizen, plus documents/history only when something changed (status differs, or the
+  portal's `updated_at` moved). Success: `last_checked_at`, next due. Timeout / 5xx / 401: `next_check_at` backs off
+  2x the interval per consecutive failure (cap `TRACK_BACKOFF_MAX`); 429: the same, at least Retry-After. A failed
+  detail fetch for CORRECTION_REQUIRED / REJECTED aborts the check (retried, so the remark is never lost). All state
+  is in Postgres (`delegations`, `tracked_apps`, `case_updates`): a restart loses nothing.
+- **A change** is applied in one transaction (`TrackStore.apply_change`): `tracked_apps` row, `case_updates` row,
+  `case_events` `status_changed`, audit `status_changed` ({from, to, app_id}); `case_updates.dedupe_key`
+  (`status:<app>:<old>><new>:<portal updated_at>`) is unique per case, so the same change is one update however often
+  it is seen (two checks at once, retries). Documents flagged while the status stays the same -> `document_problem`.
+- **Follow-up** = `agent/tracking/followup.py compose(update, lang) -> (text, text_en)`: ONE function, reviewed
+  templates (`upd_*`, `next_*`, kn/hi/en in agent/i18n; **kn/hi need native-speaker review**), 1-2 sentences: what
+  changed + the one next action; the portal's remark and the flagged document are quoted (never translated or
+  rewritten); APPROVED congratulates; REJECTED gives the reason. Phase 7 (phone callback) calls the same function.
+  No LLM, no graph node: the poller, `/turn`, the push and `status_line()` all call it.
+- **Notify:** unread `case_updates` are spoken ONCE at the start of the citizen's next turn (voice, web, CLI: all
+  `/turn`): `agent/tracking/turn.py before()/after()` under the case lock, marked delivered only after the turn
+  succeeded; `/turn`'s contract is unchanged (the text is in front of `reply`, English in `subtitle`). Before the
+  graph runs, the poller's latest statuses are merged into `applications[*].status` (so replies and the summary
+  agree). `GET /cases/{id}/summary`: `applications[*]` have `status` (polled), `checked_at`, `portal_updated_at`,
+  `what_to_do` (next step; `renew: true` when access ended), `correction` (portal remark, flagged documents, `ready`
+  = corrected documents uploaded), `timeline` (our events + the portal's `portal_event`s from history), `final`; top
+  level `updates` (unread, composed) and `tracking` {active, paused, last_checked_at, access_ends}.
+- **Web push (backend only):** pywebpush + VAPID (`VAPID_*` in .env). `GET /cases/{id}/push` (public key, count),
+  `POST /cases/{id}/push/subscribe {endpoint, keys:{p256dh, auth}}`, `POST .../unsubscribe {endpoint}`: all need the
+  case token. Endpoint must be a public https URL (the server POSTs to it: no localhost / private IPs); keys are
+  sealed in Postgres. One push per update (`pushed_at`), payload = {title, body, body_en, lang, tag, kind,
+  scheme_id, status}; 404/410 deletes the subscription; a push failure never fails polling. The push does not count
+  as heard: the next turn still speaks it. The browser side (service worker, subscribing) comes later.
+- **Status question** ("what's my application status?", "ನನ್ನ ಅರ್ಜಿ ಏನಾಯ್ತು?", "मेरे आवेदन का क्या हुआ?"): the
+  `status` node checks the portal now (`check_case(now=True)`, `TRACK_NOW_TIMEOUT`), speaks status + last-updated
+  date + next step per application (`status_line`), and what it found counts as told. Portal unreachable: the last
+  known status and a word saying so.
+- **Expiry:** 403 DELEGATION_TOKEN_INVALID -> `delegations.paused_reason = 'expired'` (no more calls), ONE
+  `delegation_expired` update (spoken at the next turn + pushed; audit `delegation_expired`) saying "say renew".
+  "renew" (kn `ನವೀಕರಿಸಿ`, hi `नवीनीकरण`) -> graph `renew` (the Phase 4 login with the sealed registered mobile: portal
+  OTP SMS) -> `otp` (state `flow = "renew"`) -> `renew_delegate` (new read-only delegation, polling resumes, audit
+  `delegation_renewed`). Needs the mobile in the case memory; without it the agent says so.
+- **Correction (CORRECTION_REQUIRED):** the update names the document + remark and says "upload the corrected
+  document in the app, then say resubmit". Readiness = every flagged document uploaded AFTER the portal asked
+  (vault `created_at`); a corrected upload after a submission gets the retention expiry like the others.
+  Trigger: "resubmit" (kn `ಮರುಸಲ್ಲಿಸಿ`, hi `दोबारा जमा`), naming the scheme, or a bare yes when the documents are ready and
+  nothing else is being asked. Flow: `correct` (documents there? else "upload first", no browser) -> login + OTP
+  (`flow = "correct"`) -> `correct_check` (the portal still says CORRECTION_REQUIRED; read-back) ->
+  `correct_confirm` (**`interrupt({"type": "confirm", "kind": "correction", ...})`**, explicit yes only,
+  default-deny) -> `correct_submit` (replace each document, resubmit, once). Nothing is replaced or resubmitted
+  before the yes; the portal's status and ours must both say CORRECTION_REQUIRED at that moment, else
+  `resubmit_blocked` (a repeated yes / another channel can never resubmit twice); session lost before the yes ->
+  new login, new read-back, new yes; any portal surprise -> `safe_stop`. Audit: `correction_confirm_requested`,
+  `correction_approved|declined`, `document_read`, `documents_replaced`, `correction_resubmitted`. **Deviation from
+  rule 5 as worded:** no Playwright clicks (the portal has no screen for it): the portal's own citizen API with the
+  OTP session's token (`PortalAPI.replace_document / resubmit`, driver methods of the same names), same gate and
+  audit. Ask Ayush if a correction screen with data-testids is wanted. Idempotency of the first submission is
+  unchanged (the per-scheme rules above); a correction is not a new application.
+- **Privacy:** no token, portal remark or full number in logs (scheme IDs / status codes only), audit rows hold
+  codes and document names (never remarks), the case memory holds no token; the remark lives only in
+  `case_updates.data` / `tracked_apps.correction` (deleted with the case) and is Aadhaar-masked. `agent.privacy_check`
+  scans the new tables too. `GET /cases/{id}/data` has `tracking` (access end, last checked, statuses; no token).
+- **Tests:** `tests/fake_agent_api.py` (the portal's agent API over `httpx.MockTransport`, reading the FakeDriver's
+  portal: status changes, history, flagged documents, 403 expiry, 429 + Retry-After, timeouts, 5xx) with the real
+  client and poller; `tests/test_tracking.py` (detection, once-only telling, 3 languages, status question, back-off,
+  expiry + renewal, the whole correction flow incl. declining / stale / session lost / safe-stop, summary, restart
+  survival, no duplicates, push payload, privacy); `test_portal_browser.py` checks replace + resubmit against the
+  local fake portal's real multipart handling.
+- **Not done / named:** the web app (on hold) does not show `updates` / `correction` / push yet; the portal's
+  `/notifications/` endpoint is covered by the client but nothing reads it (history carries the same events);
+  without `updated_at` from the portal an identical repeated transition would not be re-announced; the bare-yes
+  trigger for a correction is ignored while a yes/no or form question is pending (say "resubmit" then).
+
+## Notes for Phase 4 (browser agent) and Phase 6 (follow-up); Phase 4 now built, kept for reference
+- **OTP through /turn (Phase 4):** the code typed or said resumes the graph as text, so it
+  lands in the checkpoint's `msg`. Clear it (or keep only "otp given") before the next
+  checkpoint; never log it.
 - **Crash window at submit (Phase 4):** with `durability="sync"` the only gap is inside
   the submit node, between the portal's Submit click and the checkpoint write. Before the
   real portal call, record a write-ahead marker (e.g. a `submitting` case_event /
@@ -481,9 +767,9 @@ built + commands + a hand acceptance test, update this file, and stop.
 1. Voice layer: Pipecat + Sarvam STT/TTS (browser), POSTs to `/turn` with `lang`, barge-in (DONE 2026-10-09, acceptance verified)
 2. Agent brain: router, interview, eligibility (JSON Logic), checklist, respond (kn/hi/en) (DONE 2026-10-09, voice + text acceptance verified; then changed to the 4 portal schemes, multiple matches, per-scheme idempotency, short replies + `ui`)
 3. Persistence & security: Postgres checkpointer, tables, `log_event()`, AES-256-GCM vault (DONE 2026-10-09, voice acceptance verified)
-4. Browser agent + human gate: planner, Playwright against the mock portal, OTP, safe-stop
-5. Web app: the 6 screens + landing page
-6. Follow-up: APScheduler polling, follow-up agent, web push, reminders
+4. Browser agent + human gate: Playwright against the mock portal, OTP, safe-stop (DONE 2026-10-09 on branch `phase-4-portal`, live acceptance VERIFIED by Fareeha, see "Implementation decisions (Phase 4)")
+5. Web app: the 6 screens + landing page + privacy, voice via Pipecat JS client, JWT, summary + edits (BUILT 2026-10-09, before Phase 4; hand acceptance pending)
+6. Follow-up: APScheduler polling, follow-up agent, web push (backend), renewal, corrections (BUILT 2026-10-10 on branch `phase-6-track`; hand acceptance pending, see "Implementation decisions (Phase 6)")
 7. Phone line: Twilio -> Pipecat -> `/turn`; caller number maps to case
 8. Evaluation & demo hardening: eval script, seed/reset, README, golden-path checklist
 

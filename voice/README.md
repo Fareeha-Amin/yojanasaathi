@@ -53,9 +53,16 @@ every frame.
   `min_speech_frames=1` fixes it (`make_stt()` in `bot.py`).
 - **Agent down:** the bot says a short "service not available" line in the citizen's
   language. Nothing is decided or submitted.
-- **UI hook:** after every turn the bot sends an RTVI server message
-  `{"type": "turn", "case_id", "text", "lang", "reply", "pause"}`; the web app can use
-  `pause` to show the review / OTP screens in voice mode.
+- **Web app (Phase 5):** the web app (`web/src/voice.js`, `@pipecat-ai/client-js` 1.13.1 +
+  `small-webrtc-transport` 1.10.8) connects through Vite's `/voice` proxy with its own case in
+  the `/start` body. After every turn the bot sends an RTVI server message
+  `{"type": "turn", "case_id", "text", "lang", "reply", "subtitle", "pause", "ui"}`; the web
+  app shows the bubbles and opens the review / OTP / schemes screens from it.
+- **`say` server message:** lines the bot says on its own (the greeting, sent on RTVI
+  client-ready) also go to the client as `{"type": "say", "text", "subtitle"}`.
+- **`speak` client message:** `{"t": "speak", "d": {"text": ...}}` makes Bulbul read the text
+  (max 600 characters) without calling `/turn`. The web app uses it to speak replies of its
+  own turns (typed text, buttons, review edits) and for read-aloud / replay.
 
 ## Phone line (Phase 7)
 Same `bot.py` through the same runner: `python -m voice.bot -t twilio -x <public-host>`;

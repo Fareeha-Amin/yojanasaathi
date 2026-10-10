@@ -9,20 +9,35 @@ import re
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 
 from agent.llm import Extraction
 from agent.main import app, graph
 from agent.replies import t
+from tests import helpers
+from tests.helpers import CaseClient
 
-client = TestClient(app)
+client = CaseClient(app)
+FIRST = "YJS-0000000001"  # the FakeDriver's first application number (Phase 4)
 
 KN_TITLE = {"pension-001": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ", "pension-002": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"}
 
 
 @pytest.fixture
 def case_id() -> str:
-    return f"flow-{uuid.uuid4().hex[:8]}"
+    """A case whose documents are all uploaded (Phase 4 won't open the browser without them)."""
+    cid = f"flow-{uuid.uuid4().hex[:8]}"
+    for sid in ("pension-001", "pension-002", "health-001", "health-002"):
+        helpers.upload_documents(client, cid, sid)
+    return cid
+
+
+def to_confirm(case_id: str, out: dict, **kw) -> dict:
+    """From the first form question to the confirm pause (answers + OTP, FakeDriver)."""
+    return helpers.to_confirm(lambda t: turn(case_id, t), out, **kw)
+
+
+def asks_form(out: dict) -> bool:
+    return (out["ui"] or {}).get("type") == "form" and out["pause"] is None
 
 
 def turn(case_id: str, text: str, lang: str | None = None) -> dict:
@@ -30,7 +45,7 @@ def turn(case_id: str, text: str, lang: str | None = None) -> dict:
     r = client.post(f"/turn/{case_id}", json=body)
     assert r.status_code == 200
     out = r.json()
-    assert set(out) == {"reply", "pause", "ui"}
+    assert set(out) == {"reply", "pause", "ui", "subtitle"}
     return out
 
 
@@ -49,7 +64,8 @@ def sentences(text: str) -> int:
 def test_golden_path_kannada_four_matches(case_id):
     # 1. The pension line: asks only the missing field (income), in Kannada.
     out = turn(case_id, "ನನಗೆ 62 ವರ್ಷ. ನನಗೆ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ?", "kn")
-    assert out == {"reply": t("ask_annual_income", "kn"), "pause": None, "ui": None}
+    assert out == {"reply": t("ask_annual_income", "kn"), "pause": None, "ui": None,
+                   "subtitle": t("ask_annual_income", "en")}  # English under the Kannada bubble
     assert state(case_id)["missing"] == ["annual_income"]
 
     # 2. Income in number words -> 4 matches: short spoken reply, full detail on screen.
@@ -69,19 +85,22 @@ def test_golden_path_kannada_four_matches(case_id):
     assert [d["label"] for d in first["documents"]][:2] == ["ಗುರುತಿನ ಪುರಾವೆ", "ವಯಸ್ಸಿನ ಪುರಾವೆ"]
     assert state(case_id)["asking"] == "choose"
 
-    # 3. Picking pension-001 by name -> read-back + confirm pause (not a submit).
+    # 3. Picking pension-001 by name -> its form questions, the OTP, then the read-back +
+    #    confirm pause (not a submit).
     out = turn(case_id, "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ")
+    assert asks_form(out) and kannada(out["reply"]) and out["ui"]["field"] == "full_name"
+    out = to_confirm(case_id, out)
     assert out["pause"]["type"] == "confirm"
     assert out["pause"]["preview"]["scheme_id"] == "pension-001"
     assert out["pause"]["preview"]["fields"] == {"age": 62, "annual_income": 120000}
-    assert "ವಯಸ್ಸು 62" in out["reply"] and sentences(out["reply"]) <= 3
+    assert "₹1,20,000" in out["reply"] and kannada(out["reply"]) and sentences(out["reply"]) <= 4
 
     # 4. "ಹೌದು" at the gate -> submitted, and the next eligible scheme is offered by name.
     out = turn(case_id, "ಹೌದು")
     assert out["pause"] is None
-    assert out["reply"] == " ".join([t("submitted", "kn", app_id="DEMO-0001"),
+    assert out["reply"] == " ".join([t("submitted", "kn", app_id=FIRST),
                                      t("submitted_next", "kn", title=KN_TITLE["pension-002"])])
-    assert out["ui"]["type"] == "submitted" and out["ui"]["app_id"] == "DEMO-0001"
+    assert out["ui"]["type"] == "submitted" and out["ui"]["app_id"] == FIRST
     assert [n["scheme_id"] for n in out["ui"]["next"]] == ["pension-002", "health-001", "health-002"]
 
 
@@ -99,7 +118,7 @@ def test_bare_yes_at_choose_asks_for_a_name(case_id):
 def test_choose_by_position_or_name(case_id, choice, sid):
     turn(case_id, "I'm 62 and our income is 1 lakh 20 thousand. Can I get a pension?")
     out = turn(case_id, choice)
-    assert out["pause"]["type"] == "confirm" and out["pause"]["preview"]["scheme_id"] == sid
+    assert asks_form(out) and state(case_id)["selected"] == sid
 
 
 def test_hindi_golden_path(case_id):
@@ -108,8 +127,10 @@ def test_hindi_golden_path(case_id):
     r = turn(case_id, "एक लाख बीस हज़ार")["reply"]
     assert "4 योजनाओं के लिए पात्र हैं" in r and "वरिष्ठ नागरिक पेंशन योजना" in r
     out = turn(case_id, "पहली वाली")
+    assert asks_form(out) and state(case_id)["selected"] == "pension-001"
+    out = to_confirm(case_id, out)
     assert out["pause"]["preview"]["scheme_id"] == "pension-001"
-    assert "DEMO-0001" in turn(case_id, "हाँ")["reply"]
+    assert FIRST in turn(case_id, "हाँ")["reply"]
 
 
 def test_one_match_names_reason_documents_and_asks(case_id):
@@ -118,7 +139,8 @@ def test_one_match_names_reason_documents_and_asks(case_id):
     assert out["reply"] == t("match_one", "en", title="National Health Support Scheme",
                              facts="annual income ₹4,50,000", n=5)
     assert sentences(out["reply"]) <= 3
-    assert turn(case_id, "yes")["pause"]["preview"]["scheme_id"] == "health-001"
+    out = turn(case_id, "yes")
+    assert asks_form(out) and state(case_id)["selected"] == "health-001"
 
 
 def test_not_eligible_in_topic_offers_other_schemes(case_id):
@@ -150,7 +172,7 @@ def test_no_topic_asks_age_then_income(case_id):
 def test_decline(case_id):
     turn(case_id, "I'm 45, income 4.5 lakh, hospital help")
     assert turn(case_id, "no")["reply"] == t("proceed_declined", "en")
-    assert turn(case_id, "apply")["pause"]["type"] == "confirm"  # the one match
+    assert asks_form(turn(case_id, "apply"))  # the one match: its form questions start
 
 
 def test_status_before_applying(case_id):
@@ -174,7 +196,7 @@ def test_llm_number_is_fallback_and_flagged(case_id, fake_llm):
     s = state(case_id)
     assert s["profile"]["annual_income"] == 120000
     assert s["sources"]["annual_income"] in ("llm", "llm_attributed")
-    out = turn(case_id, "senior citizen")
+    out = to_confirm(case_id, turn(case_id, "senior citizen"))
     assert out["pause"]["preview"]["needs_readback"] == ["annual_income"]
     assert t("readback_unsure", "en", fields="annual income ₹1,20,000") in out["reply"]
 
@@ -203,7 +225,8 @@ def test_llm_scheme_choice_is_a_fallback(case_id, fake_llm):
     msg = "the one for poor old people with no other support"
     fake_llm.extractions[msg] = Extraction(intent="proceed", scheme="pension-002")
     out = turn(case_id, msg)
-    assert out["pause"]["preview"]["scheme_id"] == "pension-002"  # still read back + gated
+    assert asks_form(out) and state(case_id)["selected"] == "pension-002"  # still read back + gated
+    assert to_confirm(case_id, out)["pause"]["preview"]["scheme_id"] == "pension-002"
 
 
 def test_short_deterministic_answer_skips_llm(case_id, fake_llm):

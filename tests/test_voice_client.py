@@ -6,6 +6,7 @@ import uuid
 import httpx
 
 from agent.main import app, graph
+from tests import helpers
 from voice.agent_client import AgentClient
 
 
@@ -28,17 +29,22 @@ def lang_of(case_id: str) -> str | None:
 def test_voice_turn_sends_detected_lang_and_follows_contract():
     case_id = f"voice-{uuid.uuid4().hex[:8]}"
     [out] = run(_turns(case_id, ("ನನಗೆ ಅರವತ್ತೆರಡು ವರ್ಷ ಪಿಂಚಣಿ ಸಿಗುತ್ತಾ", "kn")))
-    assert set(out) == {"reply", "pause", "ui"}
+    assert set(out) == {"reply", "pause", "ui", "subtitle"}
     assert out["pause"] is None and "ಆದಾಯ" in out["reply"]  # asks income, in Kannada
     assert lang_of(case_id) == "kn"
 
 
 def test_voice_resume_keeps_lang_when_not_detected():
     case_id = f"voice-{uuid.uuid4().hex[:8]}"
-    *_, paused, done = run(_turns(case_id, ("मैं 62 साल का हूँ, आमदनी एक लाख है, पेंशन चाहिए", "hi"),
-                                  ("वरिष्ठ नागरिक पेंशन", None), ("ಹೌದು", None)))
-    assert paused["pause"]["type"] == "confirm"
-    assert done["pause"] is None and "DEMO-0001" in done["reply"]  # Kannada yes passed the gate
+    web = helpers.CaseClient(app)
+    helpers.upload_documents(web, case_id, "pension-001")
+    _, first = run(_turns(case_id, ("मैं 62 साल का हूँ, आमदनी एक लाख है, पेंशन चाहिए", "hi"),
+                          ("वरिष्ठ नागरिक पेंशन", None)))
+    assert first["ui"]["type"] == "form"  # the form questions; answered here, by voice
+    out = helpers.to_confirm(lambda t: run(_turns(case_id, (t, None)))[0], first)
+    assert out["pause"]["type"] == "confirm"
+    [done] = run(_turns(case_id, ("ಹೌದು", None)))
+    assert done["pause"] is None and "YJS-" in done["reply"]  # Kannada yes passed the gate
     assert lang_of(case_id) == "hi"  # no lang sent -> case keeps its language
 
 

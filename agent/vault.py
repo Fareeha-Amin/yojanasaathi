@@ -144,18 +144,53 @@ class Vault:
         return True
 
     def delete_case(self, case_id: str, actor: str = "citizen") -> int:
+        """Delete the case's documents, and the browser screenshots with them (they show
+        the same personal details)."""
         rows = self.store.documents(case_id)
         for row in rows:
             self.store.delete_document_row(str(row["id"]), actor, "document_deleted")
             self._unlink(row["storage_key"])
+        self.delete_screenshots(case_id, actor)
         return len(rows)
 
+    # --- browser-agent screenshots (Phase 4): same envelope, own table ------------------
+
+    def put_screenshot(self, case_id: str, step: str, png: bytes) -> str:
+        storage_key = uuid.uuid4().hex
+        path = self._path(storage_key)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_bytes(seal(self.master, storage_key, png))
+        tmp.replace(path)
+        try:
+            return self.store.add_screenshot(case_id, step, storage_key, len(png))
+        except Exception:
+            self._unlink(storage_key)
+            raise
+
+    def read_screenshot(self, case_id: str, shot_id: str) -> bytes:
+        row = self.store.screenshot(case_id, shot_id)
+        if row is None:
+            raise VaultError("no such screenshot")
+        return unseal(self.master, row["storage_key"], self._path(row["storage_key"]).read_bytes())
+
+    def delete_screenshots(self, case_id: str, actor: str = "citizen") -> int:
+        keys = self.store.delete_screenshot_rows(case_id)
+        for k in keys:
+            self._unlink(k)
+        if keys:
+            audit.log_event(actor, "screenshots_deleted", case_id=case_id, detail={"screenshots": len(keys)})
+        return len(keys)
+
     def purge_expired(self) -> int:
-        """Delete documents past their expiry, and files whose metadata row is gone."""
+        """Delete documents and screenshots past their expiry, and files whose metadata row
+        is gone."""
         n = 0
         for row in self.store.expired_documents():
             self.store.delete_document_row(str(row["id"]), "system", "document_auto_deleted")
             self._unlink(row["storage_key"])
+            n += 1
+        for k in self.store.delete_screenshot_rows(expired=True):
+            self._unlink(k)
             n += 1
         known = self.store.storage_keys()
         now = time.time()

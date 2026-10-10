@@ -62,10 +62,21 @@ def tts_language(text: str) -> str:
 # Spoken when the client connects. Kannada first (design rule); the agent takes over
 # from the citizen's first reply.
 GREETING = "ನಮಸ್ಕಾರ, ನಾನು ಯೋಜನಾಸಾಥಿ. ಹೇಳಿ, ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?"
+GREETING_SUBTITLE = "Hello, I'm YojanaSaathi. Tell me, how can I help you?"
 
 # Spoken when /turn fails (agent down, timeout). Nothing was decided or submitted.
 AGENT_UNREACHABLE: dict[TurnLang, str] = {
     "kn": "ಕ್ಷಮಿಸಿ, ಈಗ ಸೇವೆ ಸಿಗುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
     "hi": "माफ़ कीजिए, अभी सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर कोशिश करें।",
     "en": "Sorry, the service is not available right now. Please try again in a little while.",
+}
+
+
+# One short line spoken when a turn takes longer than FILLER_AFTER_S (the browser agent is
+# working on the portal). Said once per turn; dropped if the citizen starts speaking again.
+FILLER_AFTER_S = 2.5
+FILLER: dict[TurnLang, str] = {
+    "kn": "ಒಂದು ನಿಮಿಷ, ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ತುಂಬುತ್ತಿದ್ದೇನೆ.",
+    "hi": "एक मिनट, पोर्टल पर भर रहा हूँ।",
+    "en": "One moment, I'm filling in the portal.",
 }

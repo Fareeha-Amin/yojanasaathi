@@ -28,7 +28,7 @@ from pipecat.workers.runner import WorkerRunner
 from voice import config
 from voice.agent_client import AgentClient
 from voice.bridge import AgentBridge
-from voice.lang import GREETING
+from voice.lang import GREETING, GREETING_SUBTITLE
 
 # Silence after speech before the turn is sent. Pipecat's default is 0.6 s; first-time
 # and elderly speakers pause mid-sentence, so give them a little longer.
@@ -87,7 +87,13 @@ async def bot(runner_args: RunnerArguments) -> None:
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
         logger.info(f"client connected, case {case_id}, agent {config.AGENT_URL}")
-        await bridge.say(GREETING)
+
+    # Greet once the client's RTVI layer is ready (after "client-ready"), so the "say"
+    # message reaches the web app's transcript as well as the speaker. (PipelineWorker's
+    # own on_client_ready handler sends bot-ready; handlers are additive.)
+    @worker.rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi):
+        await bridge.say(GREETING, show=True, subtitle=GREETING_SUBTITLE)
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):

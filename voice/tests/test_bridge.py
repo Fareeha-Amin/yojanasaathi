@@ -12,28 +12,31 @@ from pipecat.frames.frames import (
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
-from pipecat.processors.frameworks.rtvi import RTVIServerMessageFrame
+from pipecat.processors.frameworks.rtvi import RTVIClientMessageFrame, RTVIServerMessageFrame
 from pipecat.tests.utils import SleepFrame, run_test
 from pipecat.transcriptions.language import Language
 
 from voice.bridge import AgentBridge
-from voice.lang import AGENT_UNREACHABLE
+from voice import bridge as bridge_mod
+from voice.lang import AGENT_UNREACHABLE, FILLER
 
 KN_REPLY = "ನಿಮ್ಮ ಅರ್ಜಿ ಸಿದ್ಧವಾಗಿದೆ. ಸಲ್ಲಿಸಲೇ?"
 
 
 class FakeAgent:
     def __init__(self, reply: str = KN_REPLY, pause: dict | None = None,
-                 delay: float = 0.0, fail: bool = False, ui: dict | None = None) -> None:
+                 delay: float = 0.0, fail: bool = False, ui: dict | None = None,
+                 subtitle: str | None = None) -> None:
         self.calls: list[tuple[str, str, str | None]] = []
         self.reply, self.pause, self.delay, self.fail, self.ui = reply, pause, delay, fail, ui
+        self.subtitle = subtitle
 
     async def turn(self, case_id: str, text: str, lang: str | None) -> dict:
         self.calls.append((case_id, text, lang))
         await asyncio.sleep(self.delay)
         if self.fail:
             raise ConnectionError("agent down")
-        return {"reply": self.reply, "pause": self.pause, "ui": self.ui}
+        return {"reply": self.reply, "pause": self.pause, "ui": self.ui, "subtitle": self.subtitle}
 
 
 def said(frames) -> list[tuple[str, str]]:
@@ -121,3 +124,70 @@ def test_agent_down_speaks_fallback_in_turn_language():
     agent = FakeAgent(fail=True)
     down = run(agent, transcript("मुझे पेंशन चाहिए", Language.HI_IN), *end_of_turn())
     assert said(down) == [(Language.HI_IN, AGENT_UNREACHABLE["hi"])]
+
+
+def test_subtitle_passed_to_the_web_app():
+    agent = FakeAgent(subtitle="Your application is ready. Shall I submit?")
+    down = run(agent, transcript("ನನಗೆ ಪಿಂಚಣಿ ಬೇಕು ದಯವಿಟ್ಟು", Language.KN_IN), *end_of_turn())
+    [msg] = [f for f in down if isinstance(f, RTVIServerMessageFrame)]
+    assert msg.data["subtitle"] == "Your application is ready. Shall I submit?"
+    assert msg.data["reply"] == KN_REPLY
+
+
+def test_speak_message_from_web_app_is_spoken_without_a_turn():
+    agent = FakeAgent()
+    down = run(agent, RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": KN_REPLY}))
+    assert agent.calls == []  # speak never calls /turn
+    assert said(down) == [(Language.KN_IN, KN_REPLY)]
+
+
+def test_speak_ignores_empty_other_types_and_caps_length():
+    agent = FakeAgent()
+    down = run(agent,
+               RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": "  "}),
+               RTVIClientMessageFrame(msg_id="2", type="other", data={"text": "hello"}),
+               RTVIClientMessageFrame(msg_id="3", type="speak", data="not a dict"),
+               RTVIClientMessageFrame(msg_id="4", type="speak", data={"text": "a" * 1000}))
+    assert said(down) == [(Language.EN_IN, "a" * 600)]
+
+
+def test_greeting_is_spoken_and_shown_in_the_web_app():
+    from voice.lang import GREETING, GREETING_SUBTITLE
+
+    agent = FakeAgent()
+    bridge = AgentBridge(case_id="case-1", send_turn=agent.turn)
+
+    async def go():
+        async def greet():
+            await asyncio.sleep(0.05)
+            await bridge.say(GREETING, show=True, subtitle=GREETING_SUBTITLE)
+        task = asyncio.create_task(greet())
+        down, _ = await run_test(bridge, frames_to_send=[SleepFrame(sleep=0.3)])
+        await task
+        return down
+
+    down = asyncio.run(go())
+    [msg] = [f for f in down if isinstance(f, RTVIServerMessageFrame)]
+    assert msg.data == {"type": "say", "case_id": "case-1", "text": GREETING, "subtitle": GREETING_SUBTITLE}
+    assert said(down) == [(Language.KN_IN, GREETING)]
+    assert agent.calls == []
+
+
+def test_plain_say_sends_no_ui_message():
+    agent = FakeAgent()
+    down = run(agent, RTVIClientMessageFrame(msg_id="1", type="speak", data={"text": KN_REPLY}))
+    assert [f for f in down if isinstance(f, RTVIServerMessageFrame)] == []
+
+
+def test_slow_turn_speaks_one_filler_then_the_reply(monkeypatch):
+    monkeypatch.setattr(bridge_mod, "FILLER_AFTER_S", 0.05)
+    agent = FakeAgent(reply="Done.", delay=0.15)
+    down = run(agent, transcript("I need a pension please now", Language.EN_IN), *end_of_turn())
+    assert [t for _, t in said(down)] == [FILLER["en"], "Done."]
+
+
+def test_fast_turn_has_no_filler(monkeypatch):
+    monkeypatch.setattr(bridge_mod, "FILLER_AFTER_S", 0.2)
+    agent = FakeAgent(reply="Done.", delay=0.0)
+    down = run(agent, transcript("I need a pension please now", Language.EN_IN), *end_of_turn())
+    assert [t for _, t in said(down)] == ["Done."]

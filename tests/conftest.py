@@ -17,9 +17,16 @@ import pytest
 
 from agent import config, db
 from agent import llm as llm_mod
-from agent.llm import Extraction
+from agent import portal
+from tests.fake_driver import FakeDriver
+from tests.helpers import FakeLLM
 
 TEST_MASTER_KEY = base64.b64encode(bytes(range(32))).decode()  # tests only
+# Never the real portal: every test gets a FakeDriver (in-process); the browser tests point
+# these at tests/fake_portal.py on 127.0.0.1.
+TEST_PORTAL = {"MOCK_PORTAL_URL": "https://mock-portal.invalid",  # .invalid never resolves
+               "MOCK_PORTAL_API": "https://mock-portal.invalid/api",
+               "MOCK_PORTAL_AGENT_KEY": "yjs_ag_test_key_not_a_secret"}
 
 
 def _test_env() -> dict[str, str]:
@@ -27,37 +34,24 @@ def _test_env() -> dict[str, str]:
     url = config.TEST_DATABASE_URL or (db.url_for_tests(config.DATABASE_URL) if config.DATABASE_URL else "")
     return {"DATABASE_URL": url, "MASTER_KEY": TEST_MASTER_KEY,
             "VAULT_DIR": tempfile.mkdtemp(prefix="ys-vault-test-"),
-            "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0"}
+            "LLM_PROVIDER": "none", "LLM_WARMUP": "0", "LLM_KEEPWARM": "0",
+            "SARVAM_API_KEY": "",  # no Sarvam calls from tests (also in subprocesses)
+            "BROWSER_HEADLESS": "true", "BROWSER_SLOWMO_MS": "0", **TEST_PORTAL}
 
 
 TEST_ENV = _test_env()
 config.DATABASE_URL = TEST_ENV["DATABASE_URL"] or None
 config.MASTER_KEY = TEST_MASTER_KEY
 config.VAULT_DIR = Path(TEST_ENV["VAULT_DIR"])
+config.BROWSER_HEADLESS, config.BROWSER_SLOWMO_MS = True, 0.0
+config.STATUS_POLL = False  # tests call poller.tick() themselves; no background scheduler
+for _k, _v in TEST_PORTAL.items():
+    setattr(config, _k, _v)
 if config.DATABASE_URL:
     try:
         db.recreate_database(config.DATABASE_URL)
     except Exception:
         pass  # Postgres down: unit tests still run; agent.main's StartupError explains the rest
-
-
-class FakeLLM:
-    state = "ready"
-
-    def __init__(self):
-        self.extractions: dict[str, Extraction] = {}  # message -> scripted extraction
-        self.answers: dict[str, str] = {}
-        self.calls: list[str] = []
-
-    def extract(self, msg, asking=None):
-        self.calls.append(msg)
-        return self.extractions.get(msg)
-
-    def answer(self, msg, lang, kb, profile):
-        return self.answers.get(msg)
-
-    def warmup(self):
-        pass
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +62,46 @@ def fake_llm() -> FakeLLM:
     llm_mod.set_llm(None)
 
 
+@pytest.fixture(autouse=True)
+def fake_driver() -> FakeDriver:
+    """The portal, in-process (OTP 123456). Browser tests swap in the real driver."""
+    previous = portal._driver
+    fake = FakeDriver()
+    portal.set_driver(fake)
+    yield fake
+    portal.set_driver(previous)
+
+
+@pytest.fixture(autouse=True)
+def fake_agent_api(fake_driver: FakeDriver):
+    """The portal's agent API (Phase 6) for the real poller / client: tests/fake_agent_api.py.
+    It follows the FakeDriver's applications. No test touches the network."""
+    import httpx
+
+    from agent import tracking
+    from agent.tracking.api import CitizenAPI
+    from tests.fake_agent_api import FakeAgentAPI
+
+    try:
+        poller = tracking.get_poller()
+    except tracking.TrackingError:  # a pure unit test that never imported agent.main
+        yield None
+        return
+    fake = FakeAgentAPI(fake_driver)
+    previous = poller.api
+    poller.api = CitizenAPI(httpx.Client(transport=httpx.MockTransport(fake.handler)))
+    yield fake
+    poller.api = previous
+
+
 @pytest.fixture
 def subprocess_env() -> dict[str, str]:
     return {**os.environ, **TEST_ENV, "PYTHONIOENCODING": "utf-8"}
+
+
+def pytest_addoption(parser):
+    parser.addoption("--regen-web-fixtures", action="store_true",
+                     help="rewrite web/src/test/fixtures/*.json from GET /summary (tests/web_fixtures.py)")
+
+
+config.SARVAM_API_KEY = None  # tests never call Sarvam; test_tts.py scripts the responses

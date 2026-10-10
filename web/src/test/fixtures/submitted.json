@@ -1,0 +1,719 @@
+{
+  "case_id": "web-submitted",
+  "lang": "kn",
+  "case_lang": "kn",
+  "status": "submitted",
+  "selected": "pension-001",
+  "profile": [
+    {
+      "field": "age",
+      "label": "ವಯಸ್ಸು",
+      "label_en": "Age",
+      "value": 62,
+      "text": "62",
+      "text_en": "62",
+      "source": "digits",
+      "unsure": false
+    },
+    {
+      "field": "annual_income",
+      "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+      "label_en": "Annual income",
+      "value": 120000,
+      "text": "₹1,20,000",
+      "text_en": "₹1,20,000",
+      "source": "number_words",
+      "unsure": false
+    }
+  ],
+  "asking": {
+    "kind": "choose",
+    "question": "ದಯವಿಟ್ಟು ಯೋಜನೆಯ ಹೆಸರು ಹೇಳಿ, ಉದಾಹರಣೆಗೆ ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ.",
+    "question_en": "Please tell me the scheme's name, for example Social Security Pension Assistance.",
+    "why": null,
+    "why_en": null
+  },
+  "schemes": [
+    {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು",
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹3,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        },
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 300000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://mock-portal.invalid/schemes/pension-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "uploaded",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "age_proof",
+          "status": "uploaded",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ",
+          "label_en": "Age Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "uploaded",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "uploaded",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "uploaded",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": "YJS-0000000001",
+      "title_en": "Senior Citizen Pension Scheme",
+      "reasons_en": [
+        "age 62, at least 60 needed",
+        "annual income ₹1,20,000, limit ₹3,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "pension-002",
+      "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಯಸ್ಸು 62, ಕನಿಷ್ಠ 60 ಬೇಕು"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "age",
+          "op": ">=",
+          "limit": 60,
+          "value": 62,
+          "result": true,
+          "label": "ವಯಸ್ಸು",
+          "label_en": "Age"
+        }
+      ],
+      "source_url": "https://mock-portal.invalid/schemes/pension-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "uploaded",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "uploaded",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "uploaded",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "uploaded",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "age_proof",
+          "status": "uploaded",
+          "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Age Proof, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Social Security Pension Assistance",
+      "reasons_en": [
+        "age 62, at least 60 needed"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಪಿಂಚಣಿ",
+      "category_en": "Pension"
+    },
+    {
+      "scheme_id": "health-001",
+      "title": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹5,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 500000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://mock-portal.invalid/schemes/health-001",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "uploaded",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "uploaded",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "uploaded",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "uploaded",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        },
+        {
+          "doc": "medical_documents",
+          "status": "needed",
+          "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+          "label_en": "Medical Documents, where applicable"
+        }
+      ],
+      "app_id": null,
+      "title_en": "National Health Support Scheme",
+      "reasons_en": [
+        "annual income ₹1,20,000, limit ₹5,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    },
+    {
+      "scheme_id": "health-002",
+      "title": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+      "status": "eligible",
+      "reasons": [
+        "ವಾರ್ಷಿಕ ಆದಾಯ ₹1,20,000, ಮಿತಿ ₹4,00,000"
+      ],
+      "missing_fields": [],
+      "clauses": [
+        {
+          "field": "annual_income",
+          "op": "<=",
+          "limit": 400000,
+          "value": 120000,
+          "result": true,
+          "label": "ವಾರ್ಷಿಕ ಆದಾಯ",
+          "label_en": "Annual income"
+        }
+      ],
+      "source_url": "https://mock-portal.invalid/schemes/health-002",
+      "effective_date": "2026-10-09",
+      "effective_date_text": "9 ಅಕ್ಟೋಬರ್ 2026",
+      "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date.",
+      "documents": [
+        {
+          "doc": "identity_proof",
+          "status": "uploaded",
+          "label": "ಗುರುತಿನ ಪುರಾವೆ",
+          "label_en": "Identity Proof"
+        },
+        {
+          "doc": "residence_proof",
+          "status": "uploaded",
+          "label": "ನಿವಾಸ ಪುರಾವೆ",
+          "label_en": "Residence Proof"
+        },
+        {
+          "doc": "income_certificate",
+          "status": "uploaded",
+          "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+          "label_en": "Income Certificate"
+        },
+        {
+          "doc": "family_details",
+          "status": "needed",
+          "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+          "label_en": "Family Details"
+        },
+        {
+          "doc": "bank_account_details",
+          "status": "uploaded",
+          "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+          "label_en": "Bank Account Details"
+        }
+      ],
+      "app_id": null,
+      "title_en": "Family Healthcare Assistance",
+      "reasons_en": [
+        "annual income ₹1,20,000, limit ₹4,00,000"
+      ],
+      "effective_date_text_en": "9 October 2026",
+      "category": "ಆರೋಗ್ಯ",
+      "category_en": "Health"
+    }
+  ],
+  "checklist": {
+    "scheme_ids": [
+      "pension-002",
+      "health-001",
+      "health-002"
+    ],
+    "title": null,
+    "title_en": null,
+    "items": [
+      {
+        "doc": "medical_documents",
+        "status": "needed",
+        "label": "ವೈದ್ಯಕೀಯ ದಾಖಲೆಗಳು (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "label_en": "Medical Documents, where applicable",
+        "document": null,
+        "schemes": [
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "National Health Support Scheme"
+        ]
+      },
+      {
+        "doc": "family_details",
+        "status": "needed",
+        "label": "ಕುಟುಂಬದ ವಿವರಗಳು",
+        "label_en": "Family Details",
+        "document": null,
+        "schemes": [
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Family Healthcare Assistance"
+        ]
+      },
+      {
+        "doc": "identity_proof",
+        "status": "uploaded",
+        "label": "ಗುರುತಿನ ಪುರಾವೆ",
+        "label_en": "Identity Proof",
+        "document": {
+          "id": "96fd34a4-472d-47c4-86f9-150f928d9f09",
+          "doc_type": "identity_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 28,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:14.194701+05:30",
+          "expires_at": "2026-10-11T05:33:14.533733+05:30"
+        },
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance",
+          "National Health Support Scheme",
+          "Family Healthcare Assistance"
+        ]
+      },
+      {
+        "doc": "residence_proof",
+        "status": "uploaded",
+        "label": "ನಿವಾಸ ಪುರಾವೆ",
+        "label_en": "Residence Proof",
+        "document": {
+          "id": "c4ae86cc-b01c-495a-a33f-234b2026a5ea",
+          "doc_type": "residence_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 29,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:14.206066+05:30",
+          "expires_at": "2026-10-11T05:33:14.533733+05:30"
+        },
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance",
+          "National Health Support Scheme",
+          "Family Healthcare Assistance"
+        ]
+      },
+      {
+        "doc": "income_certificate",
+        "status": "uploaded",
+        "label": "ಆದಾಯ ಪ್ರಮಾಣಪತ್ರ",
+        "label_en": "Income Certificate",
+        "document": {
+          "id": "be8a59bf-81d5-4754-9880-8095e13daa01",
+          "doc_type": "income_certificate",
+          "content_type": "application/pdf",
+          "size_bytes": 32,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:14.211311+05:30",
+          "expires_at": "2026-10-11T05:33:14.533733+05:30"
+        },
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance",
+          "National Health Support Scheme",
+          "Family Healthcare Assistance"
+        ]
+      },
+      {
+        "doc": "bank_account_details",
+        "status": "uploaded",
+        "label": "ಬ್ಯಾಂಕ್ ಖಾತೆ ವಿವರಗಳು",
+        "label_en": "Bank Account Details",
+        "document": {
+          "id": "1e2181ce-d3ec-44c6-983f-853a8bbbb99f",
+          "doc_type": "bank_account_details",
+          "content_type": "application/pdf",
+          "size_bytes": 34,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:14.216840+05:30",
+          "expires_at": "2026-10-11T05:33:14.533733+05:30"
+        },
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+          "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+          "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance",
+          "National Health Support Scheme",
+          "Family Healthcare Assistance"
+        ]
+      },
+      {
+        "doc": "age_proof",
+        "status": "uploaded",
+        "label": "ವಯಸ್ಸಿನ ಪುರಾವೆ (ಅನ್ವಯಿಸಿದಲ್ಲಿ)",
+        "label_en": "Age Proof, where applicable",
+        "document": {
+          "id": "745d8f8c-9219-4f58-bc99-5daa82d501a7",
+          "doc_type": "age_proof",
+          "content_type": "application/pdf",
+          "size_bytes": 23,
+          "aadhaar": null,
+          "created_at": "2026-10-10T05:33:14.200334+05:30",
+          "expires_at": "2026-10-11T05:33:14.533733+05:30"
+        },
+        "schemes": [
+          "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ"
+        ],
+        "schemes_en": [
+          "Social Security Pension Assistance"
+        ]
+      }
+    ],
+    "others": [],
+    "ready": 5,
+    "total": 7,
+    "missing": 2
+  },
+  "documents": [
+    {
+      "id": "96fd34a4-472d-47c4-86f9-150f928d9f09",
+      "doc_type": "identity_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 28,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:14.194701+05:30",
+      "expires_at": "2026-10-11T05:33:14.533733+05:30"
+    },
+    {
+      "id": "745d8f8c-9219-4f58-bc99-5daa82d501a7",
+      "doc_type": "age_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 23,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:14.200334+05:30",
+      "expires_at": "2026-10-11T05:33:14.533733+05:30"
+    },
+    {
+      "id": "c4ae86cc-b01c-495a-a33f-234b2026a5ea",
+      "doc_type": "residence_proof",
+      "content_type": "application/pdf",
+      "size_bytes": 29,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:14.206066+05:30",
+      "expires_at": "2026-10-11T05:33:14.533733+05:30"
+    },
+    {
+      "id": "be8a59bf-81d5-4754-9880-8095e13daa01",
+      "doc_type": "income_certificate",
+      "content_type": "application/pdf",
+      "size_bytes": 32,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:14.211311+05:30",
+      "expires_at": "2026-10-11T05:33:14.533733+05:30"
+    },
+    {
+      "id": "1e2181ce-d3ec-44c6-983f-853a8bbbb99f",
+      "doc_type": "bank_account_details",
+      "content_type": "application/pdf",
+      "size_bytes": 34,
+      "aadhaar": null,
+      "created_at": "2026-10-10T05:33:14.216840+05:30",
+      "expires_at": "2026-10-11T05:33:14.533733+05:30"
+    }
+  ],
+  "consent": {
+    "profile": false,
+    "documents": true,
+    "at": "2026-10-10T05:33:14.189229+05:30"
+  },
+  "pause": null,
+  "review": null,
+  "progress": {
+    "scheme_id": "pension-001",
+    "steps": [
+      {
+        "key": "login",
+        "label": "ಲಾಗಿನ್",
+        "label_en": "Log in",
+        "status": "done",
+        "screenshot": "af2c7ed0-6825-4bfa-bb93-b24db3ee4d95"
+      },
+      {
+        "key": "otp",
+        "label": "OTP",
+        "label_en": "OTP",
+        "status": "done",
+        "screenshot": "f1c53c00-f3e9-498f-8ba9-c31aec22f0c1"
+      },
+      {
+        "key": "applicant",
+        "label": "ಅರ್ಜಿದಾರರ ವಿವರ",
+        "label_en": "Applicant details",
+        "status": "done",
+        "screenshot": "09e73f8a-96ae-460e-8cb0-29168af5c978"
+      },
+      {
+        "key": "details",
+        "label": "ಯೋಜನೆಯ ವಿವರ",
+        "label_en": "Scheme details",
+        "status": "done",
+        "screenshot": "aa9cb791-6ed0-4a97-bc7a-81a3e372ffc8"
+      },
+      {
+        "key": "documents",
+        "label": "ದಾಖಲೆಗಳು",
+        "label_en": "Documents",
+        "status": "done",
+        "screenshot": "6d0cfdbf-feb1-462f-a11c-e6fb7bea4a47"
+      },
+      {
+        "key": "review",
+        "label": "ಪರಿಶೀಲನೆ (ನಿಮ್ಮ ಹೌದುಗಾಗಿ ಇಲ್ಲಿ ನಿಲ್ಲುತ್ತದೆ)",
+        "label_en": "Review (stop here for your yes)",
+        "status": "done",
+        "screenshot": "d0b5068f-6a32-4ecc-95a7-56f290704868"
+      },
+      {
+        "key": "submit",
+        "label": "ಸಲ್ಲಿಕೆ",
+        "label_en": "Submit",
+        "status": "done",
+        "screenshot": "afd3fe3c-de46-40b7-a7f5-ea7a15e64694"
+      }
+    ]
+  },
+  "form": [
+    {
+      "field": "full_name",
+      "label": "ಹಿರಿಯ ನಾಗರಿಕ ಅರ್ಜಿದಾರರ ಪೂರ್ಣ ಹೆಸರು",
+      "label_en": "Senior Citizen Applicant Full Name",
+      "text": "Ramesh Kumar",
+      "sensitive": false
+    },
+    {
+      "field": "dob",
+      "label": "ಹುಟ್ಟಿದ ದಿನಾಂಕ (60 ವರ್ಷ ಅಥವಾ ಅದಕ್ಕಿಂತ ಹೆಚ್ಚು)",
+      "label_en": "Date of Birth (Must be 60 years or older)",
+      "text": "**/**/1964",
+      "sensitive": true
+    },
+    {
+      "field": "gender",
+      "label": "ಲಿಂಗ",
+      "label_en": "Gender",
+      "text": "ಪುರುಷ",
+      "sensitive": false
+    },
+    {
+      "field": "marital_status",
+      "label": "ವೈವಾಹಿಕ ಸ್ಥಿತಿ",
+      "label_en": "Marital Status",
+      "text": "ವಿವಾಹಿತ",
+      "sensitive": false
+    },
+    {
+      "field": "disbursement_mode",
+      "label": "ಪಿಂಚಣಿ ವಿತರಣಾ ಮಾಧ್ಯಮ",
+      "label_en": "Preferred Pension Disbursement Channel",
+      "text": "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+      "sensitive": false
+    },
+    {
+      "field": "bank_account_number",
+      "label": "ಪಿಂಚಣಿ ಬ್ಯಾಂಕ್ / ಅಂಚೆ ಖಾತೆ ಸಂಖ್ಯೆ",
+      "label_en": "Pension Bank / Post Office Account Number",
+      "text": "XXXXXX0123",
+      "sensitive": true
+    },
+    {
+      "field": "bank_ifsc",
+      "label": "ಶಾಖೆಯ IFSC / ಅಂಚೆ ಕೋಡ್",
+      "label_en": "Branch IFSC / Postal Code",
+      "text": "SBIN0******",
+      "sensitive": true
+    },
+    {
+      "field": "nominee_name",
+      "label": "ನಾಮಿನಿ / ಪೋಷಕರ ಪೂರ್ಣ ಹೆಸರು",
+      "label_en": "Nominee / Guardian Full Name",
+      "text": "Sita Kumar",
+      "sensitive": false
+    },
+    {
+      "field": "address",
+      "label": "ಶಾಶ್ವತ ವಸತಿ ವಿಳಾಸ",
+      "label_en": "Permanent Address",
+      "text": "12 Temple Road, Tumakuru 572101",
+      "sensitive": false
+    },
+    {
+      "field": "mobile",
+      "label": "ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಾಯಿಸಿದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",
+      "label_en": "Mobile number registered on the portal",
+      "text": "XXXXXX3210",
+      "sensitive": true
+    }
+  ],
+  "applications": [
+    {
+      "scheme_id": "pension-001",
+      "title": "ಹಿರಿಯ ನಾಗರಿಕರ ಪಿಂಚಣಿ ಯೋಜನೆ",
+      "title_en": "Senior Citizen Pension Scheme",
+      "app_id": "YJS-0000000001",
+      "status": "SUBMITTED",
+      "status_text": "ಸಲ್ಲಿಸಲಾಗಿದೆ",
+      "status_text_en": "Submitted",
+      "timeline": [
+        {
+          "at": "2026-10-10T05:33:14.248020+05:30",
+          "kind": "eligibility_decided"
+        },
+        {
+          "at": "2026-10-10T05:33:14.505204+05:30",
+          "kind": "confirm_requested"
+        },
+        {
+          "at": "2026-10-10T05:33:14.521191+05:30",
+          "kind": "citizen_approved"
+        },
+        {
+          "at": "2026-10-10T05:33:14.526208+05:30",
+          "kind": "submitted",
+          "app_id": "YJS-0000000001"
+        }
+      ],
+      "what_to_do": {
+        "text": "ಪರಿಶೀಲನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ. ಈಗ ಏನೂ ಮಾಡಬೇಕಿಲ್ಲ.",
+        "text_en": "It is waiting for review. Nothing to do now.",
+        "renew": false
+      },
+      "missing_documents": [],
+      "correction": null,
+      "checked_at": null,
+      "portal_updated_at": null,
+      "final": false
+    }
+  ],
+  "updates": [],
+  "tracking": {
+    "active": true,
+    "paused": null,
+    "last_checked_at": null,
+    "access_ends": "2026-10-10T12:00:00Z"
+  },
+  "next": [
+    {
+      "scheme_id": "pension-002",
+      "title": "ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ",
+      "title_en": "Social Security Pension Assistance"
+    },
+    {
+      "scheme_id": "health-001",
+      "title": "ರಾಷ್ಟ್ರೀಯ ಆರೋಗ್ಯ ಬೆಂಬಲ ಯೋಜನೆ",
+      "title_en": "National Health Support Scheme"
+    },
+    {
+      "scheme_id": "health-002",
+      "title": "ಕುಟುಂಬ ಆರೋಗ್ಯ ನೆರವು ಯೋಜನೆ",
+      "title_en": "Family Healthcare Assistance"
+    }
+  ],
+  "last_reply": {
+    "text": "ಸಲ್ಲಿಸಲಾಗಿದೆ! ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ YJS-0000000001. ಸಾಮಾಜಿಕ ಭದ್ರತಾ ಪಿಂಚಣಿ ನೆರವು ಯೋಜನೆ: ಇದಕ್ಕೂ ನೀವು ಅರ್ಹರು; ಅರ್ಜಿ ಹಾಕಲು ಅದರ ಹೆಸರು ಹೇಳಿ.",
+    "en": "Submitted! Your application ID is YJS-0000000001. You also qualify for Social Security Pension Assistance; to apply, say its name."
+  },
+  "limits": {
+    "doc_retention_hours": 24.0,
+    "doc_max_bytes": 10485760
+  }
+}

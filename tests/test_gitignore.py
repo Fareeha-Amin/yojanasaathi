@@ -16,6 +16,8 @@ MUST_IGNORE = [
     "screenshots/step-1.png",
     "data/vault/file.bin",
     "data/vault/0123abcd.ysv",
+    "web/test-results/run/test-failed-1.png",
+    "web/playwright-report/index.html",
 ]
 MUST_TRACK = [".env.example", "agent/main.py", "agent/schema.sql", "rules/pension-001.json"]
 

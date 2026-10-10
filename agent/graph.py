@@ -8,15 +8,23 @@ START -> router: deterministic facts (agent/facts.py) + one LLM extraction -> in
                source and checklists go to the screen in `ui`
   respond      LLM free-form answer to a general question (the only LLM-written reply)
   status / declined / choose_reask / already_submitted
-  proceed:     prepare (read-back preview; Phase 4: planner + browser) -> confirm
-               (interrupt, deterministic gate) -> submit
+  proceed:     prepare (documents, form questions; agent/portal/nodes.py) -> collect ...
+               -> portal_login -> otp (interrupt) -> portal_fill (Playwright, stops at the
+               portal's review step) -> confirm (interrupt, deterministic gate) -> submit
+               (the portal's Submit) ; safe_stop (interrupt) when the portal looks wrong
 Submission is idempotent PER SCHEME (`applications`): a request to submit a scheme that
 already has an application ID gets that ID back; everything else routes normally.
+Phase 4: the browser agent on the mock portal; sensitive answers and the OTP are kept out
+of the state as text (agent/portal/edge.py, agent/sealed.py).
 Key replies come from templates (agent/replies.py), in the case's language.
 Consequential steps call audit.log_event() (case ID = the thread ID). The state is
 checkpointed in Postgres (agent/db.py), so a pause and `applications` survive restarts.
+Phase 5: every template reply also carries `subtitle`, its English rendering (shown under
+Kannada / Hindi bubbles in the web app); edits at the confirm pause (review screen or
+spoken "my income is ...") update the profile and re-confirm, never submit.
 """
 
+from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any, Literal, TypedDict
 
@@ -32,11 +40,18 @@ from agent.facts import AGE_MAX, AGE_MIN, FIELDS, NUMERIC_FIELDS, Facts, extract
 from agent.gate import parse_decision
 from agent.llm import Extraction, get_llm, usable
 from agent.numbers import tokenize
-from agent.replies import day, facts_phrase, join, readback, reason, reasons, t
+from agent.portal import fields as form_fields
+from agent.portal import get_driver, PortalError
+from agent.portal import nodes as portal
+from agent.replies import day, facts_phrase, join, label, readback, reason, reasons, t
+from agent.tracking import followup
+from agent.tracking import nodes as tracking_nodes
 
 # Order in which the interview asks. Must cover every required_field in rules/.
 FIELD_ORDER = ["age", "annual_income"]
 TOP_SPOKEN = 2  # matches named aloud; the full list goes to the screen
+WHY_MAX_TITLES = 2  # "Why I ask" names this many schemes, then "and N more"
+MISSING_DOCS = ("needed", "missing")  # checklist statuses that count as not yet provided
 
 
 class CaseState(TypedDict, total=False):
@@ -51,6 +66,7 @@ class CaseState(TypedDict, total=False):
     app_id: str  # last application ID
     status: str
     reply: str  # spoken (1-3 short sentences)
+    subtitle: str | None  # the reply in English when lang != "en" (None for LLM answers)
     ui: dict[str, Any] | None  # this turn's screen payload (full reasons, sources, checklists)
     # Phase 2 bookkeeping
     intent: str
@@ -66,6 +82,23 @@ class CaseState(TypedDict, total=False):
     applications: dict[str, dict[str, Any]]  # scheme_id -> {"app_id", "status"}
     last_submitted: str | None
     resubmit: str | None  # scheme the citizen asked to submit again
+    # Phase 4: the portal application form + browser agent (agent/portal/)
+    form: dict[str, str]  # portal field (+ "mobile") -> SEALED value (agent/sealed.py)
+    form_shown: dict[str, str]  # field -> display text, masked when sensitive
+    form_input: dict[str, Any] | None  # this turn's answer: {"field", "sealed", "shown"} etc.
+    declared: list[str]  # schemes whose declaration the citizen affirmed (explicit yes)
+    last_field: str | None  # the answer just stored ("no" next turn = ask it again)
+    ack_field: str | None  # answer to acknowledge in the next question
+    otp: dict[str, Any]  # attempts, sent_at, masked mobile (never the code)
+    progress: list[dict[str, Any]] | None  # browser steps for the Pre-fill screen
+    stop: dict[str, Any] | None  # why the browser safe-stopped
+    portal_note: str | None  # template key said before the OTP prompt (session restart)
+    portal_told_slow: bool
+    delegation: dict[str, Any] | None  # read-only portal access: when it ends + scopes (the sealed token is in Postgres, Phase 6)
+    # Phase 6: status tracking (agent/tracking/)
+    corrections: dict[str, dict[str, Any]]  # scheme -> {app_id, docs, waiting, ready}; set by /turn each turn
+    correcting: dict[str, Any] | None  # the correction in progress: scheme_id, app_id, docs
+    flow: str | None  # "renew" | "correct": what the OTP login is for
 
 
 def _lang(state: CaseState) -> str:
@@ -96,6 +129,26 @@ def _scope(state: CaseState) -> list[dict[str, Any]]:
 
 def _title(sid: str, lang: str) -> str:
     return rules.title(rules.load_schemes()[sid], lang)
+
+
+def _say(lang: str, build: Callable[[str], str]) -> CaseState:
+    """reply in the case's language + its English rendering as the subtitle."""
+    return {"reply": build(lang), "subtitle": None if lang == "en" else build("en")}
+
+
+def why_asking(state: CaseState, lang: str) -> str | None:
+    """The "Why I ask" note for the field the interview is asking about."""
+    field = state.get("asking")
+    if field not in FIELD_ORDER:
+        return None
+    profile = state.get("profile", {})
+    titles = [rules.title(s, lang) for s in _scope(state)
+              if rules.status(s, profile) == "unknown" and field in rules.missing_fields(s, profile)]
+    if not titles:
+        return None
+    if len(titles) > WHY_MAX_TITLES:  # name 2, then "and N more"
+        titles = [*titles[:WHY_MAX_TITLES], t("n_more", lang, n=len(titles) - WHY_MAX_TITLES)]
+    return t("why_ask", lang, field=label(field, lang), titles=join(titles, lang))
 
 
 # --- router ----------------------------------------------------------------------------
@@ -149,10 +202,21 @@ def _intent(state: CaseState, facts: Facts, ext: Extraction | None, msg: str,
     asking = state.get("asking")
     applications = state.get("applications") or {}
     last = state.get("last_submitted")
-    if pick:
-        return ("resubmit" if pick in applications else "proceed"), pick
     bare_yes = parse_decision(msg) == "yes" and not facts.values and not facts.docs_have \
         and not facts.docs_missing
+    # Phase 6. "renew": new read-only portal access. A correction (the portal sent an
+    # application back): "resubmit", naming the scheme, or a bare yes once the corrected
+    # documents are uploaded. None of these submits anything: the correction flow has its own
+    # OTP login, read-back and explicit-yes gate (agent/tracking/nodes.py).
+    if facts.renew:  # (the node says so when there is nothing to renew)
+        return "renew", None
+    corr = state.get("corrections") or {}
+    ready = [sid for sid, c in corr.items() if c.get("ready")]
+    answering = asking in ("proceed", "others") or (asking or "").startswith("form:")
+    if applications and (facts.correct or (pick in corr) or (bare_yes and ready and not answering)):
+        return "correct", pick if pick in corr else (ready or list(corr) or [None])[0]
+    if pick:
+        return ("resubmit" if pick in applications else "proceed"), pick
     # A stray / repeated "yes" after a submission (any channel) never starts anything new.
     if bare_yes and last and asking not in ("proceed", "others"):
         return "resubmit", last
@@ -172,13 +236,19 @@ def _intent(state: CaseState, facts: Facts, ext: Extraction | None, msg: str,
     return "info", None
 
 
-Route = Literal["interview", "respond", "status", "declined", "choose_reask", "already_submitted"]
+Route = Literal["interview", "respond", "status", "declined", "choose_reask", "already_submitted",
+                "collect", "renew", "correct"]
 
 
 def router(state: CaseState) -> Command[Route]:
     msg = state.get("msg", "")
     lang = state.get("lang") or _script_lang(msg)
     asking = state.get("asking")
+    if asking and asking.startswith("form:"):  # an answer to an application-form question
+        routed = portal.route_form(state, msg, lang)
+        if routed is not None:
+            return routed
+        asking = None
     facts = extract(msg, asking)
 
     ext = None
@@ -208,14 +278,18 @@ def router(state: CaseState) -> Command[Route]:
         "docs_missing": missing_docs,
         "intent": "info" if intent == "others" else intent,
         "ui": None,
+        "subtitle": None,
         "resubmit": about if intent == "resubmit" else None,
     }
     if intent == "proceed" and about:
         update["selected"] = about
+    if intent == "correct":
+        update["correcting"] = {"scheme_id": about}
     if lang:
         update["lang"] = lang
     goto = {"question": "respond", "status": "status", "decline": "declined",
-            "choose_reask": "choose_reask", "resubmit": "already_submitted"}.get(intent, "interview")
+            "choose_reask": "choose_reask", "resubmit": "already_submitted", "renew": "renew",
+            "correct": "correct"}.get(intent, "interview")
     return Command(goto=goto, update=update)
 
 
@@ -235,12 +309,14 @@ def interview(state: CaseState) -> Command[Literal["eligibility", "__end__"]]:
     missing = [f for f in FIELD_ORDER if f in needed]
     if not missing:
         return Command(goto="eligibility", update={"missing": []})
-    lang = _lang(state)
-    reply = t(f"ask_{missing[0]}", lang)
-    if not profile and not state.get("topics"):
-        reply = f"{t('greeting', lang)} {reply}"
-    return Command(goto=END, update={"missing": missing, "asking": missing[0], "reply": reply,
-                                     "status": "collecting"})
+    first = not profile and not state.get("topics")
+
+    def ask(lang: str) -> str:
+        reply = t(f"ask_{missing[0]}", lang)
+        return f"{t('greeting', lang)} {reply}" if first else reply
+
+    return Command(goto=END, update={"missing": missing, "asking": missing[0],
+                                     **_say(_lang(state), ask), "status": "collecting"})
 
 
 def _result(scheme: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
@@ -326,8 +402,8 @@ def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
             return Command(goto="prepare", update={**update, "selected": sel})
         if sel and status.get(sel) == "not_eligible" and sel not in applications:
             cs = [c for c in rules.clauses(schemes[sel]["rule"], profile) if c.result is False]
-            return Command(goto=END, update={**update, "asking": None, "reply": t(
-                "not_eligible_one", lang, title=_title(sel, lang), reasons=reasons(cs, lang))})
+            return Command(goto=END, update={**update, "asking": None, **_say(lang, lambda l: t(
+                "not_eligible_one", l, title=_title(sel, l), reasons=reasons(cs, l)))})
         if len(offered) == 1:
             return Command(goto="prepare", update={**update, "selected": offered[0]})
 
@@ -335,39 +411,51 @@ def eligibility(state: CaseState) -> Command[Literal["prepare", "__end__"]]:
         fields: list[str] = []
         for sid in offered:
             fields += schemes[sid]["required_fields"]
-        facts = facts_phrase(_known(fields, profile), lang)
+        known = _known(fields, profile)
         if len(offered) == 1:
             sid = offered[0]
-            if applications:
-                reply = t("match_more_one", lang, title=_title(sid, lang))
-            else:
-                reply = t("match_one", lang, title=_title(sid, lang), facts=facts,
-                          n=len(schemes[sid]["documents"]))
-            return Command(goto=END, update={**update, "reply": reply, "asking": "proceed",
+
+            def one(l: str) -> str:
+                if applications:
+                    return t("match_more_one", l, title=_title(sid, l))
+                return t("match_one", l, title=_title(sid, l), facts=facts_phrase(known, l),
+                         n=len(schemes[sid]["documents"]))
+
+            return Command(goto=END, update={**update, **_say(lang, one), "asking": "proceed",
                                              "selected": sid, "status": "eligible"})
-        top = join([_title(sid, lang) for sid in offered[:TOP_SPOKEN]], lang)
         key = "match_more_many" if applications else "match_many"
-        reply = t(key, lang, n=len(offered), facts=facts, top=top)
-        return Command(goto=END, update={**update, "reply": reply, "asking": "choose",
+
+        def many(l: str) -> str:
+            top = join([_title(sid, l) for sid in offered[:TOP_SPOKEN]], l)
+            return t(key, l, n=len(offered), facts=facts_phrase(known, l), top=top)
+
+        return Command(goto=END, update={**update, **_say(lang, many), "asking": "choose",
                                          "status": "eligible"})
     if eligible:
-        return Command(goto=END, update={**update, "reply": t("all_applied", lang), "asking": None})
+        return Command(goto=END, update={**update, **_say(lang, lambda l: t("all_applied", l)),
+                                         "asking": None})
 
     scope_ids = {s["scheme_id"] for s in _scope(state)}
-    failed: list[str] = []
-    for r in ineligible:
-        if r["scheme_id"] in scope_ids:
-            for c in r["reasons"]:
-                text = reason(rules.Clause(**c), lang)
-                if c["result"] is False and text not in failed:
-                    failed.append(text)
-    why = join(failed, lang)
+
+    def why(l: str) -> str:
+        failed: list[str] = []
+        for r in ineligible:
+            if r["scheme_id"] in scope_ids:
+                for c in r["reasons"]:
+                    text = reason(rules.Clause(**c), l)
+                    if c["result"] is False and text not in failed:
+                        failed.append(text)
+        return join(failed, l)
+
     if len(scope_ids) < len(schemes):
-        topic = join([t(f"topic_{x}", lang) for x in state.get("topics") or []], lang)
+        def topic(l: str) -> str:
+            return join([t(f"topic_{x}", l) for x in state.get("topics") or []], l)
+
         return Command(goto=END, update={**update, "asking": "others", "status": "not_eligible",
-                                         "reply": t("not_eligible_topic", lang, topic=topic, reasons=why)})
+                                         **_say(lang, lambda l: t("not_eligible_topic", l,
+                                                                   topic=topic(l), reasons=why(l)))})
     return Command(goto=END, update={**update, "asking": None, "status": "not_eligible",
-                                     "reply": t("not_eligible_all", lang, reasons=why)})
+                                     **_say(lang, lambda l: t("not_eligible_all", l, reasons=why(l)))})
 
 
 # --- free-form, status, decline, re-ask --------------------------------------------------
@@ -391,6 +479,8 @@ def _reask(state: CaseState, lang: str) -> str:
         return t("choose_reask", lang, title=_title(offered[0], lang))
     if asking == "others":
         return t("ask_others", lang)
+    if asking and asking.startswith("form:") and state.get("selected"):
+        return portal.question(asking[5:], rules.load_schemes()[state["selected"]], lang)
     return t(f"ask_{asking}", lang) if asking in FIELD_ORDER else ""
 
 
@@ -400,34 +490,72 @@ def respond(state: CaseState) -> CaseState:
     answer = None
     if usable(llm):
         answer = llm.answer(state.get("msg", ""), lang, _kb(), state.get("profile", {}))
-    reply = " ".join(p for p in (answer or t("llm_unavailable", lang), _reask(state, lang)) if p)
-    return {"reply": reply}
+    if answer:  # free-form LLM text: no English subtitle (we never translate with the LLM)
+        return {"reply": " ".join(p for p in (answer, _reask(state, lang)) if p), "subtitle": None}
+    return _say(lang, lambda l: " ".join(p for p in (t("llm_unavailable", l), _reask(state, l)) if p))
 
 
 def status(state: CaseState) -> CaseState:
-    lang = _lang(state)
-    applications = state.get("applications") or {}
-    if applications:
-        parts = [t("status_app", lang, title=_title(sid, lang), app_id=a["app_id"],
-                   status=t(f"status_{a['status']}", lang))
-                 for sid, a in list(applications.items())[-TOP_SPOKEN:]]
-        return {"reply": " ".join(parts)}
-    return {"reply": " ".join(p for p in (t("status_none", lang), _reask(state, lang)) if p)}
+    """"What's my application status?": check the portal now (short timeout), then speak
+    status + last-updated date + the next step per application; if the portal can't be reached
+    the last known status, and a word saying so. (Phase 6; agent/tracking/followup.py)"""
+    applications = dict(state.get("applications") or {})
+    if not applications:
+        return _say(_lang(state), lambda l: " ".join(p for p in (t("status_none", l), _reask(state, l)) if p))
+    rows: dict[str, dict[str, Any]] = {}
+    res_state = "no_tracking"
+    try:
+        from agent import tracking
+        from agent.portal.nodes import _case_id
+
+        res = tracking.get_poller().check_case(_case_id(), now=True)
+        res_state, rows = res.state, {r["scheme_id"]: r for r in res.apps}
+    except Exception:  # noqa: BLE001 (tracking not set up, or a database hiccup: answer from the case memory)
+        res_state = "unavailable"
+    for sid, a in applications.items():
+        if sid in rows:
+            applications[sid] = {**a, "status": rows[sid]["status"]}
+    shown = list(applications.items())[-TOP_SPOKEN:]
+
+    def say(l: str) -> str:
+        parts = []
+        for sid, a in shown:
+            if sid in rows:
+                parts.append(followup.status_line(rows[sid], l, paused=res_state in ("expired", "paused")))
+            else:
+                parts.append(t("status_app", l, title=_title(sid, l), app_id=a["app_id"],
+                               status=t(f"status_{a['status']}", l)))
+        if res_state in ("throttled", "unavailable"):
+            parts.append(t("status_checked_stale", l))
+        return " ".join(parts)
+
+    return {**_say(_lang(state), say), "applications": applications}
 
 
 def declined(state: CaseState) -> CaseState:
-    return {"reply": t("proceed_declined", _lang(state)), "asking": None}
+    _close_browser("declined")
+    return {**_say(_lang(state), lambda l: t("proceed_declined", l)), "asking": None}
+
+
+def _close_browser(reason: str) -> None:
+    """Close this case's portal session, if one is open (cancel / decline)."""
+    from agent.portal.nodes import _case_id
+
+    try:
+        get_driver().close(_case_id(), reason)
+    except PortalError:
+        pass
 
 
 def choose_reask(state: CaseState) -> CaseState:
-    return {"reply": _reask(state, _lang(state))}
+    return _say(_lang(state), lambda l: _reask(state, l))
 
 
 def already_submitted(state: CaseState) -> CaseState:
     sid = state["resubmit"]
     app = state["applications"][sid]
     _blocked(sid, app["app_id"], "router")
-    return {"reply": t("already_submitted", _lang(state), app_id=app["app_id"])}
+    return _say(_lang(state), lambda l: t("already_submitted", l, app_id=app["app_id"]))
 
 
 def _blocked(sid: str, app_id: str, where: str) -> None:
@@ -437,47 +565,87 @@ def _blocked(sid: str, app_id: str, where: str) -> None:
 # --- proceed: prepare -> confirm (human gate) -> submit ------------------------------
 
 
-def prepare(state: CaseState) -> Command[Literal["confirm", "__end__"]]:
-    # TODO (Phase 4): planner + Playwright pre-fill on the mock portal (with OTP pause)
-    lang = _lang(state)
+def prepare(state: CaseState) -> Command[Literal["portal_login", "portal_fill", "__end__"]]:
+    """Proceed with the selected scheme: documents, the form questions, then the browser
+    (agent/portal/nodes.py)."""
     sel = state["selected"]
     applications = state.get("applications") or {}
     if sel in applications:  # never prepare a second application for the same scheme
         _blocked(sel, applications[sel]["app_id"], "prepare")
-        return Command(goto=END, update={"reply": t("already_submitted", lang,
-                                                    app_id=applications[sel]["app_id"])})
+        return Command(goto=END, update=_say(_lang(state), lambda l: t(
+            "already_submitted", l, app_id=applications[sel]["app_id"])))
     scheme = rules.load_schemes()[sel]
-    profile = state.get("profile", {})
-    fields = {f: profile[f] for f in scheme["required_fields"] if f in profile}
-    unsure = [f for f in fields if f in state.get("readback", [])]
+    cmd = portal.prepare(state)
+    return Command(goto=cmd.goto, update={"checklist": _checklist(scheme, state, _lang(state)),
+                                          **(cmd.update or {})})
+
+
+def read_back(scheme: dict[str, Any], fields: dict[str, Any], unsure: list[str], lang: str,
+              missing_docs: int = 0) -> str:
+    """The spoken read-back before the confirm pause (also the review screen's read-aloud).
+    Missing documents are said before the yes is asked for ("Submit anyway, or upload
+    first?"); submitting is not blocked here (Phase 4 decides what the portal needs)."""
     parts = [t("readback", lang, fields=readback(fields, lang))]
     if unsure:
         parts.append(t("readback_unsure", lang, fields=readback({f: fields[f] for f in unsure}, lang)))
-    parts.append(t("confirm_ask", lang, title=rules.title(scheme, lang)))
-    docs = _checklist(scheme, state, lang)
-    preview = {
-        "scheme_id": sel,
-        "title": rules.title(scheme, lang),
-        "fields": fields,
-        "needs_readback": unsure,
-        "documents": docs,
-        "source_url": scheme["source_url"],
-        "effective_date": scheme["effective_date"],
-    }
-    # Logged here, not in confirm: an interrupted node re-runs from the top on resume.
-    log_event("agent", "confirm_requested", scheme_id=sel, detail={
-        "fields": sorted(fields), "needs_readback": unsure, "documents": [d["doc"] for d in docs]})
-    return Command(goto="confirm", update={
-        "preview": preview, "checklist": docs, "status": "awaiting_confirmation",
-        "asking": None, "reply": " ".join(parts)})
+    title = rules.title(scheme, lang)
+    if missing_docs == 1:
+        parts.append(t("docs_missing_ask_1", lang, title=title))
+    elif missing_docs > 1:
+        parts.append(t("docs_missing_ask", lang, n=missing_docs, title=title))
+    else:
+        parts.append(t("confirm_ask", lang, title=title))
+    return " ".join(parts)
 
 
-def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]]:
+def _edits(answer: Any, profile: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str], set[str], str]:
+    """Changes to the reviewed facts in a confirm answer: (values, sources, fields to
+    flag for read-back, via). From the review screen: {"edit": {field: value}} (validated
+    by POST /cases/{id}/edit). Spoken / typed: a new value the deterministic parsers read,
+    e.g. "no, my income is 2 lakh". Values equal to what we have are not edits."""
+    if isinstance(answer, dict):
+        edits = {f: v for f, v in (answer.get("edit") or {}).items() if f in FIELD_ORDER}
+        return edits, {f: "edited" for f in edits}, set(), "review_screen"
+    facts = extract(str(answer), None)
+    edits = {f: v for f, v in facts.values.items() if f in FIELD_ORDER and profile.get(f) != v}
+    return (edits, {f: facts.sources[f] for f in edits}, facts.readback & set(edits), "spoken")
+
+
+def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "eligibility", "collect", "__end__"]]:
     # Human gate: the graph stops here until /turn is called again. Only an explicit
-    # yes reaches submit; anything unclear asks again, never submits.
-    answer = interrupt({"type": "confirm", "preview": state.get("preview", {})})
-    decision = parse_decision(str(answer))
+    # yes reaches submit; anything unclear asks again, never submits. A changed value
+    # ("no, my income is ...", or an edit on the review screen) goes back through the
+    # rules and a NEW read-back + pause: an edit never submits, even with a "yes" in it.
+    # Phase 4: the browser waits on the portal's review step meanwhile (declaration unticked).
+    preview = state.get("preview") or {}
+    answer = interrupt({"type": "confirm", "preview": preview, "screenshots": preview.get("screenshots", []),
+                        "declaration_text": preview.get("declaration")})
     lang = _lang(state)
+    profile = state.get("profile", {})
+    scheme = rules.load_schemes().get(state.get("selected") or "")
+    fi = state.get("form_input")
+    if fi and fi.get("field"):  # a sensitive value corrected ("no, the account number is ...")
+        log_event("citizen", "fields_edited", scheme_id=state.get("selected"),
+                  detail={"fields": [fi["field"]], "via": "spoken"})
+        return Command(goto="collect")
+    if not isinstance(answer, dict) and scheme is not None:
+        named = form_fields.mentioned(str(answer), [*form_fields.form_fields(scheme), "mobile"])
+        if named:  # "no, the name is wrong": ask it again, then fill the page again
+            log_event("citizen", "edit_requested", scheme_id=scheme["scheme_id"], detail={"field": named})
+            return Command(goto=END, update={"asking": f"form:{named}", "status": "editing", **_say(
+                lang, lambda l: f"{t('form_edit', l)} {portal.question(named, scheme, l)}")})
+    edits, sources, flags, via = _edits(answer, profile)
+    if edits:
+        log_event("citizen", "fields_edited", scheme_id=state.get("selected"),
+                  detail={"fields": sorted(edits), "via": via})
+        return Command(goto="eligibility", update={
+            "profile": {**profile, **edits},
+            "sources": {**state.get("sources", {}), **sources},
+            "readback": sorted((set(state.get("readback", [])) - set(edits)) | flags),
+            "intent": "proceed"})
+    if isinstance(answer, dict):  # a review-screen call without a usable edit
+        return Command(goto="confirm", update=_say(lang, lambda l: t("confirm_reask", l)))
+    decision = parse_decision(str(answer))
     detail = {"decision": decision}
     if decision != "unclear" and len(tokenize(str(answer))) <= 3:
         detail["said"] = str(answer).strip()  # the bare "ಹೌದು" / "no": evidence, nothing personal
@@ -486,38 +654,48 @@ def confirm(state: CaseState) -> Command[Literal["submit", "confirm", "__end__"]
     if decision == "yes":
         return Command(goto="submit")
     if decision == "no":
-        return Command(goto=END, update={"status": "cancelled", "reply": t("cancelled", lang)})
-    return Command(goto="confirm", update={"reply": t("confirm_reask", lang)})
+        _close_browser("cancelled")
+        return Command(goto=END, update={"status": "cancelled", **_say(lang, lambda l: t("cancelled", l))})
+    return Command(goto="confirm", update=_say(lang, lambda l: t("confirm_reask", l)))
 
 
-def _submit_to_portal(state: CaseState) -> str:
-    # TODO (Phase 4): click the portal's final Submit via Playwright, return the real
-    # application number (portal format YJS-XXXXXXXXXX)
-    return f"DEMO-{len(state.get('applications') or {}) + 1:04d}"
+def _submit_to_portal(state: CaseState) -> tuple[str | None, Command | None]:
+    """The portal's final Submit (Playwright; agent/portal/nodes.py). Only reached through
+    the confirm gate's explicit yes. (app number, None) or (None, where to go instead)."""
+    return portal.submit_to_portal(state)
 
 
-def submit(state: CaseState) -> CaseState:
+def submit(state: CaseState) -> Command[Literal["portal_login", "safe_stop", "__end__"]]:
     # Last line of defence right before the portal: never submit a scheme twice.
     lang = _lang(state)
     sel = state["selected"]
     applications = dict(state.get("applications") or {})
     if sel in applications:
         _blocked(sel, applications[sel]["app_id"], "submit")
-        return {"reply": t("already_submitted", lang, app_id=applications[sel]["app_id"])}
-    app_id = _submit_to_portal(state)
+        return Command(goto=END, update=_say(lang, lambda l: t(
+            "already_submitted", l, app_id=applications[sel]["app_id"])))
+    app_id, instead = _submit_to_portal(state)
+    if instead is not None:
+        return instead
     applications[sel] = {"app_id": app_id, "status": "SUBMITTED"}
-    log_event("agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "stub (Phase 4: Playwright)"})
+    log_event("browser_agent", "submitted", scheme_id=sel, detail={"app_id": app_id, "portal": "mock portal (Playwright)"})
+    after = portal.after_submit(state, app_id)
     remaining = [s for s in state.get("offered") or [] if s not in applications]
-    parts = [t("submitted", lang, app_id=app_id)]
-    if remaining:
-        parts.append(t("submitted_next", lang, title=_title(remaining[0], lang)))
-    return {
-        "applications": applications, "app_id": app_id, "last_submitted": sel,
+
+    def done(l: str) -> str:
+        parts = [t("submitted", l, app_id=app_id)]
+        if remaining:
+            parts.append(t("submitted_next", l, title=_title(remaining[0], l)))
+        return " ".join(parts)
+
+    return Command(goto=END, update={
+        **after,
+        "applications": applications, "app_id": app_id, "last_submitted": sel, "preview": None,
         "offered": remaining, "asking": "choose" if remaining else None, "status": "submitted",
-        "reply": " ".join(parts),
+        **_say(lang, done),
         "ui": {"type": "submitted", "scheme_id": sel, "title": _title(sel, lang), "app_id": app_id,
                "next": [{"scheme_id": s, "title": _title(s, lang)} for s in remaining]},
-    }
+    })
 
 
 def build_graph(checkpointer: BaseCheckpointSaver):
@@ -525,9 +703,15 @@ def build_graph(checkpointer: BaseCheckpointSaver):
     for name, fn in [("router", router), ("interview", interview), ("eligibility", eligibility),
                      ("respond", respond), ("status", status), ("declined", declined),
                      ("choose_reask", choose_reask), ("already_submitted", already_submitted),
-                     ("prepare", prepare), ("confirm", confirm), ("submit", submit)]:
+                     ("prepare", prepare), ("collect", portal.collect), ("portal_login", portal.portal_login),
+                     ("otp", portal.otp), ("portal_fill", portal.portal_fill), ("confirm", confirm),
+                     ("submit", submit), ("safe_stop", portal.safe_stop),
+                     ("renew", tracking_nodes.renew), ("renew_delegate", tracking_nodes.renew_delegate),
+                     ("correct", tracking_nodes.correct), ("correct_check", tracking_nodes.correct_check),
+                     ("correct_confirm", tracking_nodes.correct_confirm),
+                     ("correct_submit", tracking_nodes.correct_submit)]:
         g.add_node(name, fn)
     g.add_edge(START, "router")
-    for name in ("respond", "status", "declined", "choose_reask", "already_submitted", "submit"):
+    for name in ("respond", "status", "declined", "choose_reask", "already_submitted"):
         g.add_edge(name, END)
     return g.compile(checkpointer=checkpointer)

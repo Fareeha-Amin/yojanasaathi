@@ -216,6 +216,44 @@
       }
     }
   ],
+  "option_labels": {
+    "gender": {
+      "kn": [
+        "ಪುರುಷ",
+        "ಮಹಿಳೆ",
+        "ಇತರ"
+      ],
+      "hi": [
+        "पुरुष",
+        "महिला",
+        "अन्य"
+      ]
+    },
+    "marital_status": {
+      "kn": [
+        "ವಿವಾಹಿತ",
+        "ವಿಧವೆ/ವಿಧುರ",
+        "ಅವಿವಾಹಿತ",
+        "ವಿಚ್ಛೇದಿತ"
+      ],
+      "hi": [
+        "विवाहित",
+        "विधवा / विधुर",
+        "अविवाहित",
+        "तलाकशुदा"
+      ]
+    },
+    "disbursement_mode": {
+      "kn": [
+        "ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ (ಡಿಬಿಟಿ)",
+        "ಅಂಚೆ ಕಚೇರಿ ಉಳಿತಾಯ ಬ್ಯಾಂಕ್"
+      ],
+      "hi": [
+        "प्रत्यक्ष बैंक अंतरण (डीबीटी)",
+        "डाकघर बचत बैंक"
+      ]
+    }
+  },
   "source_url": "{MOCK_PORTAL_URL}/schemes/pension-001",
   "effective_date": "2026-10-09",
   "verification": "DEMO: mock portal scheme, not a real government scheme. Mirrors the portal seed (github.com/ayush81233/mock, backend/schemes/management/commands/seed_schemes.py, commit 6e6e24d of 2026-10-09; tests/test_portal_seed.py keeps them in sync). The seed has no effective date, so effective_date is the seed commit date."
